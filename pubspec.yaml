@@ -1,0 +1,27 @@
+name: soundwave
+description: SoundWave - Aplikasi Manajemen Konser Musik Modern
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  google_fonts: ^6.1.0
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.1
+  intl: ^0.18.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/konser/
+    - assets/images/anggota/
