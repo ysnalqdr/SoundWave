@@ -15,7 +15,6 @@ class FormKonserScreen extends StatefulWidget {
 }
 
 class _FormKonserScreenState extends State<FormKonserScreen> {
-
   final _formKey = GlobalKey<FormState>();
 
   //!Field Ctrl
@@ -26,9 +25,9 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
   late final TextEditingController _deskripsiCtrl;
   late final TextEditingController _penyelenggaraCtrl;
 
-  late String   _genrePilihan;
-  late DateTime _tanggalPilihan;
-
+  // PERBAIKAN 1: Ubah penampung dari String tunggal menjadi List<String>
+  List<String> _genreTerpilih = [];
+  
   bool _sedangSimpan = false;
 
   //!Mod Edit/Tambah
@@ -38,22 +37,29 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
   void initState() {
     super.initState();
 
-    //! Edit Isi Field Yang Udah Ada
-    //! Tambah Isi Value Default
     final k = widget.konser;
-    _judulCtrl         = TextEditingController(text: k?.judul ?? '');
-    _lokasiCtrl        = TextEditingController(text: k?.lokasi ?? '');
-    _hargaCtrl         = TextEditingController(
+    _judulCtrl = TextEditingController(text: k?.judul ?? '');
+    _lokasiCtrl = TextEditingController(text: k?.lokasi ?? '');
+    _hargaCtrl = TextEditingController(
       text: k != null ? k.harga.toStringAsFixed(0) : '',
     );
-    _gambarCtrl        = TextEditingController(text: k?.gambarUrl ?? '');
-    _deskripsiCtrl     = TextEditingController(text: k?.deskripsi ?? '');
+    _gambarCtrl = TextEditingController(text: k?.gambarUrl ?? '');
+    _deskripsiCtrl = TextEditingController(text: k?.deskripsi ?? '');
     _penyelenggaraCtrl = TextEditingController(text: k?.penyelenggara ?? '');
-    _genrePilihan      = k?.genre ?? AppConstants.genres.first;
-    _tanggalPilihan    = k?.tanggal ?? DateTime.now().add(
+    
+    // PERBAIKAN 2: Jika edit, salin list genre bawaan model. Jika tambah, buat list kosong.
+    if (k != null && k.genre.isNotEmpty) {
+      _genreTerpilih = List.from(k.genre);
+    } else {
+      _genreTerpilih = [];
+    }
+
+    _tanggalPilihan = k?.tanggal ?? DateTime.now().add(
       const Duration(days: 30),
     );
   }
+
+  late DateTime _tanggalPilihan;
 
   @override
   void dispose() {
@@ -75,7 +81,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.dark(
+          colorScheme: const ColorScheme.dark(
             primary: AppColors.primary,
             surface: AppColors.surface,
           ),
@@ -92,38 +98,51 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
     //! Validasi All Field
     if (!_formKey.currentState!.validate()) return;
 
+    // Tambahan Validasi: Memastikan minimal user memilih 1 genre
+    if (_genreTerpilih.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pilih minimal satu genre terlebih dahulu!'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     setState(() => _sedangSimpan = true);
 
     if (_modeEdit) {
-      //TODO: UPDATE Cari Index -> Ganti
+      // UPDATE Cari Index -> Ganti
       final index = DummyData.daftarKonser.indexWhere(
         (k) => k.id == widget.konser!.id,
       );
       if (index != -1) {
         DummyData.daftarKonser[index] = widget.konser!.copyWith(
-          judul         : _judulCtrl.text.trim(),
-          lokasi        : _lokasiCtrl.text.trim(),
-          tanggal       : _tanggalPilihan,
-          harga         : double.tryParse(_hargaCtrl.text) ?? 0,
-          genre         : _genrePilihan,
-          gambarUrl     : _gambarCtrl.text.trim(),
-          deskripsi     : _deskripsiCtrl.text.trim(),
-          penyelenggara : _penyelenggaraCtrl.text.trim(),
+          judul: _judulCtrl.text.trim(),
+          lokasi: _lokasiCtrl.text.trim(),
+          tanggal: _tanggalPilihan,
+          harga: double.tryParse(_hargaCtrl.text) ?? 0,
+          // PERBAIKAN 3: Masukkan langsung variabel list genre terpilih
+          genre: _genreTerpilih, 
+          gambarUrl: _gambarCtrl.text.trim(),
+          deskripsi: _deskripsiCtrl.text.trim(),
+          penyelenggara: _penyelenggaraCtrl.text.trim(),
         );
       }
     } else {
-      //TODO CREATE: Tambah Konseer
+      // CREATE: Tambah Konser
       DummyData.daftarKonser.add(
         KonserModel(
-          id            : DummyData.buatId(),
-          judul         : _judulCtrl.text.trim(),
-          lokasi        : _lokasiCtrl.text.trim(),
-          tanggal       : _tanggalPilihan,
-          harga         : double.tryParse(_hargaCtrl.text) ?? 0,
-          genre         : _genrePilihan,
-          gambarUrl     : _gambarCtrl.text.trim(),
-          deskripsi     : _deskripsiCtrl.text.trim(),
-          penyelenggara : _penyelenggaraCtrl.text.trim(),
+          id: DummyData.buatId(),
+          judul: _judulCtrl.text.trim(),
+          lokasi: _lokasiCtrl.text.trim(),
+          tanggal: _tanggalPilihan,
+          harga: double.tryParse(_hargaCtrl.text) ?? 0,
+          // PERBAIKAN 4: Masukkan langsung variabel list genre terpilih
+          genre: _genreTerpilih, 
+          gambarUrl: _gambarCtrl.text.trim(),
+          deskripsi: _deskripsiCtrl.text.trim(),
+          penyelenggara: _penyelenggaraCtrl.text.trim(),
         ),
       );
     }
@@ -151,8 +170,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              //TODO: Preview Gambar
+              // Preview Gambar
               if (_gambarCtrl.text.isNotEmpty)
                 Container(
                   height: 160,
@@ -170,15 +188,15 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                   ),
                 ),
 
-              //TODO: Field Judul
-              _labelField('Judul Konser *'),
+              // Field Judul
+              _labelField('Judul Konser'),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _judulCtrl,
                 style: GoogleFonts.spaceGrotesk(
                   color: AppColors.textPrimary,
                 ),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Contoh: Coldplay • Music of the Spheres',
                   prefixIcon: Icon(
                     Icons.title_rounded,
@@ -192,15 +210,15 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              //TODO: Field Lokasi
-              _labelField('Lokasi *'),
+              // Field Lokasi
+              _labelField('Lokasi'),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _lokasiCtrl,
                 style: GoogleFonts.spaceGrotesk(
                   color: AppColors.textPrimary,
                 ),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Contoh: Gelora Bung Karno, Jakarta',
                   prefixIcon: Icon(
                     Icons.location_on_outlined,
@@ -214,8 +232,8 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              //TODO: Field Harga
-              _labelField('Harga Tiket (Rp) *'),
+              // Field Harga
+              _labelField('Harga Tiket (Rp)'),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _hargaCtrl,
@@ -223,7 +241,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                 style: GoogleFonts.spaceGrotesk(
                   color: AppColors.textPrimary,
                 ),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Contoh: 850000',
                   prefixIcon: Icon(
                     Icons.attach_money_rounded,
@@ -240,46 +258,52 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              //TODO: Dropdown Genre
-              _labelField('Genre *'),
+              // PERBAIKAN 5: Ganti Dropdown dengan multi-selection CheckboxListTile Box
+              _labelField('Genre'),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceLight,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.divider),
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _genrePilihan,
-                    isExpanded: true,
-                    dropdownColor: AppColors.surface,
-                    style: GoogleFonts.spaceGrotesk(
-                      color: AppColors.textPrimary,
-                      fontSize: 14,
-                    ),
-                    items: AppConstants.genres
-                        .map(
-                          (g) => DropdownMenuItem(
-                            value: g,
-                            child: Text(g),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() => _genrePilihan = val);
-                      }
-                    },
-                  ),
+                child: Column(
+                  children: AppConstants.genres.map((g) {
+                    final isChecked = _genreTerpilih.contains(g);
+                    return CheckboxListTile(
+                      title: Text(
+                        g,
+                        style: GoogleFonts.spaceGrotesk(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                      value: isChecked,
+                      activeColor: AppColors.primary,
+                      checkColor: Colors.white,
+                      controlAffinity: ListTileControlAffinity.trailing,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value == true) {
+                            if (!_genreTerpilih.contains(g)) {
+                              _genreTerpilih.add(g);
+                            }
+                          } else {
+                            _genreTerpilih.remove(g);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              //TODO: Date Picker
-              _labelField('Tanggal *'),
+              // Date Picker
+              _labelField('Tanggal'),
               const SizedBox(height: 8),
               GestureDetector(
                 onTap: _pilihTanggal,
@@ -295,23 +319,21 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.calendar_today_outlined,
                         color: AppColors.textMuted,
                         size: 18,
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        '${_tanggalPilihan.day}/'
-                        '${_tanggalPilihan.month}/'
-                        '${_tanggalPilihan.year}',
+                        '${_tanggalPilihan.day}/${_tanggalPilihan.month}/${_tanggalPilihan.year}',
                         style: GoogleFonts.spaceGrotesk(
                           color: AppColors.textPrimary,
                           fontSize: 14,
                         ),
                       ),
                       const Spacer(),
-                      Icon(
+                      const Icon(
                         Icons.arrow_drop_down_rounded,
                         color: AppColors.textMuted,
                       ),
@@ -322,7 +344,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              //TODO: Field Gambar
+              // Field Gambar
               _labelField('URL Gambar'),
               const SizedBox(height: 8),
               TextFormField(
@@ -330,7 +352,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                 style: GoogleFonts.spaceGrotesk(
                   color: AppColors.textPrimary,
                 ),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'https://...',
                   prefixIcon: Icon(
                     Icons.image_outlined,
@@ -338,13 +360,12 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                     size: 20,
                   ),
                 ),
-                // Update preview gambar saat URL berubah
                 onChanged: (_) => setState(() {}),
               ),
 
               const SizedBox(height: 16),
 
-              //TODO Field Penyelenggara
+              // Field Penyelenggara
               _labelField('Penyelenggara'),
               const SizedBox(height: 8),
               TextFormField(
@@ -352,7 +373,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                 style: GoogleFonts.spaceGrotesk(
                   color: AppColors.textPrimary,
                 ),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Contoh: Live Nation Indonesia',
                   prefixIcon: Icon(
                     Icons.business_outlined,
@@ -364,7 +385,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              //TODO: Field Deskripsi
+              // Field Deskripsi
               _labelField('Deskripsi'),
               const SizedBox(height: 8),
               TextFormField(
@@ -383,11 +404,11 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                   fillColor: AppColors.surfaceLight,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.divider),
+                    borderSide: const BorderSide(color: AppColors.divider),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.divider),
+                    borderSide: const BorderSide(color: AppColors.divider),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -402,7 +423,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 32),
 
-              //TODO: Button Save
+              // Button Save
               SizedBox(
                 width: double.infinity,
                 height: 52,

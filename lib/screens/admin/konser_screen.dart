@@ -23,11 +23,10 @@ class KonserScreen extends StatefulWidget {
 }
 
 class _KonserScreenState extends State<KonserScreen> {
-
   //!State
   bool _sedangLoading = true;
-  String _genreAktif  = 'Semua';
-  String _kataCari    = '';
+  String _genreAktif = 'Semua';
+  String _kataCari = '';
 
   //!Controller Search Bar
   final _searchCtrl = TextEditingController();
@@ -47,11 +46,14 @@ class _KonserScreenState extends State<KonserScreen> {
     super.dispose();
   }
 
-  //! Hasil Konser Ynag Di Filter
+//! Hasil Konser Ynag Di Filter
   List<KonserModel> get _konserTerfilter {
     return DummyData.daftarKonser.where((k) {
-      final cocokGenre = _genreAktif == 'Semua' || k.genre == _genreAktif;
-      final cocokCari  = _kataCari.isEmpty ||
+      // Diubah menggunakan .contains karena k.genre sekarang adalah sebuah List
+      final cocokGenre =
+          _genreAktif == 'Semua' || k.genre.contains(_genreAktif);
+
+      final cocokCari = _kataCari.isEmpty ||
           k.judul.toLowerCase().contains(_kataCari.toLowerCase()) ||
           k.lokasi.toLowerCase().contains(_kataCari.toLowerCase());
       return cocokGenre && cocokCari;
@@ -152,9 +154,7 @@ class _KonserScreenState extends State<KonserScreen> {
             _buildSearchBar(),
             _buildFilterChips(),
             Expanded(
-              child: _sedangLoading
-                  ? _buildSkeleton()
-                  : _buildDaftarKonser(),
+              child: _sedangLoading ? _buildSkeleton() : _buildDaftarKonser(),
             ),
           ],
         ),
@@ -308,26 +308,18 @@ class _KonserScreenState extends State<KonserScreen> {
                 vertical: 6,
               ),
               decoration: BoxDecoration(
-                color: aktif
-                    ? AppColors.primary
-                    : AppColors.surfaceLight,
+                color: aktif ? AppColors.primary : AppColors.surfaceLight,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: aktif
-                      ? AppColors.primary
-                      : AppColors.divider,
+                  color: aktif ? AppColors.primary : AppColors.divider,
                 ),
               ),
               child: Text(
                 genres[i],
                 style: GoogleFonts.spaceGrotesk(
-                  color: aktif
-                      ? Colors.white
-                      : AppColors.textSecondary,
+                  color: aktif ? Colors.white : AppColors.textSecondary,
                   fontSize: 12,
-                  fontWeight: aktif
-                      ? FontWeight.w600
-                      : FontWeight.normal,
+                  fontWeight: aktif ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
             ),
@@ -438,36 +430,46 @@ class _KonserScreenState extends State<KonserScreen> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          AppColors.card.withOpacity(0.85),
+                          AppColors.card.withValues(
+                              alpha: 0.85), // Memperbarui withOpacity
                         ],
                       ),
                     ),
                   ),
                 ),
-                // Badge genre
+
+                // === BAGIAN BADGE GENRE YANG DIPERBAIKI (MENGGUNAKAN WRAP) ===
                 Positioned(
                   top: 10,
                   left: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      konser.genre,
-                      style: GoogleFonts.spaceGrotesk(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                  child: Wrap(
+                    spacing: 6.0, // Jarak horizontal antar emblem genre
+                    runSpacing: 4.0, // Jarak vertikal jika emblem turun baris
+                    children: konser.genre.map((genre) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(
+                              alpha: 0.9), // Memperbarui withOpacity
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          genre, // Menampilkan masing-masing genre secara terpisah
+                          style: GoogleFonts.spaceGrotesk(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
-                // 3 tombol aksi (inspect, edit, hapus)
+
+                //!3 Button(Inspect Edit Delete)
                 Positioned(
                   top: 8,
                   right: 8,

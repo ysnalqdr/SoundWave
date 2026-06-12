@@ -4,7 +4,7 @@ class KonserModel {
   String lokasi;
   DateTime tanggal;
   double harga;
-  String genre;
+  final List<String> genre; // Menggunakan List<String> untuk multi-genre
   String gambarUrl;
   String? deskripsi;
   String? penyelenggara;
@@ -21,6 +21,7 @@ class KonserModel {
     this.penyelenggara,
   });
 
+  // Getter untuk memformat harga ke dalam bentuk Rupiah (Rp)
   String get formatHarga {
     if (harga == 0) return 'GRATIS';
     final formatted = harga
@@ -32,12 +33,13 @@ class KonserModel {
     return 'Rp $formatted';
   }
 
+  // Method copyWith untuk menduplikasi objek dengan perubahan data tertentu
   KonserModel copyWith({
     String? judul,
     String? lokasi,
     DateTime? tanggal,
     double? harga,
-    String? genre,
+    List<String>? genre, // <-- Sudah diperbaiki menjadi List<String>?
     String? gambarUrl,
     String? deskripsi,
     String? penyelenggara,
@@ -48,7 +50,7 @@ class KonserModel {
       lokasi: lokasi ?? this.lokasi,
       tanggal: tanggal ?? this.tanggal,
       harga: harga ?? this.harga,
-      genre: genre ?? this.genre,
+      genre: genre ?? this.genre, // <-- Sinkron dengan parameter di atas
       gambarUrl: gambarUrl ?? this.gambarUrl,
       deskripsi: deskripsi ?? this.deskripsi,
       penyelenggara: penyelenggara ?? this.penyelenggara,

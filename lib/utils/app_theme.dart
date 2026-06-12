@@ -118,7 +118,7 @@ class AppConstants {
   static const List<String> genres = [
     'Pop', 'Rock', 'Jazz', 'Electronic',
     'Hip-Hop', 'R&B', 'K-Pop', 'Pop Rock',
-    'Indie', 'Metal', 'Classical',
+    'Indie', 'Metal', 'Classical', 'Dangdut',
   ];
 
   static const List<String> ticketCategories = [

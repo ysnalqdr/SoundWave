@@ -16,10 +16,8 @@ class InspectKonserScreen extends StatefulWidget {
   State<InspectKonserScreen> createState() => _InspectKonserScreenState();
 }
 
-class _InspectKonserScreenState
-    extends State<InspectKonserScreen>
+class _InspectKonserScreenState extends State<InspectKonserScreen>
     with SingleTickerProviderStateMixin {
-
   //TODO Tab Ctrl 3 Tab
   late TabController _tabController;
 
@@ -118,7 +116,9 @@ class _InspectKonserScreenState
                   onTap: () => _hapusKonser(context),
                   child: Container(
                     margin: const EdgeInsets.only(
-                      top: 8, bottom: 8, right: 8,
+                      top: 8,
+                      bottom: 8,
+                      right: 8,
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
@@ -294,7 +294,6 @@ class _InspectKonserScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           //! Judul Genre
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,26 +310,36 @@ class _InspectKonserScreenState
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3),
-                  ),
-                ),
-                child: Text(
-                  widget.konser.genre,
-                  style: GoogleFonts.spaceGrotesk(
-                    color: AppColors.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+              Wrap( //!Genre Bungkusan
+                spacing: 8.0, //! Horizontal
+                runSpacing:
+                    4.0, //! Vertikal
+                children: widget.konser.genre.map((genre) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(
+                          alpha:
+                              0.15), // Menggantikan withOpacity yang deprecated
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      genre, //! Genre Badge
+                      style: GoogleFonts.spaceGrotesk(
+                        color: AppColors.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              )
             ],
           ),
 
@@ -397,23 +406,26 @@ class _InspectKonserScreenState
               widget.konser.lokasi.split(',').last.trim(),
               'Konser2025',
               'SoundWave',
-            ].map((tag) => Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 5,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Text(
-                '#$tag',
-                style: GoogleFonts.spaceGrotesk(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-            )).toList(),
+            ]
+                .map((tag) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.divider),
+                      ),
+                      child: Text(
+                        '#$tag',
+                        style: GoogleFonts.spaceGrotesk(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ))
+                .toList(),
           ),
 
           const SizedBox(height: 24),
@@ -592,9 +604,9 @@ class _InspectKonserScreenState
             child: Column(
               children: _tiketKonser.map((tiket) {
                 final warnaDot = {
-                  'oke'    : AppColors.success,
-                  'hampir' : AppColors.warning,
-                  'habis'  : AppColors.error,
+                  'oke': AppColors.success,
+                  'hampir': AppColors.warning,
+                  'habis': AppColors.error,
                 }[tiket.statusStok]!;
 
                 return Container(
@@ -643,7 +655,8 @@ class _InspectKonserScreenState
                             Container(
                               margin: const EdgeInsets.only(top: 4),
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2,
+                                horizontal: 8,
+                                vertical: 2,
                               ),
                               decoration: BoxDecoration(
                                 color: warnaDot.withOpacity(0.12),
