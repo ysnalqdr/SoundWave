@@ -363,7 +363,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: AppColors.primary,
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              decoration: TextDecoration.underline,
                             ),
                           ),
                         ),
