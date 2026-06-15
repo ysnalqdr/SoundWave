@@ -25,9 +25,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
   late final TextEditingController _deskripsiCtrl;
   late final TextEditingController _penyelenggaraCtrl;
 
-  // PERBAIKAN 1: Ubah penampung dari String tunggal menjadi List<String>
   List<String> _genreTerpilih = [];
-  
   bool _sedangSimpan = false;
 
   //!Mod Edit/Tambah
@@ -46,17 +44,17 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
     _gambarCtrl = TextEditingController(text: k?.gambarUrl ?? '');
     _deskripsiCtrl = TextEditingController(text: k?.deskripsi ?? '');
     _penyelenggaraCtrl = TextEditingController(text: k?.penyelenggara ?? '');
-    
-    // PERBAIKAN 2: Jika edit, salin list genre bawaan model. Jika tambah, buat list kosong.
+
     if (k != null && k.genre.isNotEmpty) {
       _genreTerpilih = List.from(k.genre);
     } else {
       _genreTerpilih = [];
     }
 
-    _tanggalPilihan = k?.tanggal ?? DateTime.now().add(
-      const Duration(days: 30),
-    );
+    _tanggalPilihan = k?.tanggal ??
+        DateTime.now().add(
+          const Duration(days: 30),
+        );
   }
 
   late DateTime _tanggalPilihan;
@@ -82,7 +80,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: const ColorScheme.dark(
-            primary: AppColors.primary,
+            primary: Colors.white, // Dipaksa putih agar senada
             surface: AppColors.surface,
           ),
         ),
@@ -95,10 +93,8 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
   }
 
   void _simpan() {
-    //! Validasi All Field
     if (!_formKey.currentState!.validate()) return;
 
-    // Tambahan Validasi: Memastikan minimal user memilih 1 genre
     if (_genreTerpilih.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -112,7 +108,6 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
     setState(() => _sedangSimpan = true);
 
     if (_modeEdit) {
-      // UPDATE Cari Index -> Ganti
       final index = DummyData.daftarKonser.indexWhere(
         (k) => k.id == widget.konser!.id,
       );
@@ -122,15 +117,13 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
           lokasi: _lokasiCtrl.text.trim(),
           tanggal: _tanggalPilihan,
           harga: double.tryParse(_hargaCtrl.text) ?? 0,
-          // PERBAIKAN 3: Masukkan langsung variabel list genre terpilih
-          genre: _genreTerpilih, 
+          genre: _genreTerpilih,
           gambarUrl: _gambarCtrl.text.trim(),
           deskripsi: _deskripsiCtrl.text.trim(),
           penyelenggara: _penyelenggaraCtrl.text.trim(),
         );
       }
     } else {
-      // CREATE: Tambah Konser
       DummyData.daftarKonser.add(
         KonserModel(
           id: DummyData.buatId(),
@@ -138,8 +131,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
           lokasi: _lokasiCtrl.text.trim(),
           tanggal: _tanggalPilihan,
           harga: double.tryParse(_hargaCtrl.text) ?? 0,
-          // PERBAIKAN 4: Masukkan langsung variabel list genre terpilih
-          genre: _genreTerpilih, 
+          genre: _genreTerpilih,
           gambarUrl: _gambarCtrl.text.trim(),
           deskripsi: _deskripsiCtrl.text.trim(),
           penyelenggara: _penyelenggaraCtrl.text.trim(),
@@ -170,7 +162,6 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Preview Gambar
               if (_gambarCtrl.text.isNotEmpty)
                 Container(
                   height: 160,
@@ -188,7 +179,6 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                   ),
                 ),
 
-              // Field Judul
               _labelField('Judul Konser'),
               const SizedBox(height: 8),
               TextFormField(
@@ -210,7 +200,6 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              // Field Lokasi
               _labelField('Lokasi'),
               const SizedBox(height: 8),
               TextFormField(
@@ -232,20 +221,22 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              // Field Harga
               _labelField('Harga Tiket (Rp)'),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _hargaCtrl,
                 keyboardType: TextInputType.number,
                 style: GoogleFonts.spaceGrotesk(
-                  color: AppColors.textPrimary,
+                  // KUNCI 1: Menggunakan warnaHarga dari tema agar otomatis menyala hijau neon menonjol!
+                  color: AppColors.warnaHarga,
+                  fontWeight: FontWeight.w700,
                 ),
                 decoration: const InputDecoration(
                   hintText: 'Contoh: 850000',
                   prefixIcon: Icon(
                     Icons.attach_money_rounded,
-                    color: AppColors.textMuted,
+                    color: AppColors
+                        .warnaHarga, // Icon dollar juga ikut menyala hijau neon
                     size: 20,
                   ),
                 ),
@@ -258,7 +249,6 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              // PERBAIKAN 5: Ganti Dropdown dengan multi-selection CheckboxListTile Box
               _labelField('Genre'),
               const SizedBox(height: 8),
               Container(
@@ -271,30 +261,43 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                 child: Column(
                   children: AppConstants.genres.map((g) {
                     final isChecked = _genreTerpilih.contains(g);
-                    return CheckboxListTile(
-                      title: Text(
-                        g,
-                        style: GoogleFonts.spaceGrotesk(
-                          color: AppColors.textPrimary,
-                          fontSize: 14,
-                        ),
+
+                    return Theme(
+                      data: ThemeData.dark().copyWith(
+                        unselectedWidgetColor: AppColors.textMuted,
                       ),
-                      value: isChecked,
-                      activeColor: AppColors.primary,
-                      checkColor: Colors.white,
-                      controlAffinity: ListTileControlAffinity.trailing,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-                      onChanged: (bool? value) {
-                        setState(() {
-                          if (value == true) {
-                            if (!_genreTerpilih.contains(g)) {
-                              _genreTerpilih.add(g);
+                      child: CheckboxListTile(
+                        title: Text(
+                          g,
+                          style: GoogleFonts.spaceGrotesk(
+                            // KUNCI 2: Jika dipilih, teks menyala mengikuti warnaHarga (Hijau Neon)
+                            color: isChecked
+                                ? AppColors.warnaHarga
+                                : AppColors.textPrimary,
+                            fontSize: 14,
+                            fontWeight:
+                                isChecked ? FontWeight.w700 : FontWeight.w500,
+                          ),
+                        ),
+                        value: isChecked,
+                        activeColor: Colors.transparent,
+                        checkColor:
+                            AppColors.warnaHarga, // Warna centang hijau neon
+                        controlAffinity: ListTileControlAffinity.trailing,
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 14),
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              if (!_genreTerpilih.contains(g)) {
+                                _genreTerpilih.add(g);
+                              }
+                            } else {
+                              _genreTerpilih.remove(g);
                             }
-                          } else {
-                            _genreTerpilih.remove(g);
-                          }
-                        });
-                      },
+                          });
+                        },
+                      ),
                     );
                   }).toList(),
                 ),
@@ -302,7 +305,6 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              // Date Picker
               _labelField('Tanggal'),
               const SizedBox(height: 8),
               GestureDetector(
@@ -344,7 +346,6 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              // Field Gambar
               _labelField('URL Gambar'),
               const SizedBox(height: 8),
               TextFormField(
@@ -365,7 +366,6 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              // Field Penyelenggara
               _labelField('Penyelenggara'),
               const SizedBox(height: 8),
               TextFormField(
@@ -385,7 +385,6 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 16),
 
-              // Field Deskripsi
               _labelField('Deskripsi'),
               const SizedBox(height: 8),
               TextFormField(
@@ -423,51 +422,46 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 32),
 
-              // Button Save
+              //! KUNCI 3: Tombol bawaanmu di-render pakai skema warna baru (Putih-Hitam)
+              //! TOMBOL: Di-set manual warna abu-abu dengan teks putih
+              //! TOMBOL: Sudah diperbaiki bagian border-nya menggunakan properti 'side'
               SizedBox(
                 width: double.infinity,
                 height: 52,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton.icon(
-                    onPressed: _sedangSimpan ? null : _simpan,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                child: ElevatedButton.icon(
+                  onPressed: _sedangSimpan ? null : _simpan,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        AppColors.surfaceLight, // Warna abu-abu gelap
+                    foregroundColor: Colors.white, // Teks & ikon warna putih
+                    disabledBackgroundColor:
+                        AppColors.surfaceLight.withOpacity(0.5),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      // KUNCI PERBAIKAN: Pakai 'side', bukan 'border'
+                      side: const BorderSide(color: AppColors.divider),
                     ),
-                    icon: _sedangSimpan
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.save_rounded,
+                  ),
+                  icon: _sedangSimpan
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
                             color: Colors.white,
+                            strokeWidth: 2,
                           ),
-                    label: Text(
-                      _modeEdit ? 'Perbarui Konser' : 'Simpan Konser',
-                      style: GoogleFonts.spaceGrotesk(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
+                        )
+                      : const Icon(
+                          Icons.save_rounded,
+                          color: Colors.white,
+                        ),
+                  label: Text(
+                    _modeEdit ? 'Perbarui Konser' : 'Simpan Konser',
+                    style: GoogleFonts.spaceGrotesk(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),

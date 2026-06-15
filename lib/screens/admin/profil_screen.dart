@@ -10,7 +10,7 @@ import '../../widgets/gambar_widget.dart';
 class AnggotaKelompok {
   final String nama;
   final String nim;
-  final String fotoUrl; 
+  final String fotoUrl;
   final String peran; //TODO: MANUAL
 
   const AnggotaKelompok({
@@ -181,14 +181,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     final admin = DummyData.adminUser ?? widget.user;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          //TODO: Header
+//TODO: Header (Versi Terupdate - Kontras & Clean)
           SliverAppBar(
             expandedHeight: 220,
             pinned: true,
@@ -204,7 +203,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 ),
                 child: const Icon(
                   Icons.menu_rounded,
-                  color: AppColors.textPrimary,
+                  color:
+                      Colors.white, // Dipaksa putih murni agar selalu terlihat
                   size: 20,
                 ),
               ),
@@ -225,21 +225,19 @@ class _ProfilScreenState extends State<ProfilScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
+                    // Latar belakang tombol menggunakan abu-abu surface agar kontras
                     color: _sedangEdit
-                        ? AppColors.success.withOpacity(0.15)
-                        : AppColors.primary.withOpacity(0.12),
+                        ? AppColors.error.withOpacity(0.2)
+                        : AppColors.surfaceLight,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: _sedangEdit
-                          ? AppColors.success.withOpacity(0.3)
-                          : AppColors.primary.withOpacity(0.3),
+                      color: _sedangEdit ? AppColors.error : AppColors.divider,
                     ),
                   ),
                   child: Text(
                     _sedangEdit ? 'Simpan' : 'Edit',
                     style: GoogleFonts.spaceGrotesk(
-                      color:
-                          _sedangEdit ? AppColors.success : AppColors.primary,
+                      color: _sedangEdit ? AppColors.error : Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -255,32 +253,27 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 50),
                     Container(
-                      width: 80,
-                      height: 80,
+                      width: 75,
+                      height: 75,
                       decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
+                        color: AppColors.surfaceLight,
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.45),
-                            blurRadius: 24,
-                            spreadRadius: 4,
-                          ),
-                        ],
+                        border: Border.all(color: AppColors.divider, width: 2),
                       ),
                       child: const Icon(
                         Icons.person_rounded,
                         color: Colors.white,
-                        size: 40,
+                        size: 35,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Text(
                       admin.nama,
                       style: GoogleFonts.rajdhani(
-                        color: AppColors.textPrimary,
+                        color: Colors
+                            .white, // Nama diatur putih murni agar tidak tenggelam
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
                       ),
@@ -288,26 +281,30 @@ class _ProfilScreenState extends State<ProfilScreen> {
                     Text(
                       admin.email,
                       style: GoogleFonts.spaceGrotesk(
-                        color: AppColors.textMuted,
+                        color: AppColors
+                            .textSecondary, // Menggunakan abu-abu sedang agar terbaca rapi
                         fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 8),
+
+                    //! BADGE ADMIN: Diubah menjadi kotak putih dengan teks hitam murni (Sangat Menonjol!)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
+                        horizontal: 12,
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
-                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         'ADMIN',
                         style: GoogleFonts.spaceGrotesk(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                          color: Colors
+                              .black, // Teks hitam pekat di atas background putih
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
                           letterSpacing: 1,
                         ),
                       ),
@@ -630,7 +627,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                   horizontal: 16,
                 ),
                 decoration: const BoxDecoration(
-                  gradient: AppColors.primaryGradient,
+                  color: AppColors.surfaceLight,
                   borderRadius: BorderRadius.vertical(
                     top: Radius.circular(16),
                   ),

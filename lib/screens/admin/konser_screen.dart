@@ -46,13 +46,11 @@ class _KonserScreenState extends State<KonserScreen> {
     super.dispose();
   }
 
-//! Hasil Konser Ynag Di Filter
+  //! Hasil Konser Yang Di Filter
   List<KonserModel> get _konserTerfilter {
     return DummyData.daftarKonser.where((k) {
-      // Diubah menggunakan .contains karena k.genre sekarang adalah sebuah List
       final cocokGenre =
           _genreAktif == 'Semua' || k.genre.contains(_genreAktif);
-
       final cocokCari = _kataCari.isEmpty ||
           k.judul.toLowerCase().contains(_kataCari.toLowerCase()) ||
           k.lokasi.toLowerCase().contains(_kataCari.toLowerCase());
@@ -97,9 +95,7 @@ class _KonserScreenState extends State<KonserScreen> {
             onPressed: () {
               Navigator.pop(ctx);
               setState(() {
-                DummyData.daftarKonser.removeWhere(
-                  (k) => k.id == konser.id,
-                );
+                DummyData.daftarKonser.removeWhere((k) => k.id == konser.id);
               });
               _tampilSnackbar(
                 'Konser berhasil dihapus',
@@ -159,7 +155,7 @@ class _KonserScreenState extends State<KonserScreen> {
           ],
         ),
       ),
-      floatingActionButton: _buildFAB(),
+      floatingActionButton: _buildFAB(), // Tombol yang kita perbaiki warnanya
     );
   }
 
@@ -169,7 +165,6 @@ class _KonserScreenState extends State<KonserScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          //!Button Open Side Bar
           GestureDetector(
             onTap: widget.onBukaSidebar,
             child: Container(
@@ -197,18 +192,13 @@ class _KonserScreenState extends State<KonserScreen> {
             ),
           ),
           const Spacer(),
-          // Badge ADMIN
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 4,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.12),
+              color: AppColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: AppColors.primary.withOpacity(0.3),
-              ),
+              border:
+                  Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
             ),
             child: Text(
               'ADMIN',
@@ -303,10 +293,7 @@ class _KonserScreenState extends State<KonserScreen> {
             onTap: () => setState(() => _genreAktif = genres[i]),
             child: Container(
               margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: aktif ? AppColors.primary : AppColors.surfaceLight,
                 borderRadius: BorderRadius.circular(20),
@@ -317,7 +304,7 @@ class _KonserScreenState extends State<KonserScreen> {
               child: Text(
                 genres[i],
                 style: GoogleFonts.spaceGrotesk(
-                  color: aktif ? Colors.white : AppColors.textSecondary,
+                  color: aktif ? Colors.black : AppColors.textSecondary,
                   fontSize: 12,
                   fontWeight: aktif ? FontWeight.w600 : FontWeight.normal,
                 ),
@@ -397,16 +384,13 @@ class _KonserScreenState extends State<KonserScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Gambar konser
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(16),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: Stack(
               children: [
                 Image.network(
                   konser.gambarUrl.isEmpty
-                      ? 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600'
+                      ? 'assets/images/logo/Screenshot 2026-06-15 234825.png'
                       : konser.gambarUrl,
                   height: 130,
                   width: double.infinity,
@@ -421,7 +405,6 @@ class _KonserScreenState extends State<KonserScreen> {
                     ),
                   ),
                 ),
-                // Overlay gelap
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
@@ -430,46 +413,55 @@ class _KonserScreenState extends State<KonserScreen> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          AppColors.card.withValues(
-                              alpha: 0.85), // Memperbarui withOpacity
+                          AppColors.card.withValues(alpha: 0.85),
                         ],
                       ),
                     ),
                   ),
                 ),
 
-                // === BAGIAN BADGE GENRE YANG DIPERBAIKI (MENGGUNAKAN WRAP) ===
+                // KODE ORIGINAL KAMU (Badge Genre Kembali ke Putih Transparan Semula)
+// PEMBERSIHAN BADGE GENRE: Dibuat lebih rapi, proporsional, dan senada tema
                 Positioned(
-                  top: 10,
-                  left: 10,
+                  top:
+                      12, // Sedikit diturunkan agar sejajar tombol aksi di kanan
+                  left:
+                      12, // Sedikit digeser agar tidak terlalu mepet pinggir card
                   child: Wrap(
-                    spacing: 6.0, // Jarak horizontal antar emblem genre
-                    runSpacing: 4.0, // Jarak vertikal jika emblem turun baris
+                    spacing: 6.0,
+                    runSpacing: 4.0,
                     children: konser.genre.map((genre) {
                       return Container(
+                        // Padding diperbaiki: atas-bawah 5, kanan-kiri 11 agar teks punya ruang bernapas
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
+                            horizontal: 11, vertical: 5),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(
-                              alpha: 0.9), // Memperbarui withOpacity
-                          borderRadius: BorderRadius.circular(20),
+                          // Menggunakan abu-abu gelap semi-transparan yang mewah, senada dengan tombol aksi
+                          color: AppColors.background.withValues(alpha: 0.75),
+                          borderRadius:
+                              BorderRadius.circular(30), // Sudut bulat sempurna
+                          border: Border.all(
+                            color: AppColors.divider.withValues(
+                                alpha:
+                                    0.5), // Garis tepi super tipis agar tegas
+                            width: 0.8,
+                          ),
                         ),
                         child: Text(
-                          genre, // Menampilkan masing-masing genre secara terpisah
+                          genre,
                           style: GoogleFonts.spaceGrotesk(
-                            color: Colors.white,
+                            color: AppColors
+                                .textPrimary, // Warna teks putih/terang bawaan tema
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       );
                     }).toList(),
                   ),
                 ),
-
-                //!3 Button(Inspect Edit Delete)
+                // KODE ORIGINAL KAMU (3 Tombol Aksi 👁 ✏️ 🗑 Tetap Transparan Hitam Bawaanmu)
                 Positioned(
                   top: 8,
                   right: 8,
@@ -481,9 +473,7 @@ class _KonserScreenState extends State<KonserScreen> {
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => InspectKonserScreen(
-                              konser: konser,
-                            ),
+                            builder: (_) => InspectKonserScreen(konser: konser),
                           ),
                         ),
                       ),
@@ -495,9 +485,7 @@ class _KonserScreenState extends State<KonserScreen> {
                           final diperbarui = await Navigator.push<bool>(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => FormKonserScreen(
-                                konser: konser,
-                              ),
+                              builder: (_) => FormKonserScreen(konser: konser),
                             ),
                           );
                           if (diperbarui == true) {
@@ -522,7 +510,6 @@ class _KonserScreenState extends State<KonserScreen> {
               ],
             ),
           ),
-          // Info konser
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -541,19 +528,14 @@ class _KonserScreenState extends State<KonserScreen> {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      color: AppColors.textMuted,
-                      size: 14,
-                    ),
+                    const Icon(Icons.location_on_outlined,
+                        color: AppColors.textMuted, size: 14),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         konser.lokasi,
                         style: GoogleFonts.spaceGrotesk(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
+                            color: AppColors.textSecondary, fontSize: 12),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -563,25 +545,18 @@ class _KonserScreenState extends State<KonserScreen> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      color: AppColors.textMuted,
-                      size: 14,
-                    ),
+                    const Icon(Icons.calendar_today_outlined,
+                        color: AppColors.textMuted, size: 14),
                     const SizedBox(width: 4),
                     Text(
                       '${konser.tanggal.day}/${konser.tanggal.month}/${konser.tanggal.year}',
                       style: GoogleFonts.spaceGrotesk(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
+                          color: AppColors.textSecondary, fontSize: 12),
                     ),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         gradient: AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(8),
@@ -605,7 +580,7 @@ class _KonserScreenState extends State<KonserScreen> {
     );
   }
 
-  //! Button Icon, Warna, Tap
+  // KODE ORIGINAL KAMU (Fungsi Dasar Tombol Aksi Dipertahankan)
   Widget _tombolAksi({
     required IconData ikon,
     required Color warna,
@@ -625,15 +600,13 @@ class _KonserScreenState extends State<KonserScreen> {
     );
   }
 
-  //TODO: Tab Tambah Konser
+  //! ================= PERBAIKAN UTAMA PADA FLOATING ACTION BUTTON =================
   Widget _buildFAB() {
     return FloatingActionButton.extended(
       onPressed: () async {
         final ditambah = await Navigator.push<bool>(
           context,
-          MaterialPageRoute(
-            builder: (_) => const FormKonserScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const FormKonserScreen()),
         );
         if (ditambah == true) {
           setState(() {});
@@ -644,12 +617,19 @@ class _KonserScreenState extends State<KonserScreen> {
           );
         }
       },
-      backgroundColor: AppColors.primary,
-      icon: const Icon(Icons.add_rounded, color: Colors.white),
+      backgroundColor: AppColors
+          .surfaceLight, // WARNA BARU: Abu-abu gelap (senada kotak genre)
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.divider), // Garis pinggir tipis
+      ),
+      icon: const Icon(Icons.add_rounded,
+          color: Colors.white), // Ikon dipaksa PUTIH
       label: Text(
         'Tambah Konser',
         style: GoogleFonts.spaceGrotesk(
-          color: Colors.white,
+          color: Colors.white, // Teks dipaksa PUTIH BERSIH agar kontras tinggi
           fontWeight: FontWeight.w600,
         ),
       ),

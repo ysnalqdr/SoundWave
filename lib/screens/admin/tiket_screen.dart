@@ -22,7 +22,6 @@ class TiketScreen extends StatefulWidget {
 }
 
 class _TiketScreenState extends State<TiketScreen> {
-
   bool _sedangLoading = true;
   String _filterKonser = 'Semua';
 
@@ -88,9 +87,7 @@ class _TiketScreenState extends State<TiketScreen> {
             onPressed: () {
               Navigator.pop(ctx);
               setState(() {
-                DummyData.daftarTiket.removeWhere(
-                  (t) => t.id == tiket.id,
-                );
+                DummyData.daftarTiket.removeWhere((t) => t.id == tiket.id);
               });
               _tampilSnackbar(
                 'Tiket berhasil dihapus',
@@ -144,13 +141,13 @@ class _TiketScreenState extends State<TiketScreen> {
             _buildTopbar(),
             _buildFilterChips(),
             Expanded(
-              child: _sedangLoading
-                  ? _buildSkeleton()
-                  : _buildDaftarTiket(),
+              child: _sedangLoading ? _buildSkeleton() : _buildDaftarTiket(),
             ),
           ],
         ),
       ),
+
+      //! ================= PERBAIKAN TOMBOL TAMBAH TIKET (FAB) =================
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final ditambah = await Navigator.push<bool>(
@@ -168,12 +165,19 @@ class _TiketScreenState extends State<TiketScreen> {
             );
           }
         },
-        backgroundColor: AppColors.accent,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        backgroundColor:
+            AppColors.surfaceLight, // Menggunakan Abu-abu Gelap premium
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(
+              color: AppColors.divider), // Outline tipis senada
+        ),
+        icon: const Icon(Icons.add_rounded, color: Colors.white), // Ikon Putih
         label: Text(
           'Tambah Tiket',
           style: GoogleFonts.spaceGrotesk(
-            color: Colors.white,
+            color: Colors.white, // Teks Putih Bersih kontras tinggi
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -214,10 +218,7 @@ class _TiketScreenState extends State<TiketScreen> {
           ),
           const Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 4,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.primary.withOpacity(0.12),
               borderRadius: BorderRadius.circular(8),
@@ -240,7 +241,7 @@ class _TiketScreenState extends State<TiketScreen> {
     );
   }
 
-  Widget _buildFilterChips() {
+Widget _buildFilterChips() {
     return SizedBox(
       height: 36,
       child: ListView.builder(
@@ -254,31 +255,24 @@ class _TiketScreenState extends State<TiketScreen> {
             onTap: () => setState(() => _filterKonser = nama),
             child: Container(
               margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: aktif
-                    ? AppColors.accent
-                    : AppColors.surfaceLight,
+                // KUNCI 1: Jika aktif jadi Putih murni, jika tidak aktif jadi Abu-abu Surface
+                color: aktif ? Colors.white : AppColors.surfaceLight,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: aktif
-                      ? AppColors.accent
-                      : AppColors.divider,
+                  // Kasih border tipis halus biar kotak chip yang tidak aktif kelihatan batasnya
+                  color: aktif ? Colors.white : AppColors.divider,
                 ),
               ),
               child: Text(
                 nama,
                 style: GoogleFonts.spaceGrotesk(
-                  color: aktif
-                      ? Colors.white
-                      : AppColors.textSecondary,
+                  // KUNCI 2: Jika chip AKTIF, teks dipaksa HITAM PEKAT agar kontras di atas warna putih!
+                  // Jika tidak aktif, teks berwarna abu-abu terang (textSecondary) agar tetap terbaca rapi.
+                  color: aktif ? Colors.black : AppColors.textSecondary,
                   fontSize: 12,
-                  fontWeight: aktif
-                      ? FontWeight.w600
-                      : FontWeight.normal,
+                  fontWeight: aktif ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),
@@ -340,12 +334,12 @@ class _TiketScreenState extends State<TiketScreen> {
     );
   }
 
-Widget _buildTiketCard(TiketKonserModel tiket) {
-    //! Warna Badge Stok
+  Widget _buildTiketCard(TiketKonserModel tiket) {
+    //! WARNA BADGE STOK (Sudah diperbaiki kurung kurawalnya)
     final warnaBadge = {
-      'oke'    : AppColors.success,
-      'hampir' : AppColors.warning,
-      'habis'  : AppColors.error,
+      'oke': AppColors.success,
+      'hampir': AppColors.warning,
+      'habis': AppColors.error,
     }[tiket.statusStok]!;
 
     return Container(
@@ -357,15 +351,12 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
       ),
       child: Stack(
         children: [
-          
           Column(
             children: [
-              //! Bagian Atas Ada Gambar Info
               Padding(
                 padding: const EdgeInsets.all(13),
                 child: Row(
                   children: [
-                    //! Gambar Kecil Konser
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: Image.network(
@@ -388,7 +379,6 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    //! Info Tiket
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,25 +425,38 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
                             ],
                           ),
                           const SizedBox(height: 5),
-                          // Badge kategori
+// Badge kategori (KODE BARU: Premium, rapi, dan kontras tinggi)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
+                              horizontal:
+                                  10, // Diperlebar dikit agar teks bernapas
+                              vertical:
+                                  4, // Ditambah dikit agar lebih proporsional
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(8),
+                              // Menggunakan warna background gelap transparan yang senada dengan badge genre
+                              color:
+                                  AppColors.background.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(
+                                  6), // Sudut kotak rounded yang tegas
                               border: Border.all(
-                                color: AppColors.primary.withOpacity(0.25),
+                                color: AppColors.divider.withValues(
+                                    alpha:
+                                        0.4), // Border tipis halus agar terlihat batasan kotaknya
+                                width: 0.8,
                               ),
                             ),
                             child: Text(
-                              tiket.kategori,
+                              tiket.kategori
+                                  .toUpperCase(), // Dipaksa Huruf Kapital semua agar terlihat rapi seperti label tag profesional
                               style: GoogleFonts.spaceGrotesk(
-                                color: AppColors.primary,
-                                fontSize: 10,
+                                color: AppColors
+                                    .textPrimary, // Menggunakan warna teks putih/terang bawaan tema agar sangat kontras
+                                fontSize:
+                                    9, // Sedikit diperkecil agar proporsional dan estetik
                                 fontWeight: FontWeight.w700,
+                                letterSpacing:
+                                    0.8, // Diberi jarak antar huruf agar terkesan modern
                               ),
                             ),
                           ),
@@ -463,8 +466,6 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
                   ],
                 ),
               ),
-
-              //! Tiket Style(Line)
               Row(
                 children: [
                   Container(
@@ -491,35 +492,24 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
                   ),
                 ],
               ),
-
-              //! Bagian Bawah Harga Stok
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Row(
                   children: [
-                    // Harga
-                    ShaderMask(
-                      shaderCallback: (bounds) =>
-                          AppColors.primaryGradient.createShader(bounds),
-                      child: Text(
-                        tiket.formatHarga,
-                        style: GoogleFonts.rajdhani(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
+                    //! PERBAIKAN: ShaderMask Gelap Dihapus, Teks Harga Dipaksa Putih Bersih Agar Menyala Kontras
+                    Text(
+                      tiket.formatHarga,
+                      style: GoogleFonts.rajdhani(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white, // Menjadi sangat kelihatan
                       ),
                     ),
                     const Spacer(),
-                    // Badge stok
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: warnaBadge.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(8),
@@ -541,8 +531,6 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
               ),
             ],
           ),
-
-          //! Button Act Di pojok kanan atas card
           Positioned(
             top: 13,
             right: 13,
@@ -552,12 +540,10 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
                   ikon: Icons.edit_outlined,
                   warna: AppColors.primary,
                   onTap: () async {
-                    final diperbarui =
-                        await Navigator.push<bool>(
+                    final diperbarui = await Navigator.push<bool>(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            FormTiketScreen(tiket: tiket),
+                        builder: (_) => FormTiketScreen(tiket: tiket),
                       ),
                     );
                     if (diperbarui == true) {
@@ -579,7 +565,6 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
               ],
             ),
           ),
-
         ],
       ),
     );

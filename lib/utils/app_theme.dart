@@ -4,36 +4,41 @@ import 'package:google_fonts/google_fonts.dart';
 //!Config Colors
 
 class AppColors {
-  //! Warna Latar Belakang (Gelap Tearang)
-  static const Color background   = Color(0xFF0A0A0F);
-  static const Color surface      = Color(0xFF12121A);
-  static const Color surfaceLight = Color(0xFF1C1C28);
-  static const Color card         = Color(0xFF1A1A26);
+  //! Warna Latar Belakang (Monochrome Premium)
+  static const Color background   = Color(0xFF000000); 
+  static const Color surface      = Color(0xFF0B0B0F); 
+  static const Color surfaceLight = Color(0xFF16161F); 
+  static const Color card         = Color(0xFF12121A); 
 
-  //! Warna Utama
-  static const Color primary  = Color(0xFF6C63FF); // ungu
-  static const Color accent   = Color(0xFFFF6B9D); // pink
-  static const Color success  = Color(0xFF4ECDC4); // tosca
-  static const Color error    = Color(0xFFFF6B6B); // merah
-  static const Color warning  = Color(0xFFFFB347); // oranye
+  //! ================= WARNA KHUSUS BARU (BIAR GAK RIBET) =================
+  static const Color warnaTombolBg   = Color(0xFFFFFFFF); // Putih solid buat background tombol
+  static const Color warnaTombolTeks = Color(0xFF000000); // Hitam pekat buat teks di dalam tombol
+  static const Color warnaHarga      = Color(0xFF00E676); // Hijau Neon terang khusus buat HARGA & GENRE AKTIF
+
+  //! Warna Utama (Tetap Monochrome)
+  static const Color primary  = Color(0xFFFFFFFF); 
+  static const Color accent   = Color(0xFFE0E0E6); 
+  static const Color success  = Color(0xFF00E676); 
+  static const Color error    = Color(0xFFFF5252); 
+  static const Color warning  = Color(0xFFFFB347); 
 
   //! Warna Teks
-  static const Color textPrimary   = Color(0xFFF0F0FF);
-  static const Color textSecondary = Color(0xFF9090A8);
-  static const Color textMuted     = Color(0xFF5A5A72);
+  static const Color textPrimary   = Color(0xFFFFFFFF); 
+  static const Color textSecondary = Color(0xFFB0B0B0); 
+  static const Color textMuted     = Color(0xFF6E6E7A); 
 
   //! Garis Pembatas
-  static const Color divider = Color(0xFF2A2A3C);
+  static const Color divider = Color(0xFF1F1F29);
 
-  //! Gradient
+  //! Gradient (Biar Header Kelompok Kamu Tetap Clean Abu-Hitam)
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF6C63FF), Color(0xFFFF6B9D)],
+    colors: [Color(0xFF1E1E24), Color(0xFF111115)], 
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient heroGradient = LinearGradient(
-    colors: [Color(0xFF1A0A3E), Color(0xFF0A0A0F)],
+    colors: [Color(0xFF14141A), Color(0xFF000000)], 
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
@@ -50,7 +55,6 @@ class AppTheme {
         primary: AppColors.primary,
         secondary: AppColors.accent,
         surface: AppColors.surface,
-        background: AppColors.background,
         error: AppColors.error,
       ),
       scaffoldBackgroundColor: AppColors.background,
@@ -65,7 +69,6 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
-        
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -78,7 +81,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -90,13 +93,16 @@ class AppTheme {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
+      
+      //! SINKRONISASI TOMBOL GLOBAL (Membaca Warna Baru)
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: AppColors.warnaTombolBg,   // Pakai warna baru (Putih)
+          foregroundColor: AppColors.warnaTombolTeks, // Pakai warna baru (Hitam)
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          textStyle: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w700),
+          elevation: 0,
         ),
       ),
       snackBarTheme: SnackBarThemeData(
