@@ -420,30 +420,27 @@ class _KonserScreenState extends State<KonserScreen> {
                   ),
                 ),
 
-                // KODE ORIGINAL KAMU (Badge Genre Kembali ke Putih Transparan Semula)
-// PEMBERSIHAN BADGE GENRE: Dibuat lebih rapi, proporsional, dan senada tema
+                //TODO: BADGE
                 Positioned(
                   top:
-                      12, // Sedikit diturunkan agar sejajar tombol aksi di kanan
+                      12,
                   left:
-                      12, // Sedikit digeser agar tidak terlalu mepet pinggir card
+                      12,
                   child: Wrap(
                     spacing: 6.0,
                     runSpacing: 4.0,
                     children: konser.genre.map((genre) {
                       return Container(
-                        // Padding diperbaiki: atas-bawah 5, kanan-kiri 11 agar teks punya ruang bernapas
                         padding: const EdgeInsets.symmetric(
                             horizontal: 11, vertical: 5),
                         decoration: BoxDecoration(
-                          // Menggunakan abu-abu gelap semi-transparan yang mewah, senada dengan tombol aksi
                           color: AppColors.background.withValues(alpha: 0.75),
                           borderRadius:
-                              BorderRadius.circular(30), // Sudut bulat sempurna
+                              BorderRadius.circular(30),
                           border: Border.all(
                             color: AppColors.divider.withValues(
                                 alpha:
-                                    0.5), // Garis tepi super tipis agar tegas
+                                    0.5),
                             width: 0.8,
                           ),
                         ),
@@ -451,7 +448,7 @@ class _KonserScreenState extends State<KonserScreen> {
                           genre,
                           style: GoogleFonts.spaceGrotesk(
                             color: AppColors
-                                .textPrimary, // Warna teks putih/terang bawaan tema
+                                .textPrimary, //! Warna teks
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.3,
@@ -461,7 +458,7 @@ class _KonserScreenState extends State<KonserScreen> {
                     }).toList(),
                   ),
                 ),
-                // KODE ORIGINAL KAMU (3 Tombol Aksi 👁 ✏️ 🗑 Tetap Transparan Hitam Bawaanmu)
+                //TODO: BUTTON ACTION 3(DELETE,EDIT,INSPECT)
                 Positioned(
                   top: 8,
                   right: 8,
@@ -580,7 +577,7 @@ class _KonserScreenState extends State<KonserScreen> {
     );
   }
 
-  // KODE ORIGINAL KAMU (Fungsi Dasar Tombol Aksi Dipertahankan)
+  //! CONFIG BASIC BUTTON ACTION
   Widget _tombolAksi({
     required IconData ikon,
     required Color warna,
@@ -600,7 +597,7 @@ class _KonserScreenState extends State<KonserScreen> {
     );
   }
 
-  //! ================= PERBAIKAN UTAMA PADA FLOATING ACTION BUTTON =================
+  //! FLOATING ACTION BUTTON
   Widget _buildFAB() {
     return FloatingActionButton.extended(
       onPressed: () async {
@@ -618,18 +615,18 @@ class _KonserScreenState extends State<KonserScreen> {
         }
       },
       backgroundColor: AppColors
-          .surfaceLight, // WARNA BARU: Abu-abu gelap (senada kotak genre)
+          .surfaceLight, 
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.divider), // Garis pinggir tipis
+        side: const BorderSide(color: AppColors.divider),
       ),
       icon: const Icon(Icons.add_rounded,
-          color: Colors.white), // Ikon dipaksa PUTIH
+          color: Colors.white),
       label: Text(
         'Tambah Konser',
         style: GoogleFonts.spaceGrotesk(
-          color: Colors.white, // Teks dipaksa PUTIH BERSIH agar kontras tinggi
+          color: Colors.white,
           fontWeight: FontWeight.w600,
         ),
       ),

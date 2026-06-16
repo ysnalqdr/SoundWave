@@ -4,18 +4,18 @@ import 'package:google_fonts/google_fonts.dart';
 //!Config Colors
 
 class AppColors {
-  //! Warna Latar Belakang (Monochrome Premium)
+  //! Warna Latar Belakang Monochrome
   static const Color background   = Color(0xFF000000); 
   static const Color surface      = Color(0xFF0B0B0F); 
   static const Color surfaceLight = Color(0xFF16161F); 
   static const Color card         = Color(0xFF12121A); 
 
-  //! ================= WARNA KHUSUS BARU (BIAR GAK RIBET) =================
-  static const Color warnaTombolBg   = Color(0xFFFFFFFF); // Putih solid buat background tombol
-  static const Color warnaTombolTeks = Color(0xFF000000); // Hitam pekat buat teks di dalam tombol
-  static const Color warnaHarga      = Color(0xFF00E676); // Hijau Neon terang khusus buat HARGA & GENRE AKTIF
+  //! Warna Tambahan
+  static const Color warnaTombolBg   = Color(0xFFFFFFFF); //TODO: Warna Background Button
+  static const Color warnaTombolTeks = Color(0xFF000000); //TODO: Teks Di Dalam Button
+  static const Color warnaHarga      = Color(0xFF00E676); //TODO: Harga Genre 
 
-  //! Warna Utama (Tetap Monochrome)
+  //! Warna Utama
   static const Color primary  = Color(0xFFFFFFFF); 
   static const Color accent   = Color(0xFFE0E0E6); 
   static const Color success  = Color(0xFF00E676); 
@@ -30,7 +30,7 @@ class AppColors {
   //! Garis Pembatas
   static const Color divider = Color(0xFF1F1F29);
 
-  //! Gradient (Biar Header Kelompok Kamu Tetap Clean Abu-Hitam)
+  //! Gradient (Header Kelompok)
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [Color(0xFF1E1E24), Color(0xFF111115)], 
     begin: Alignment.topLeft,
@@ -94,11 +94,11 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       
-      //! SINKRONISASI TOMBOL GLOBAL (Membaca Warna Baru)
+      //! Global Button
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.warnaTombolBg,   // Pakai warna baru (Putih)
-          foregroundColor: AppColors.warnaTombolTeks, // Pakai warna baru (Hitam)
+          backgroundColor: AppColors.warnaTombolBg,
+          foregroundColor: AppColors.warnaTombolTeks, 
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: GoogleFonts.spaceGrotesk(fontSize: 16, fontWeight: FontWeight.w700),

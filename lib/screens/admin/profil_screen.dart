@@ -204,7 +204,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 child: const Icon(
                   Icons.menu_rounded,
                   color:
-                      Colors.white, // Dipaksa putih murni agar selalu terlihat
+                      Colors.white,
                   size: 20,
                 ),
               ),
@@ -225,7 +225,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    // Latar belakang tombol menggunakan abu-abu surface agar kontras
                     color: _sedangEdit
                         ? AppColors.error.withOpacity(0.2)
                         : AppColors.surfaceLight,
@@ -273,7 +272,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                       admin.nama,
                       style: GoogleFonts.rajdhani(
                         color: Colors
-                            .white, // Nama diatur putih murni agar tidak tenggelam
+                            .white,
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
                       ),
@@ -282,13 +281,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
                       admin.email,
                       style: GoogleFonts.spaceGrotesk(
                         color: AppColors
-                            .textSecondary, // Menggunakan abu-abu sedang agar terbaca rapi
+                            .textSecondary,
                         fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 8),
 
-                    //! BADGE ADMIN: Diubah menjadi kotak putih dengan teks hitam murni (Sangat Menonjol!)
+                    //! BADGE ADMIN:
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -302,7 +301,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                         'ADMIN',
                         style: GoogleFonts.spaceGrotesk(
                           color: Colors
-                              .black, // Teks hitam pekat di atas background putih
+                              .black,
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1,
@@ -551,7 +550,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
               context: context,
               applicationName: 'SoundWave',
               applicationVersion: 'v1.0.0',
-              applicationLegalese: '© 2025 SoundWave',
+              applicationLegalese: '© 2026 SoundWave',
             ),
             isLast: true,
           ),
@@ -755,7 +754,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                         ),
                       ),
 
-                      //!BadgeAnggota — ubah peran jadi 'Ketua' di daftarAnggota
+                      //!BadgeAnggota
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,

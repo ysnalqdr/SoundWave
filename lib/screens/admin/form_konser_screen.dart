@@ -80,7 +80,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: const ColorScheme.dark(
-            primary: Colors.white, // Dipaksa putih agar senada
+            primary: Colors.white, //!Config Color
             surface: AppColors.surface,
           ),
         ),
@@ -187,7 +187,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                   color: AppColors.textPrimary,
                 ),
                 decoration: const InputDecoration(
-                  hintText: 'Contoh: Coldplay • Music of the Spheres',
+                  hintText: 'Contoh: Hindia',
                   prefixIcon: Icon(
                     Icons.title_rounded,
                     color: AppColors.textMuted,
@@ -227,7 +227,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                 controller: _hargaCtrl,
                 keyboardType: TextInputType.number,
                 style: GoogleFonts.spaceGrotesk(
-                  // KUNCI 1: Menggunakan warnaHarga dari tema agar otomatis menyala hijau neon menonjol!
+                  //! WarnaHarga Ijo
                   color: AppColors.warnaHarga,
                   fontWeight: FontWeight.w700,
                 ),
@@ -236,7 +236,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                   prefixIcon: Icon(
                     Icons.attach_money_rounded,
                     color: AppColors
-                        .warnaHarga, // Icon dollar juga ikut menyala hijau neon
+                        .warnaHarga, //!Icon Dollar
                     size: 20,
                   ),
                 ),
@@ -270,7 +270,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                         title: Text(
                           g,
                           style: GoogleFonts.spaceGrotesk(
-                            // KUNCI 2: Jika dipilih, teks menyala mengikuti warnaHarga (Hijau Neon)
+                            //! OnClick Warna Harga
                             color: isChecked
                                 ? AppColors.warnaHarga
                                 : AppColors.textPrimary,
@@ -282,7 +282,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                         value: isChecked,
                         activeColor: Colors.transparent,
                         checkColor:
-                            AppColors.warnaHarga, // Warna centang hijau neon
+                            AppColors.warnaHarga, //! Warna Centang Ijo
                         controlAffinity: ListTileControlAffinity.trailing,
                         contentPadding:
                             const EdgeInsets.symmetric(horizontal: 14),
@@ -374,7 +374,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                   color: AppColors.textPrimary,
                 ),
                 decoration: const InputDecoration(
-                  hintText: 'Contoh: Live Nation Indonesia',
+                  hintText: 'Contoh: Live Feast',
                   prefixIcon: Icon(
                     Icons.business_outlined,
                     color: AppColors.textMuted,
@@ -422,9 +422,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
               const SizedBox(height: 32),
 
-              //! KUNCI 3: Tombol bawaanmu di-render pakai skema warna baru (Putih-Hitam)
-              //! TOMBOL: Di-set manual warna abu-abu dengan teks putih
-              //! TOMBOL: Sudah diperbaiki bagian border-nya menggunakan properti 'side'
+              //! Button Hitam Putih
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -432,8 +430,8 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                   onPressed: _sedangSimpan ? null : _simpan,
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
-                        AppColors.surfaceLight, // Warna abu-abu gelap
-                    foregroundColor: Colors.white, // Teks & ikon warna putih
+                        AppColors.surfaceLight, //! Warna
+                    foregroundColor: Colors.white, //! Teks Icon
                     disabledBackgroundColor:
                         AppColors.surfaceLight.withOpacity(0.5),
                     elevation: 0,

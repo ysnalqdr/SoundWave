@@ -147,7 +147,7 @@ class _TiketScreenState extends State<TiketScreen> {
         ),
       ),
 
-      //! ================= PERBAIKAN TOMBOL TAMBAH TIKET (FAB) =================
+      //! Button Tambah Tiket (
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final ditambah = await Navigator.push<bool>(
@@ -166,18 +166,18 @@ class _TiketScreenState extends State<TiketScreen> {
           }
         },
         backgroundColor:
-            AppColors.surfaceLight, // Menggunakan Abu-abu Gelap premium
+            AppColors.surfaceLight,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: const BorderSide(
-              color: AppColors.divider), // Outline tipis senada
+              color: AppColors.divider),
         ),
-        icon: const Icon(Icons.add_rounded, color: Colors.white), // Ikon Putih
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: Text(
           'Tambah Tiket',
           style: GoogleFonts.spaceGrotesk(
-            color: Colors.white, // Teks Putih Bersih kontras tinggi
+            color: Colors.white,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -257,19 +257,15 @@ Widget _buildFilterChips() {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                // KUNCI 1: Jika aktif jadi Putih murni, jika tidak aktif jadi Abu-abu Surface
                 color: aktif ? Colors.white : AppColors.surfaceLight,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  // Kasih border tipis halus biar kotak chip yang tidak aktif kelihatan batasnya
                   color: aktif ? Colors.white : AppColors.divider,
                 ),
               ),
               child: Text(
                 nama,
                 style: GoogleFonts.spaceGrotesk(
-                  // KUNCI 2: Jika chip AKTIF, teks dipaksa HITAM PEKAT agar kontras di atas warna putih!
-                  // Jika tidak aktif, teks berwarna abu-abu terang (textSecondary) agar tetap terbaca rapi.
                   color: aktif ? Colors.black : AppColors.textSecondary,
                   fontSize: 12,
                   fontWeight: aktif ? FontWeight.w700 : FontWeight.w500,
@@ -335,7 +331,7 @@ Widget _buildFilterChips() {
   }
 
   Widget _buildTiketCard(TiketKonserModel tiket) {
-    //! WARNA BADGE STOK (Sudah diperbaiki kurung kurawalnya)
+    //! WARNA BADGE STOK
     final warnaBadge = {
       'oke': AppColors.success,
       'hampir': AppColors.warning,
@@ -425,38 +421,38 @@ Widget _buildFilterChips() {
                             ],
                           ),
                           const SizedBox(height: 5),
-// Badge kategori (KODE BARU: Premium, rapi, dan kontras tinggi)
+                    //! Badge kategori
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal:
-                                  10, // Diperlebar dikit agar teks bernapas
+                                  10,
                               vertical:
-                                  4, // Ditambah dikit agar lebih proporsional
+                                  4, 
                             ),
                             decoration: BoxDecoration(
-                              // Menggunakan warna background gelap transparan yang senada dengan badge genre
+                              
                               color:
                                   AppColors.background.withValues(alpha: 0.6),
                               borderRadius: BorderRadius.circular(
-                                  6), // Sudut kotak rounded yang tegas
+                                  6), 
                               border: Border.all(
                                 color: AppColors.divider.withValues(
                                     alpha:
-                                        0.4), // Border tipis halus agar terlihat batasan kotaknya
+                                        0.4),
                                 width: 0.8,
                               ),
                             ),
                             child: Text(
                               tiket.kategori
-                                  .toUpperCase(), // Dipaksa Huruf Kapital semua agar terlihat rapi seperti label tag profesional
+                                  .toUpperCase(), 
                               style: GoogleFonts.spaceGrotesk(
                                 color: AppColors
-                                    .textPrimary, // Menggunakan warna teks putih/terang bawaan tema agar sangat kontras
+                                    .textPrimary,
                                 fontSize:
-                                    9, // Sedikit diperkecil agar proporsional dan estetik
+                                    9,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing:
-                                    0.8, // Diberi jarak antar huruf agar terkesan modern
+                                    0.8,
                               ),
                             ),
                           ),
@@ -497,13 +493,12 @@ Widget _buildFilterChips() {
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Row(
                   children: [
-                    //! PERBAIKAN: ShaderMask Gelap Dihapus, Teks Harga Dipaksa Putih Bersih Agar Menyala Kontras
                     Text(
                       tiket.formatHarga,
                       style: GoogleFonts.rajdhani(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white, // Menjadi sangat kelihatan
+                        color: Colors.white,
                       ),
                     ),
                     const Spacer(),
