@@ -6,6 +6,7 @@ import '../../models/konser_model.dart';
 import '../../models/tiket_konser_model.dart';
 import '../../data/dummy_data.dart';
 import 'form_konser_screen.dart';
+import 'package:soundwave/widgets/gambar_widget.dart';
 
 class InspectKonserScreen extends StatefulWidget {
   final KonserModel konser;
@@ -18,7 +19,6 @@ class InspectKonserScreen extends StatefulWidget {
 
 class _InspectKonserScreenState extends State<InspectKonserScreen>
     with SingleTickerProviderStateMixin {
-  //TODO Tab Ctrl 3 Tab
   late TabController _tabController;
 
   //! Data Tiket
@@ -28,7 +28,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
   @override
   void initState() {
     super.initState();
-    //! 3 tab Deskripsi, Tiket, Syarat
     _tabController = TabController(length: 3, vsync: this);
   }
 
@@ -43,7 +42,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: NestedScrollView(
-        //! NestedScrollView
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
             SliverAppBar(
@@ -68,7 +66,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
                 ),
               ),
 
-              //TODO: Button Edit, Delete In Card
               actions: [
                 GestureDetector(
                   onTap: () async {
@@ -134,22 +131,18 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
                 ),
               ],
 
-              //TODO Gambar Konser Background AppBar
+              //! Gambar Widget
               flexibleSpace: FlexibleSpaceBar(
                 background: Stack(
                   fit: StackFit.expand,
                   children: [
-                    //! Gmabar
-                    Image.network(
-                      widget.konser.gambarUrl.isEmpty
-                          ? 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600'
+                    GambarWidget(
+                      url: widget.konser.gambarUrl.isEmpty
+                          ? 'assets/images/logo/default.jpg'
                           : widget.konser.gambarUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: AppColors.surfaceLight,
-                      ),
+                      ikonDefault: Icons.broken_image_outlined,
                     ),
-                    //! Dark Overlay
                     const DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -167,7 +160,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
                 ),
               ),
 
-              //TODO TapBar Di Bawah AppBar
               bottom: TabBar(
                 controller: _tabController,
                 indicatorColor: AppColors.primary,
@@ -191,96 +183,12 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
           ];
         },
 
-        //TODO: Isi Tab
         body: TabBarView(
           controller: _tabController,
           children: [
             _tabDeskripsi(),
             _tabTiket(),
             _tabSyarat(),
-          ],
-        ),
-      ),
-
-      //TODO: Banner Harga Button Kelola
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: const Border(
-            top: BorderSide(color: AppColors.divider),
-          ),
-        ),
-        child: Row(
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Harga mulai dari',
-                  style: GoogleFonts.spaceGrotesk(
-                    color: AppColors.textMuted,
-                    fontSize: 11,
-                  ),
-                ),
-                ShaderMask(
-                  shaderCallback: (bounds) =>
-                      AppColors.primaryGradient.createShader(bounds),
-                  child: Text(
-                    widget.konser.formatHarga,
-                    style: GoogleFonts.rajdhani(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final diperbarui = await Navigator.push<bool>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => FormKonserScreen(
-                          konser: widget.konser,
-                        ),
-                      ),
-                    );
-                    if (diperbarui == true) setState(() {});
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                  label: Text(
-                    'Kelola Konser',
-                    style: GoogleFonts.spaceGrotesk(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -294,7 +202,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          //! Judul Genre
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -310,10 +217,9 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
                 ),
               ),
               const SizedBox(width: 8),
-              Wrap( //!Genre Bungkusan
-                spacing: 8.0, //! Horizontal
-                runSpacing:
-                    4.0, //! Vertikal
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 4.0,
                 children: widget.konser.genre.map((genre) {
                   return Container(
                     padding: const EdgeInsets.symmetric(
@@ -321,16 +227,14 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(
-                          alpha:
-                              0.15), // Menggantikan withOpacity yang deprecated
+                      color: AppColors.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: AppColors.primary.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Text(
-                      genre, //! Genre Badge
+                      genre,
                       style: GoogleFonts.spaceGrotesk(
                         color: AppColors.primary,
                         fontSize: 11,
@@ -345,7 +249,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
 
           const SizedBox(height: 16),
 
-          //TODO: Info Lokasi Tanggal Penyelenggara
           _bariInfo(
             Icons.location_on_outlined,
             widget.konser.lokasi,
@@ -365,7 +268,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
 
           const SizedBox(height: 20),
 
-          //! Deskripsi
           if (widget.konser.deskripsi != null &&
               widget.konser.deskripsi!.isNotEmpty) ...[
             Text(
@@ -388,7 +290,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
             const SizedBox(height: 20),
           ],
 
-          //! Tagar
           Text(
             'Tagar Event',
             style: GoogleFonts.rajdhani(
@@ -402,9 +303,9 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
             spacing: 8,
             runSpacing: 8,
             children: [
-              widget.konser.genre,
+              widget.konser.genre.first,
               widget.konser.lokasi.split(',').last.trim(),
-              'Konser2025',
+              'Konser2026',
               'SoundWave',
             ]
                 .map((tag) => Container(
@@ -430,7 +331,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
 
           const SizedBox(height: 24),
 
-          //TODO Konser Lain/Rekomen Konser
           Text(
             'Konser Lainnya',
             style: GoogleFonts.rajdhani(
@@ -471,14 +371,13 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        //! Gambar Widget Rekomen
                         Expanded(
-                          child: Image.network(
-                            k.gambarUrl,
+                          child: GambarWidget(
+                            url: k.gambarUrl,
                             fit: BoxFit.cover,
                             width: double.infinity,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: AppColors.surfaceLight,
-                            ),
+                            ikonDefault: Icons.music_note_rounded,
                           ),
                         ),
                         Padding(
@@ -550,7 +449,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -592,7 +490,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
             ),
           ),
 
-          //! List Tiket
           Container(
             decoration: BoxDecoration(
               color: AppColors.card,
@@ -622,7 +519,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
                   ),
                   child: Row(
                     children: [
-                      // Dot status
                       Container(
                         width: 8,
                         height: 8,
@@ -632,7 +528,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Info tiket
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -677,7 +572,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
                           ],
                         ),
                       ),
-                      // Harga
                       Text(
                         tiket.formatHarga,
                         style: GoogleFonts.rajdhani(
@@ -749,7 +643,6 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
     );
   }
 
-  //TODO: Helper Widget
   Widget _bariInfo(IconData ikon, String teks) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -772,8 +665,8 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
               style: GoogleFonts.spaceGrotesk(
                 color: AppColors.textSecondary,
                 fontSize: 13,
-              ),
-            ),
+          ),
+        ),
           ),
         ),
       ],
@@ -876,9 +769,8 @@ class _InspectKonserScreenState extends State<InspectKonserScreen>
               DummyData.daftarKonser.removeWhere(
                 (k) => k.id == widget.konser.id,
               );
-              // Tutup dialog lalu kembali ke halaman konser
               Navigator.pop(ctx);
-              Navigator.pop(context);
+              Navigator.pop(context, true);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,

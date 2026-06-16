@@ -6,6 +6,7 @@ import '../../models/user_model.dart';
 import '../../models/tiket_konser_model.dart';
 import '../../data/dummy_data.dart';
 import 'form_tiket_screen.dart';
+import 'package:soundwave/widgets/gambar_widget.dart';
 
 class TiketScreen extends StatefulWidget {
   final UserModel user;
@@ -330,7 +331,7 @@ Widget _buildFilterChips() {
     );
   }
 
-  Widget _buildTiketCard(TiketKonserModel tiket) {
+Widget _buildTiketCard(TiketKonserModel tiket) {
     //! WARNA BADGE STOK
     final warnaBadge = {
       'oke': AppColors.success,
@@ -355,23 +356,14 @@ Widget _buildFilterChips() {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        tiket.gambarKonser,
+                      child: GambarWidget(
+                        url: tiket.gambarKonser.isEmpty
+                            ? 'assets/images/logo/default.jpg'
+                            : tiket.gambarKonser,
                         width: 60,
                         height: 60,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceLight,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.music_note_rounded,
-                            color: AppColors.primary,
-                          ),
-                        ),
+                        ikonDefault: Icons.music_note_rounded,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -421,38 +413,27 @@ Widget _buildFilterChips() {
                             ],
                           ),
                           const SizedBox(height: 5),
-                    //! Badge kategori
+                          //! Badge kategori
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal:
-                                  10,
-                              vertical:
-                                  4, 
+                              horizontal: 10,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              
-                              color:
-                                  AppColors.background.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(
-                                  6), 
+                              color: AppColors.background.withOpacity(0.6),
+                              borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: AppColors.divider.withValues(
-                                    alpha:
-                                        0.4),
+                                color: AppColors.divider.withOpacity(0.4),
                                 width: 0.8,
                               ),
                             ),
                             child: Text(
-                              tiket.kategori
-                                  .toUpperCase(), 
+                              tiket.kategori.toUpperCase(),
                               style: GoogleFonts.spaceGrotesk(
-                                color: AppColors
-                                    .textPrimary,
-                                fontSize:
-                                    9,
+                                color: AppColors.textPrimary,
+                                fontSize: 9,
                                 fontWeight: FontWeight.w700,
-                                letterSpacing:
-                                    0.8,
+                                letterSpacing: 0.8,
                               ),
                             ),
                           ),
@@ -489,8 +470,10 @@ Widget _buildFilterChips() {
                 ],
               ),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 child: Row(
                   children: [
                     Text(
@@ -504,7 +487,9 @@ Widget _buildFilterChips() {
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: warnaBadge.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(8),

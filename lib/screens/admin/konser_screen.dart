@@ -7,6 +7,7 @@ import '../../models/konser_model.dart';
 import '../../data/dummy_data.dart';
 import 'form_konser_screen.dart';
 import 'inspect_konser_screen.dart';
+import 'package:soundwave/widgets/gambar_widget.dart';
 
 class KonserScreen extends StatefulWidget {
   final UserModel user;
@@ -388,22 +389,14 @@ class _KonserScreenState extends State<KonserScreen> {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: Stack(
               children: [
-                Image.network(
-                  konser.gambarUrl.isEmpty
-                      ? 'assets/images/logo/Screenshot 2026-06-15 234825.png'
+                GambarWidget(
+                  url: konser.gambarUrl.isEmpty
+                      ? 'assets/images/logo/default.jpg'
                       : konser.gambarUrl,
                   height: 130,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 130,
-                    color: AppColors.surfaceLight,
-                    child: const Icon(
-                      Icons.music_note_rounded,
-                      color: AppColors.primary,
-                      size: 40,
-                    ),
-                  ),
+                  ikonDefault: Icons.music_note_rounded,
                 ),
                 Positioned.fill(
                   child: Container(
@@ -422,10 +415,8 @@ class _KonserScreenState extends State<KonserScreen> {
 
                 //TODO: BADGE
                 Positioned(
-                  top:
-                      12,
-                  left:
-                      12,
+                  top: 12,
+                  left: 12,
                   child: Wrap(
                     spacing: 6.0,
                     runSpacing: 4.0,
@@ -435,20 +426,16 @@ class _KonserScreenState extends State<KonserScreen> {
                             horizontal: 11, vertical: 5),
                         decoration: BoxDecoration(
                           color: AppColors.background.withValues(alpha: 0.75),
-                          borderRadius:
-                              BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(30),
                           border: Border.all(
-                            color: AppColors.divider.withValues(
-                                alpha:
-                                    0.5),
+                            color: AppColors.divider.withValues(alpha: 0.5),
                             width: 0.8,
                           ),
                         ),
                         child: Text(
                           genre,
                           style: GoogleFonts.spaceGrotesk(
-                            color: AppColors
-                                .textPrimary, //! Warna teks
+                            color: AppColors.textPrimary, //! Warna teks
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.3,
@@ -614,15 +601,13 @@ class _KonserScreenState extends State<KonserScreen> {
           );
         }
       },
-      backgroundColor: AppColors
-          .surfaceLight, 
+      backgroundColor: AppColors.surfaceLight,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.divider),
       ),
-      icon: const Icon(Icons.add_rounded,
-          color: Colors.white),
+      icon: const Icon(Icons.add_rounded, color: Colors.white),
       label: Text(
         'Tambah Konser',
         style: GoogleFonts.spaceGrotesk(
