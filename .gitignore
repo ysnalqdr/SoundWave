@@ -2,6 +2,7 @@
 *.class
 *.log
 *.pyc
+__pycache__/
 *.swp
 .DS_Store
 .atom/
@@ -45,7 +46,6 @@ app.*.map.json
 /android/app/release
 
 # Berkas kerja sementara, tidak ikut repo
-_gen_*.py
 _verif*.png
 _render_*.png
 _denah_*.png
