@@ -1,0 +1,40 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "flutter-firebase-konser-apps",
+          "appId": "1:77207996033:android:775606c64d8e98c807af80",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "flutter-firebase-konser-apps",
+          "configurations": {
+            "android": "1:77207996033:android:775606c64d8e98c807af80",
+            "web": "1:77207996033:web:287b94ff5723382c07af80",
+            "windows": "1:77207996033:web:0d26a01a757bf56307af80"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": {
+    "source": "functions",
+    "predeploy": []
+  },
+  "emulators": {
+    "firestore": {
+      "port": 8080,
+      "host": "127.0.0.1"
+    },
+    "ui": {
+      "enabled": false
+    }
+  }
+}

@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Berkas kerja sementara, tidak ikut repo
+_gen_*.py
+_verif*.png
+_render_*.png
+_denah_*.png
+README.boilerplate.md
+node_modules/
+
+# Rahasia lokal, jangan pernah ikut repo
+.env
+*.env
+serviceAccountKey.json

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../utils/app_theme.dart';
 import '../../models/user_model.dart';
 import '../../models/tiket_konser_model.dart';
-import '../../data/dummy_data.dart';
+import '../../providers/app_providers.dart';
 import 'form_tiket_screen.dart';
 import 'package:soundwave/widgets/gambar_widget.dart';
 
-class TiketScreen extends StatefulWidget {
+class TiketScreen extends ConsumerStatefulWidget {
   final UserModel user;
   final VoidCallback onBukaSidebar;
 
@@ -19,37 +20,11 @@ class TiketScreen extends StatefulWidget {
   });
 
   @override
-  State<TiketScreen> createState() => _TiketScreenState();
+  ConsumerState<TiketScreen> createState() => _TiketScreenState();
 }
 
-class _TiketScreenState extends State<TiketScreen> {
-  bool _sedangLoading = true;
+class _TiketScreenState extends ConsumerState<TiketScreen> {
   String _filterKonser = 'Semua';
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (mounted) setState(() => _sedangLoading = false);
-    });
-  }
-
-  //TODO: Done Filter Tiket Konser
-  List<TiketKonserModel> get _tiketTerfilter {
-    if (_filterKonser == 'Semua') return DummyData.daftarTiket;
-    return DummyData.daftarTiket
-        .where((t) => t.judulKonser.contains(_filterKonser))
-        .toList();
-  }
-
-  //TODO: Done Daftar Nama Konser Yang Di Filter
-  List<String> get _namaKonser {
-    final namaSet = DummyData.daftarKonser
-        .map((k) => k.judul.split('•').first.trim())
-        .toSet()
-        .toList();
-    return ['Semua', ...namaSet];
-  }
 
   void _hapusTiket(TiketKonserModel tiket) {
     showDialog(
@@ -68,7 +43,7 @@ class _TiketScreenState extends State<TiketScreen> {
           ),
         ),
         content: Text(
-          'Tiket ${tiket.kategori} - ${tiket.judulKonser} akan dihapus.',
+          'Tiket ${tiket.kategori} - ${tiket.judulKonser} akan dihapus permanen dari Firestore.',
           style: GoogleFonts.spaceGrotesk(
             color: AppColors.textSecondary,
             fontSize: 13,
@@ -85,16 +60,24 @@ class _TiketScreenState extends State<TiketScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              setState(() {
-                DummyData.daftarTiket.removeWhere((t) => t.id == tiket.id);
-              });
-              _tampilSnackbar(
-                'Tiket berhasil dihapus',
-                AppColors.success,
-                Icons.check_circle_outline,
-              );
+              try {
+                await ref.read(databaseServiceProvider).deleteTicket(tiket.id);
+                if (!mounted) return;
+                _tampilSnackbar(
+                  'Tiket berhasil dihapus',
+                  AppColors.success,
+                  Icons.check_circle_outline,
+                );
+              } catch (e) {
+                if (!mounted) return;
+                _tampilSnackbar(
+                  'Gagal menghapus tiket: $e',
+                  AppColors.error,
+                  Icons.error_outline,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
@@ -117,9 +100,11 @@ class _TiketScreenState extends State<TiketScreen> {
           children: [
             Icon(ikon, color: Colors.white, size: 18),
             const SizedBox(width: 8),
-            Text(
-              pesan,
-              style: GoogleFonts.spaceGrotesk(color: Colors.white),
+            Expanded(
+              child: Text(
+                pesan,
+                style: GoogleFonts.spaceGrotesk(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -134,21 +119,51 @@ class _TiketScreenState extends State<TiketScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ticketsAsync = ref.watch(allTicketsProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
             _buildTopbar(),
-            _buildFilterChips(),
+            ticketsAsync.when(
+              data: (allTickets) {
+                final concertNames = _extractConcertNames(allTickets);
+                return _buildFilterChips(concertNames);
+              },
+              loading: () => const SizedBox(height: 36),
+              error: (_, __) => const SizedBox(height: 36),
+            ),
             Expanded(
-              child: _sedangLoading ? _buildSkeleton() : _buildDaftarTiket(),
+              child: ticketsAsync.when(
+                data: (allTickets) {
+                  final filtered = _filterTickets(allTickets);
+                  return _buildDaftarTiket(filtered);
+                },
+                loading: () => _buildSkeleton(),
+                error: (e, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline, color: AppColors.error, size: 48),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Gagal memuat tiket dari Firestore: $e',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
       ),
-
-      //! Button Tambah Tiket (
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final ditambah = await Navigator.push<bool>(
@@ -158,7 +173,6 @@ class _TiketScreenState extends State<TiketScreen> {
             ),
           );
           if (ditambah == true) {
-            setState(() {});
             _tampilSnackbar(
               'Tiket berhasil ditambahkan',
               AppColors.success,
@@ -166,13 +180,11 @@ class _TiketScreenState extends State<TiketScreen> {
             );
           }
         },
-        backgroundColor:
-            AppColors.surfaceLight,
+        backgroundColor: AppColors.surfaceLight,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(
-              color: AppColors.divider),
+          side: const BorderSide(color: AppColors.divider),
         ),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: Text(
@@ -184,6 +196,22 @@ class _TiketScreenState extends State<TiketScreen> {
         ),
       ),
     );
+  }
+
+  List<String> _extractConcertNames(List<TiketKonserModel> tickets) {
+    final namaSet = tickets
+        .map((k) => k.judulKonser.split('•').first.trim())
+        .where((s) => s.isNotEmpty)
+        .toSet()
+        .toList();
+    return ['Semua', ...namaSet];
+  }
+
+  List<TiketKonserModel> _filterTickets(List<TiketKonserModel> tickets) {
+    if (_filterKonser == 'Semua') return tickets;
+    return tickets
+        .where((t) => t.judulKonser.contains(_filterKonser))
+        .toList();
   }
 
   Widget _buildTopbar() {
@@ -221,10 +249,10 @@ class _TiketScreenState extends State<TiketScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.12),
+              color: AppColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: AppColors.primary.withOpacity(0.3),
+                color: AppColors.primary.withValues(alpha: 0.3),
               ),
             ),
             child: Text(
@@ -242,15 +270,15 @@ class _TiketScreenState extends State<TiketScreen> {
     );
   }
 
-Widget _buildFilterChips() {
+  Widget _buildFilterChips(List<String> namaKonser) {
     return SizedBox(
       height: 36,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemCount: _namaKonser.length,
+        itemCount: namaKonser.length,
         itemBuilder: (_, i) {
-          final nama  = _namaKonser[i];
+          final nama = namaKonser[i];
           final aktif = nama == _filterKonser;
           return GestureDetector(
             onTap: () => setState(() => _filterKonser = nama),
@@ -298,9 +326,7 @@ Widget _buildFilterChips() {
     );
   }
 
-  Widget _buildDaftarTiket() {
-    final tiketList = _tiketTerfilter;
-
+  Widget _buildDaftarTiket(List<TiketKonserModel> tiketList) {
     if (tiketList.isEmpty) {
       return Center(
         child: Column(
@@ -313,7 +339,7 @@ Widget _buildFilterChips() {
             ),
             const SizedBox(height: 16),
             Text(
-              'Belum ada tiket',
+              'Belum ada tiket di Firestore',
               style: GoogleFonts.spaceGrotesk(
                 color: AppColors.textSecondary,
                 fontSize: 14,
@@ -331,13 +357,13 @@ Widget _buildFilterChips() {
     );
   }
 
-Widget _buildTiketCard(TiketKonserModel tiket) {
-    //! WARNA BADGE STOK
-    final warnaBadge = {
+  Widget _buildTiketCard(TiketKonserModel tiket) {
+    final Map<String, Color> colorMap = {
       'oke': AppColors.success,
       'hampir': AppColors.warning,
       'habis': AppColors.error,
-    }[tiket.statusStok]!;
+    };
+    final warnaBadge = colorMap[tiket.statusStok] ?? AppColors.success;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -384,46 +410,17 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(height: 3),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.location_on_outlined,
-                                size: 12,
-                                color: AppColors.textMuted,
-                              ),
-                              const SizedBox(width: 2),
-                              Expanded(
-                                child: Text(
-                                  DummyData.daftarKonser
-                                      .firstWhere(
-                                        (k) => k.id == tiket.idKonser,
-                                        orElse: () =>
-                                            DummyData.daftarKonser.first,
-                                      )
-                                      .lokasi,
-                                  style: GoogleFonts.spaceGrotesk(
-                                    color: AppColors.textMuted,
-                                    fontSize: 11,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
                           const SizedBox(height: 5),
-                          //! Badge kategori
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.background.withOpacity(0.6),
+                              color: AppColors.background.withValues(alpha: 0.6),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: AppColors.divider.withOpacity(0.4),
+                                color: AppColors.divider.withValues(alpha: 0.4),
                                 width: 0.8,
                               ),
                             ),
@@ -491,10 +488,10 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: warnaBadge.withOpacity(0.12),
+                        color: warnaBadge.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: warnaBadge.withOpacity(0.3),
+                          color: warnaBadge.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Text(
@@ -527,7 +524,6 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
                       ),
                     );
                     if (diperbarui == true) {
-                      setState(() {});
                       _tampilSnackbar(
                         'Tiket berhasil diperbarui',
                         AppColors.success,
@@ -561,7 +557,7 @@ Widget _buildTiketCard(TiketKonserModel tiket) {
         width: 22,
         height: 22,
         decoration: BoxDecoration(
-          color: AppColors.background.withOpacity(0.8),
+          color: AppColors.background.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Icon(ikon, color: warna, size: 12),

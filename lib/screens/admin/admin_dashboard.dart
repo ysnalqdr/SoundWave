@@ -1,400 +1,755 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import '../../constants/app_constants.dart';
 import '../../utils/app_theme.dart';
 import '../../models/user_model.dart';
+import '../../services/auth_service.dart';
+import '../../providers/app_providers.dart';
+import '../user/user_main_screen.dart';
+import 'dashboard_admin_screen.dart';
 import 'konser_screen.dart';
 import 'tiket_screen.dart';
 import 'profil_screen.dart';
+import 'gate_scanner_screen.dart';
+import 'laporan_penjualan_screen.dart';
+import 'user_management_screen.dart';
+import 'kelola_promo_screen.dart';
+import 'laporan_revenue_screen.dart';
+import 'kelola_refund_screen.dart';
+import '../../widgets/tombol_dialog_sejajar.dart';
 
-class AdminDashboard extends StatefulWidget {
+class AdminDashboard extends ConsumerStatefulWidget {
   final UserModel user;
   const AdminDashboard({super.key, required this.user});
 
   @override
-  State<AdminDashboard> createState() => _AdminDashboardState();
+  ConsumerState<AdminDashboard> createState() => _AdminDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard> {
+class _AdminDestination {
+  final String label;
+  final IconData icon;
+  final Widget Function(UserModel user, VoidCallback openSidebar) screenBuilder;
+  final bool superAdminOnly;
+  final String group;
 
-  //TODO: Index Page Aktif
-  //! 0 = Konser 1 = Tiket 2 = Profil
+  const _AdminDestination({
+    required this.label,
+    required this.icon,
+    required this.screenBuilder,
+    this.superAdminOnly = false,
+    required this.group,
+  });
+}
+
+class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _halamanAktif = 0;
-
-  //!buka/tutup drawer mnl
+  bool _sidebarCollapsed = false; // Desktop sidebar collapse state
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  late UserModel _currentUser;
 
-  late final List<Widget> _screens;
+  // Tidak lagi `static` supaya tiap tujuan bisa memanggil `_pindahKeLabel`
+  // (dipakai kartu "Perlu tindakan" di Dashboard untuk lompat ke menu lain).
+  late final List<_AdminDestination> _allDestinations = [
+    _AdminDestination(
+      label: 'Dashboard',
+      icon: Icons.dashboard_outlined,
+      group: 'OPERASIONAL',
+      screenBuilder: (user, openSidebar) => DashboardAdminScreen(
+        user: user,
+        onBukaSidebar: openSidebar,
+        onBukaMenu: _pindahKeLabel,
+      ),
+    ),
+    _AdminDestination(
+      label: 'Konser',
+      icon: Icons.music_note_rounded,
+      group: 'OPERASIONAL',
+      screenBuilder: (user, openSidebar) => KonserScreen(user: user, onBukaSidebar: openSidebar),
+    ),
+    _AdminDestination(
+      label: 'Tiket',
+      icon: Icons.confirmation_number_outlined,
+      group: 'OPERASIONAL',
+      screenBuilder: (user, openSidebar) => TiketScreen(user: user, onBukaSidebar: openSidebar),
+    ),
+    _AdminDestination(
+      label: 'Validasi Gate (Scan)',
+      icon: Icons.qr_code_scanner_rounded,
+      group: 'OPERASIONAL',
+      screenBuilder: (user, openSidebar) => GateScannerScreen(user: user, onBukaSidebar: openSidebar),
+    ),
+    _AdminDestination(
+      label: 'Laporan Penjualan',
+      icon: Icons.analytics_outlined,
+      group: 'OPERASIONAL',
+      screenBuilder: (user, openSidebar) => LaporanPenjualanScreen(user: user, onBukaSidebar: openSidebar),
+    ),
+    _AdminDestination(
+      label: 'Revenue Dashboard',
+      icon: Icons.bar_chart_rounded,
+      group: 'OPERASIONAL',
+      screenBuilder: (user, openSidebar) => LaporanRevenueScreen(user: user, onBukaSidebar: openSidebar),
+    ),
+    _AdminDestination(
+      label: 'Kelola Promo',
+      icon: Icons.local_offer_rounded,
+      group: 'OPERASIONAL',
+      screenBuilder: (user, openSidebar) => KelolaPromoScreen(user: user, onBukaSidebar: openSidebar),
+    ),
+    _AdminDestination(
+      label: 'Kelola Refund',
+      icon: Icons.undo_rounded,
+      group: 'OPERASIONAL',
+      screenBuilder: (user, openSidebar) => KelolaRefundScreen(user: user, onBukaSidebar: openSidebar),
+    ),
+    _AdminDestination(
+      label: 'Kelola User',
+      icon: Icons.people_outline_rounded,
+      group: 'MANAJEMEN SISTEM',
+      superAdminOnly: true,
+      screenBuilder: (user, openSidebar) => UserManagementScreen(currentUser: user, onBukaSidebar: openSidebar),
+    ),
+    _AdminDestination(
+      label: 'Profil & Pengaturan',
+      icon: Icons.account_circle_outlined,
+      group: 'AKUN',
+      screenBuilder: (user, openSidebar) => ProfilScreen(user: user, onBukaSidebar: openSidebar),
+    ),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _screens = [
-      KonserScreen(
-        user: widget.user,
-        onBukaSidebar: _bukaSidebar,
-      ),
-      TiketScreen(
-        user: widget.user,
-        onBukaSidebar: _bukaSidebar,
-      ),
-      ProfilScreen(
-        user: widget.user,
-        onBukaSidebar: _bukaSidebar,
-      ),
-    ];
+    _currentUser = widget.user;
+  }
+
+  List<_AdminDestination> _getDestinations(bool isSuperAdmin) {
+    if (isSuperAdmin) {
+      return _allDestinations;
+    }
+    return _allDestinations.where((d) => !d.superAdminOnly).toList();
+  }
+
+  /// Pindah halaman lewat label menu (dipakai Dashboard & jalan pintas).
+  /// Dicari berdasarkan label, bukan index, supaya tetap benar ketika daftar
+  /// menu menyusut untuk admin non-super.
+  void _pindahKeLabel(String label) {
+    final daftar = _getDestinations(_currentUser.isSuperAdmin);
+    final index = daftar.indexWhere((d) => d.label == label);
+    if (index < 0) return;
+    setState(() => _halamanAktif = index);
   }
 
   void _bukaSidebar() {
-    _scaffoldKey.currentState?.openDrawer();
+    final isDesktop = MediaQuery.of(context).size.width >= 960;
+    if (isDesktop) {
+      // On desktop, toggle collapsed state instead of opening drawer
+      setState(() => _sidebarCollapsed = !_sidebarCollapsed);
+    } else {
+      _scaffoldKey.currentState?.openDrawer();
+    }
   }
 
-  void _tutupSidebar() {
-    Navigator.pop(context);
+  void _tutupSidebar(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
   }
 
-  void _gantiHalaman(int index) {
+  void _gantiHalaman(int index, bool isDesktop) {
     setState(() => _halamanAktif = index);
-    _tutupSidebar();
+    if (!isDesktop) {
+      _tutupSidebar(context);
+    }
   }
 
-  //!Func Logout
   void _logout() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Keluar?',
+          'Keluar Akun?',
           style: GoogleFonts.rajdhani(
             color: AppColors.textPrimary,
             fontSize: 22,
             fontWeight: FontWeight.w700,
           ),
         ),
-        content: Text(
-          'Yakin ingin keluar dari aplikasi?',
-          style: GoogleFonts.spaceGrotesk(
-            color: AppColors.textSecondary,
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Yakin ingin keluar dari dashboard SoundWave?',
+              style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            TombolDialogSejajar(
+              onBatal: () => Navigator.pop(ctx),
+              onKonfirmasi: () async {
+                Navigator.pop(ctx);
+                try {
+                  await AuthService().logout();
+                  if (!mounted) return;
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    '/login',
+                    (route) => false,
+                  );
+                } catch (e) {
+                  debugPrint('[AdminDashboard] Logout error: $e');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Gagal keluar akun: $e'),
+                        backgroundColor: AppColors.error,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Batal',
-              style: GoogleFonts.spaceGrotesk(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              //!Tutup Dialog
-              Navigator.pop(ctx);
-              //! Balik Ke LoginScreen (Hapus Semua History)
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/',
-                (route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              minimumSize: const Size(80, 40),
-            ),
-            child: Text(
-              'Keluar',
-              style: GoogleFonts.spaceGrotesk(),
-            ),
-          ),
-        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Tap notifikasi push -> mendarat di Konser (index 1), BUKAN Dashboard:
+    // notifikasi selalu bercerita tentang pesanan/konser, jadi operator
+    // dibawa langsung ke daftar konser tempat aksi berikutnya dilakukan.
+    ref.listen<int>(permintaanMenuUtamaProvider, (_, __) {
+      if (mounted) setState(() => _halamanAktif = 1);
+    });
+
+    // Listen to real-time user profile mutations in Firestore
+    ref.listen<AsyncValue<UserModel?>>(currentUserStreamProvider, (prev, next) {
+      if (next.hasValue) {
+        final updatedUser = next.value;
+        if (updatedUser == null || !updatedUser.isAdmin) {
+          // Admin privilege revoked!
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Akses administrator Anda telah dicabut.'),
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            Navigator.pushReplacementNamed(context, '/user');
+          }
+        } else {
+          setState(() {
+            _currentUser = updatedUser;
+          });
+        }
+      }
+    });
+
+    final isSuperAdmin = _currentUser.isSuperAdmin;
+    final destinations = _getDestinations(isSuperAdmin);
+
+    // Prevent index out of bounds when role demotes and destinations shrink
+    if (_halamanAktif >= destinations.length) {
+      _halamanAktif = 0;
+    }
+
+    final isDesktop = MediaQuery.of(context).size.width >= 960;
+    final activeDestination = destinations[_halamanAktif];
+    final activeScreen = activeDestination.screenBuilder(_currentUser, _bukaSidebar);
+
+    if (isDesktop) {
+      final sidebarWidth = _sidebarCollapsed ? 72.0 : 260.0;
+
+      // Desktop Layout: Collapsible persistent sidebar + active content
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeInOut,
+              width: sidebarWidth,
+              child: _buildSidebarContent(
+                destinations: destinations,
+                isDesktop: true,
+              ),
+            ),
+            const VerticalDivider(width: 1, color: AppColors.divider),
+            Expanded(child: activeScreen),
+          ],
+        ),
+      );
+    }
+
+    // Mobile / Tablet Layout: Adaptive Drawer with standard Scaffold
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
-
-      //TODO: SideBar
-      drawer: _buildDrawer(),
-
-      //TODO: Page Content
-      body: IndexedStack(
-        index: _halamanAktif,
-        children: _screens,
+      drawer: Drawer(
+        backgroundColor: AppColors.surface,
+        width: 270,
+        child: _buildSidebarContent(
+          destinations: destinations,
+          isDesktop: false,
+        ),
       ),
+      body: activeScreen,
     );
   }
 
-  //TODO: Build Siderbar
-  Widget _buildDrawer() {
-    return Drawer(
-      backgroundColor: AppColors.surface,
-      width: 260,
+  Widget _buildSidebarContent({
+    required List<_AdminDestination> destinations,
+    required bool isDesktop,
+  }) {
+    final isSuperAdmin = _currentUser.isSuperAdmin;
+    final collapsed = isDesktop && _sidebarCollapsed;
+
+    return Container(
+      color: AppColors.surface,
       child: Column(
         children: [
-
-          //TODO: Header Sidebar
+          // Header Section
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
+            padding: collapsed
+                ? EdgeInsets.fromLTRB(8, isDesktop ? 32 : 54, 8, 16)
+                : EdgeInsets.fromLTRB(20, isDesktop ? 32 : 54, 20, 20),
             decoration: const BoxDecoration(
               gradient: AppColors.heroGradient,
-              border: Border(
-                bottom: BorderSide(color: AppColors.divider),
-              ),
+              border: Border(bottom: BorderSide(color: AppColors.divider)),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: collapsed ? CrossAxisAlignment.center : CrossAxisAlignment.start,
               children: [
-                //!Avatar
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withOpacity(0.4),
-                        blurRadius: 16,
-                        spreadRadius: 2,
+                if (collapsed) ...[
+                  // Collapsed: avatar only
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: isSuperAdmin
+                          ? const LinearGradient(colors: [Colors.amber, Colors.deepOrange])
+                          : AppColors.primaryGradient,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        _currentUser.initials,
+                        style: GoogleFonts.spaceGrotesk(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.user.nama,
-                  style: GoogleFonts.spaceGrotesk(
-                    color: AppColors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  widget.user.email,
-                  style: GoogleFonts.spaceGrotesk(
-                    color: AppColors.textMuted,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                //! Badge Admin
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppColors.primary.withOpacity(0.3),
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                ] else ...[
+                  // Expanded: full header
+                  Row(
                     children: [
-                      const Icon(
-                        Icons.shield_outlined,
-                        color: AppColors.primary,
-                        size: 12,
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          gradient: isSuperAdmin
+                              ? const LinearGradient(colors: [Colors.amber, Colors.deepOrange])
+                              : AppColors.primaryGradient,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: (isSuperAdmin ? AppColors.warning : AppColors.primary).withValues(alpha: 0.3),
+                              blurRadius: 14,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            _currentUser.initials,
+                            style: GoogleFonts.spaceGrotesk(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'ADMIN',
-                        style: GoogleFonts.spaceGrotesk(
-                          color: AppColors.primary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _currentUser.nama,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.spaceGrotesk(
+                                color: AppColors.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              _currentUser.email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.spaceGrotesk(
+                                color: AppColors.textMuted,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isSuperAdmin
+                          ? AppColors.warning.withValues(alpha: 0.15)
+                          : AppColors.warnaHarga.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSuperAdmin
+                            ? AppColors.warning.withValues(alpha: 0.4)
+                            : AppColors.warnaHarga.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isSuperAdmin ? Icons.stars_rounded : Icons.shield_outlined,
+                          color: isSuperAdmin ? AppColors.warning : AppColors.warnaHarga,
+                          size: 13,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN OPERASIONAL',
+                          style: GoogleFonts.spaceGrotesk(
+                            color: isSuperAdmin ? AppColors.warning : AppColors.warnaHarga,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
 
-        //TODO: Menu Item
-          const SizedBox(height: 8),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Text(
-              'MENU UTAMA',
-              style: GoogleFonts.spaceGrotesk(
-                color: AppColors.textMuted,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ),
-
-          _menuItem(
-            index: 0,
-            icon: Icons.music_note_rounded,
-            label: 'Konser',
-          ),
-          _menuItem(
-            index: 1,
-            icon: Icons.confirmation_number_outlined,
-            label: 'Tiket',
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Divider(color: AppColors.divider),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Text(
-              'AKUN',
-              style: GoogleFonts.spaceGrotesk(
-                color: AppColors.textMuted,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ),
-
-          _menuItem(
-            index: 2,
-            icon: Icons.account_circle_outlined,
-            label: 'Profil & Pengaturan',
-          ),
-
-          const Spacer(),
-
-          //TODO: Logout Button
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: InkWell(
-              onTap: _logout,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.error.withOpacity(0.2),
+          // Scrollable Menu Section
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                _buildMenuSection('OPERASIONAL', destinations.where((d) => d.group == 'OPERASIONAL').toList(), destinations, isDesktop, collapsed),
+                if (destinations.any((d) => d.group == 'MANAJEMEN SISTEM'))
+                  _buildMenuSection('MANAJEMEN SISTEM', destinations.where((d) => d.group == 'MANAJEMEN SISTEM').toList(), destinations, isDesktop, collapsed),
+                
+                if (!collapsed) ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    child: Divider(color: AppColors.divider),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.logout_rounded,
-                      color: AppColors.error,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Keluar',
+
+                  // Mode Penonton
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    child: Text(
+                      'MODE APLIKASI',
                       style: GoogleFonts.spaceGrotesk(
-                        color: AppColors.error,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
                       ),
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    child: InkWell(
+                      onTap: () {
+                        if (!isDesktop) _tutupSidebar(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const UserMainScreen()),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.headphones_rounded, color: AppColors.primary, size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Mode Penonton (User)',
+                                style: GoogleFonts.spaceGrotesk(
+                                  color: AppColors.primary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.open_in_new, color: AppColors.primary, size: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  // Collapsed: icon-only Mode Penonton
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: Divider(color: AppColors.divider),
+                  ),
+                  Tooltip(
+                    message: 'Mode Penonton (User)',
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const UserMainScreen()),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.headphones_rounded, color: AppColors.primary, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
+
+                if (!collapsed) ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    child: Divider(color: AppColors.divider),
+                  ),
+
+                  _buildMenuSection('AKUN', destinations.where((d) => d.group == 'AKUN').toList(), destinations, isDesktop, collapsed),
+                ] else ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: Divider(color: AppColors.divider),
+                  ),
+                  _buildMenuSection('AKUN', destinations.where((d) => d.group == 'AKUN').toList(), destinations, isDesktop, collapsed),
+                ],
+              ],
             ),
           ),
 
-          //! V APPS
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Text(
-              'SoundWave v1.0.0',
-              style: GoogleFonts.spaceGrotesk(
-                color: AppColors.textMuted,
-                fontSize: 11,
+          // Logout Button
+          if (collapsed)
+            Tooltip(
+              message: 'Keluar',
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: InkWell(
+                  onTap: _logout,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.logout_rounded, color: AppColors.error, size: 18),
+                  ),
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: InkWell(
+                onTap: _logout,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.logout_rounded, color: AppColors.error, size: 18),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Keluar',
+                        style: GoogleFonts.spaceGrotesk(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
+
+          // Desktop collapse/expand toggle
+          if (isDesktop)
+            InkWell(
+              onTap: () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: AppColors.divider)),
+                ),
+                child: Icon(
+                  _sidebarCollapsed ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
+                  color: AppColors.textMuted,
+                  size: 22,
+                ),
+              ),
+            ),
+
+          if (!isDesktop)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                AppConstants.appVersionLabelSecure,
+                style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 11),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  //TODO: Widget Menu Item
-  Widget _menuItem({
-    required int index,
-    required IconData icon,
-    required String label,
-  }) {
-    final aktif = _halamanAktif == index;
+  Widget _buildMenuSection(
+    String title,
+    List<_AdminDestination> sectionDestinations,
+    List<_AdminDestination> allActiveDestinations,
+    bool isDesktop,
+    bool collapsed,
+  ) {
+    if (sectionDestinations.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: InkWell(
-        onTap: () => _gantiHalaman(index),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 12,
-          ),
-          decoration: BoxDecoration(
-            color: aktif
-                ? AppColors.primary.withOpacity(0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            //! Line Kiri Aktif
-            border: aktif
-                ? Border(
-                    left: BorderSide(
-                      color: AppColors.primary,
-                      width: 3,
-                    ),
-                  )
-                : null,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                color: aktif ? AppColors.primary : AppColors.textMuted,
-                size: 20,
+    return Column(
+      crossAxisAlignment: collapsed ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: [
+        if (!collapsed)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+            child: Text(
+              title,
+              style: GoogleFonts.spaceGrotesk(
+                color: AppColors.textMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
               ),
-              const SizedBox(width: 12),
-              Text(
-                label,
-                style: GoogleFonts.spaceGrotesk(
-                  color: aktif
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
-                  fontSize: 14,
-                  fontWeight: aktif
-                      ? FontWeight.w600
-                      : FontWeight.normal,
+            ),
+          ),
+        ...sectionDestinations.map((dest) {
+          final globalIndex = allActiveDestinations.indexOf(dest);
+          final isAktif = _halamanAktif == globalIndex;
+
+          if (collapsed) {
+            // Collapsed: icon-only with tooltip
+            return Tooltip(
+              message: dest.label,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                child: InkWell(
+                  onTap: () => _gantiHalaman(globalIndex, isDesktop),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isAktif ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: isAktif
+                          ? Border.all(color: AppColors.primary.withValues(alpha: 0.4))
+                          : null,
+                    ),
+                    child: Icon(
+                      dest.icon,
+                      color: isAktif ? AppColors.primary : AppColors.textMuted,
+                      size: 20,
+                    ),
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: InkWell(
+              onTap: () => _gantiHalaman(globalIndex, isDesktop),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                decoration: BoxDecoration(
+                  color: isAktif ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  border: isAktif
+                      ? const Border(left: BorderSide(color: AppColors.primary, width: 3))
+                      : null,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      dest.icon,
+                      color: isAktif ? AppColors.primary : AppColors.textMuted,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        dest.label,
+                        style: GoogleFonts.spaceGrotesk(
+                          color: isAktif ? AppColors.primary : AppColors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: isAktif ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                    if (dest.superAdminOnly)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'SUPER',
+                          style: GoogleFonts.spaceGrotesk(
+                            color: AppColors.warning,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 }

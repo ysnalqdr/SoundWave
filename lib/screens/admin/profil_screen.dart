@@ -1,62 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../constants/app_constants.dart';
 import '../../utils/app_theme.dart';
 import '../../models/user_model.dart';
-import '../../data/dummy_data.dart';
+import '../../providers/app_providers.dart';
 import '../auth/login_screen.dart';
 import '../../widgets/gambar_widget.dart';
+import '../../widgets/tombol_dialog_sejajar.dart';
 
-//!Logic
-class AnggotaKelompok {
-  final String nama;
-  final String nim;
-  final String fotoUrl;
-  final String peran; //TODO: MANUAL
-
-  const AnggotaKelompok({
-    required this.nama,
-    required this.nim,
-    this.fotoUrl = '',
-    this.peran = 'Anggota',
-  });
-}
-
-//TODO: LIST ANGGOTA
-const List<AnggotaKelompok> daftarAnggota = [
-  AnggotaKelompok(
-    nama: 'Ahmad Fariz Aqil',
-    nim: '17240242',
-    fotoUrl: 'assets/images/anggota/anggota.jpg',
-  ),
-  AnggotaKelompok(
-    nama: 'Laudya Kesya Maria',
-    nim: '17240415',
-    fotoUrl: '',
-    peran: 'Ketua',
-  ),
-  AnggotaKelompok(
-    nama: 'Muhammad Dzakiy Sev Faiq',
-    nim: '17240203',
-    fotoUrl: '',
-  ),
-  AnggotaKelompok(
-    nama: 'Muhammad Yasin Al Qadri',
-    nim: '17240123',
-    fotoUrl: '',
-  ),
-  AnggotaKelompok(
-    nama: 'Putra Rizky Permana',
-    nim: '17240623',
-    fotoUrl: '',
-  ),
-  AnggotaKelompok(
-    nama: 'Yukie Wirapratama Agusti',
-    nim: '17240008',
-    fotoUrl: '',
-  ),
-];
-
-class ProfilScreen extends StatefulWidget {
+class ProfilScreen extends ConsumerStatefulWidget {
   final UserModel user;
   final VoidCallback onBukaSidebar;
 
@@ -67,59 +20,69 @@ class ProfilScreen extends StatefulWidget {
   });
 
   @override
-  State<ProfilScreen> createState() => _ProfilScreenState();
+  ConsumerState<ProfilScreen> createState() => _ProfilScreenState();
 }
 
-class _ProfilScreenState extends State<ProfilScreen> {
+class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   bool _sedangEdit = false;
+  bool _sedangSimpan = false;
 
   late final TextEditingController _namaCtrl;
-  late final TextEditingController _nimCtrl;
-  late final TextEditingController _kelompokCtrl;
 
   @override
   void initState() {
     super.initState();
     _namaCtrl = TextEditingController(text: widget.user.nama);
-    _nimCtrl = TextEditingController(text: widget.user.nim);
-    _kelompokCtrl = TextEditingController(text: widget.user.namaKelompok);
   }
 
   @override
   void dispose() {
     _namaCtrl.dispose();
-    _nimCtrl.dispose();
-    _kelompokCtrl.dispose();
     super.dispose();
   }
 
-  void _simpanProfil() {
-    DummyData.adminUser = widget.user.copyWith(
-      nama: _namaCtrl.text.trim(),
-      nim: _nimCtrl.text.trim(),
-      namaKelompok: _kelompokCtrl.text.trim(),
-    );
-    setState(() => _sedangEdit = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_outline,
-                color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              'Profil berhasil disimpan',
-              style: GoogleFonts.spaceGrotesk(color: Colors.white),
-            ),
-          ],
+  Future<void> _simpanProfil() async {
+    setState(() => _sedangSimpan = true);
+    try {
+      await ref.read(authServiceProvider).updateProfile(
+        uid: widget.user.id,
+        nama: _namaCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _sedangSimpan = false;
+        _sedangEdit = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline,
+                  color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Profil berhasil disimpan',
+                style: GoogleFonts.spaceGrotesk(color: Colors.white),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _sedangSimpan = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal menyimpan profil: $e'),
+          backgroundColor: AppColors.error,
         ),
-      ),
-    );
+      );
+    }
   }
 
   void _logout() {
@@ -138,56 +101,61 @@ class _ProfilScreenState extends State<ProfilScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        content: Text(
-          'Yakin ingin keluar dari aplikasi?',
-          style: GoogleFonts.spaceGrotesk(
-            color: AppColors.textSecondary,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Batal',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Yakin ingin keluar dari aplikasi?',
               style: GoogleFonts.spaceGrotesk(
                 color: AppColors.textSecondary,
               ),
             ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const LoginScreen(),
-                ),
-                (route) => false,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              minimumSize: const Size(80, 40),
+            const SizedBox(height: 24),
+            TombolDialogSejajar(
+              onBatal: () => Navigator.pop(ctx),
+              onKonfirmasi: () async {
+                Navigator.pop(ctx);
+                try {
+                  await ref.read(authServiceProvider).logout();
+                  if (!mounted) return;
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const LoginScreen(),
+                    ),
+                    (route) => false,
+                  );
+                } catch (e) {
+                  debugPrint('[ProfilScreen] Logout error: $e');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Gagal keluar akun: $e'),
+                        backgroundColor: AppColors.error,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
+              },
             ),
-            child: Text(
-              'Keluar',
-              style: GoogleFonts.spaceGrotesk(),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final admin = DummyData.adminUser ?? widget.user;
+    final currentUserAsync = ref.watch(currentUserStreamProvider);
+    final admin = currentUserAsync.value ?? widget.user;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-//TODO: Header (Versi Terupdate - Kontras & Clean)
+          // Header
           SliverAppBar(
             expandedHeight: 220,
             pinned: true,
@@ -203,21 +171,22 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 ),
                 child: const Icon(
                   Icons.menu_rounded,
-                  color:
-                      Colors.white,
+                  color: Colors.white,
                   size: 20,
                 ),
               ),
             ),
             actions: [
               GestureDetector(
-                onTap: () {
-                  if (_sedangEdit) {
-                    _simpanProfil();
-                  } else {
-                    setState(() => _sedangEdit = true);
-                  }
-                },
+                onTap: _sedangSimpan
+                    ? null
+                    : () {
+                        if (_sedangEdit) {
+                          _simpanProfil();
+                        } else {
+                          setState(() => _sedangEdit = true);
+                        }
+                      },
                 child: Container(
                   margin: const EdgeInsets.all(8),
                   padding: const EdgeInsets.symmetric(
@@ -226,21 +195,30 @@ class _ProfilScreenState extends State<ProfilScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: _sedangEdit
-                        ? AppColors.error.withOpacity(0.2)
+                        ? AppColors.error.withValues(alpha: 0.2)
                         : AppColors.surfaceLight,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: _sedangEdit ? AppColors.error : AppColors.divider,
                     ),
                   ),
-                  child: Text(
-                    _sedangEdit ? 'Simpan' : 'Edit',
-                    style: GoogleFonts.spaceGrotesk(
-                      color: _sedangEdit ? AppColors.error : Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _sedangSimpan
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          _sedangEdit ? 'Simpan' : 'Edit',
+                          style: GoogleFonts.spaceGrotesk(
+                            color: _sedangEdit ? AppColors.error : Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -253,26 +231,12 @@ class _ProfilScreenState extends State<ProfilScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 50),
-                    Container(
-                      width: 75,
-                      height: 75,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceLight,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.divider, width: 2),
-                      ),
-                      child: const Icon(
-                        Icons.person_rounded,
-                        color: Colors.white,
-                        size: 35,
-                      ),
-                    ),
+                    _buildProfileAvatar(admin, 75),
                     const SizedBox(height: 10),
                     Text(
                       admin.nama,
                       style: GoogleFonts.rajdhani(
-                        color: Colors
-                            .white,
+                        color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
                       ),
@@ -280,28 +244,26 @@ class _ProfilScreenState extends State<ProfilScreen> {
                     Text(
                       admin.email,
                       style: GoogleFonts.spaceGrotesk(
-                        color: AppColors
-                            .textSecondary,
+                        color: AppColors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 8),
-
-                    //! BADGE ADMIN:
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: admin.isSuperAdmin
+                            ? AppColors.warning
+                            : Colors.white,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        'ADMIN',
+                        admin.isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN',
                         style: GoogleFonts.spaceGrotesk(
-                          color: Colors
-                              .black,
+                          color: Colors.black,
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1,
@@ -314,40 +276,35 @@ class _ProfilScreenState extends State<ProfilScreen> {
             ),
           ),
 
-          //TODO: BODY
+          // Body
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                //TODO: INFO ACCOUNT
+                // Account Info
                 _labelSeksi('Informasi Akun'),
                 const SizedBox(height: 10),
-                _sedangEdit ? _buildFormEdit() : _buildInfoCard(),
+                _sedangEdit ? _buildFormEdit() : _buildInfoCard(admin),
 
                 const SizedBox(height: 24),
 
-                //TODO: SETTINGS
+                // Settings
                 _labelSeksi('Pengaturan'),
                 const SizedBox(height: 10),
-                _buildPengaturanCard(),
+                _buildPengaturanCard(admin),
 
                 const SizedBox(height: 24),
 
-                //TODO: ANGGOTA KELOMPOK
-                _buildAnggotaKelompok(),
-
-                const SizedBox(height: 24),
-
-                //TODO: LOGOUIT
+                // Logout
                 GestureDetector(
                   onTap: _logout,
                   child: Container(
                     height: 52,
                     decoration: BoxDecoration(
-                      color: AppColors.error.withOpacity(0.08),
+                      color: AppColors.error.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: AppColors.error.withOpacity(0.25),
+                        color: AppColors.error.withValues(alpha: 0.25),
                       ),
                     ),
                     child: Row(
@@ -375,7 +332,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 const SizedBox(height: 12),
                 Center(
                   child: Text(
-                    'SoundWave v1.0.0',
+                    AppConstants.appVersionLabel,
                     style: GoogleFonts.spaceGrotesk(
                       color: AppColors.textMuted,
                       fontSize: 12,
@@ -391,10 +348,46 @@ class _ProfilScreenState extends State<ProfilScreen> {
     );
   }
 
-  //TODO: INFO CARD DESIGN KELOMPOK
-  Widget _buildInfoCard() {
-    final admin = DummyData.adminUser ?? widget.user;
+  Widget _buildProfileAvatar(UserModel user, double size) {
+    if (user.fotoUrl != null && user.fotoUrl!.isNotEmpty) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.divider, width: 2),
+        ),
+        child: ClipOval(
+          child: GambarWidget(
+            url: user.fotoUrl!,
+            width: size,
+            height: size,
+          ),
+        ),
+      );
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.divider, width: 2),
+      ),
+      child: Center(
+        child: Text(
+          user.initials,
+          style: GoogleFonts.rajdhani(
+            color: Colors.white,
+            fontSize: size * 0.38,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
 
+  Widget _buildInfoCard(UserModel admin) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -403,26 +396,39 @@ class _ProfilScreenState extends State<ProfilScreen> {
       ),
       child: Column(
         children: [
-          _barisInfo(
-            Icons.person_outline_rounded,
-            'Nama',
-            admin.nama,
-          ),
-          _barisInfo(
-            Icons.email_outlined,
-            'Email',
-            admin.email,
-          ),
+          _barisInfo(Icons.person_outline_rounded, 'Nama', admin.nama),
+          _barisInfo(Icons.email_outlined, 'Email', admin.email),
           _barisInfo(
             Icons.shield_outlined,
             'Role',
-            'ADMIN',
+            admin.isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN',
             warnaValue: AppColors.primary,
-            isLast: true,
           ),
+          if (admin.createdAt != null)
+            _barisInfo(
+              Icons.calendar_today_outlined,
+              'Bergabung',
+              _formatDate(admin.createdAt!),
+              isLast: true,
+            )
+          else
+            _barisInfo(
+              Icons.calendar_today_outlined,
+              'Bergabung',
+              '-',
+              isLast: true,
+            ),
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   Widget _barisInfo(
@@ -453,12 +459,15 @@ class _ProfilScreenState extends State<ProfilScreen> {
             ),
           ),
           const Spacer(),
-          Text(
-            nilai,
-            style: GoogleFonts.spaceGrotesk(
-              color: warnaValue ?? AppColors.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              nilai,
+              style: GoogleFonts.spaceGrotesk(
+                color: warnaValue ?? AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -466,7 +475,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
     );
   }
 
-  //TODO: FORM EDIT DESIGN
   Widget _buildFormEdit() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -474,7 +482,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.primary.withOpacity(0.3),
+          color: AppColors.primary.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -519,8 +527,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
     );
   }
 
-  //TODO: SETTINGS DESIGN
-  Widget _buildPengaturanCard() {
+  Widget _buildPengaturanCard(UserModel admin) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -544,15 +551,126 @@ class _ProfilScreenState extends State<ProfilScreen> {
             ),
           ),
           _itemPengaturan(
+            Icons.dns_outlined,
+            'Status Lingkungan & Sistem',
+            () => _showEnvironmentDialog(),
+          ),
+          if (admin.isSuperAdmin)
+            _itemPengaturan(
+              Icons.admin_panel_settings_outlined,
+              'Kebijakan Hak Akses Super Admin',
+              () => _showSuperAdminPolicyDialog(),
+            ),
+          _itemPengaturan(
             Icons.info_outline_rounded,
             'Tentang Aplikasi',
             () => showAboutDialog(
               context: context,
               applicationName: 'SoundWave',
-              applicationVersion: 'v1.0.0',
-              applicationLegalese: '© 2026 SoundWave',
+              applicationVersion: 'V${AppConstants.appVersion} (Secure)',
+              applicationLegalese: '© 2026 SoundWave - Hak Cipta Dilindungi',
             ),
             isLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEnvironmentDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Status Lingkungan & Sistem',
+          style: GoogleFonts.rajdhani(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _envItem('Payment Gateway', 'Midtrans Sandbox', Icons.payment_rounded, AppColors.success),
+            const SizedBox(height: 10),
+            _envItem('Database & Auth', 'Firebase Spark (Free Plan)', Icons.cloud_done_rounded, AppColors.warnaHarga),
+            const SizedBox(height: 10),
+            _envItem('Gate Scanner Offline', 'Ed25519 Cryptographic Proof', Icons.security_rounded, AppColors.primary),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Tutup', style: GoogleFonts.spaceGrotesk(color: AppColors.textPrimary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _envItem(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 11)),
+                Text(value, style: GoogleFonts.spaceGrotesk(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuperAdminPolicyDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.stars_rounded, color: AppColors.warning, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              'Kebijakan Super Admin',
+              style: GoogleFonts.rajdhani(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Aturan Keamanan Sistem SoundWave:',
+              style: GoogleFonts.spaceGrotesk(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 14),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '1. Pengubahan role dan promosi admin hanya dapat dijalankan oleh akun ber-role "super_admin".\n\n'
+              '2. Super Admin tidak dapat mencabut hak akun miliknya sendiri atau menghapus sesama Super Admin.\n\n'
+              '3. Admin Operasional memiliki akses penuh terhadap Konser, Tiket, Scan Gate, dan Laporan, namun tidak dapat melihat atau mengakses Kelola User.',
+              style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Mengerti', style: GoogleFonts.spaceGrotesk(color: AppColors.primary)),
           ),
         ],
       ),
@@ -603,229 +721,28 @@ class _ProfilScreenState extends State<ProfilScreen> {
     );
   }
 
-  //TODO: ANGGOTA KELOMPOK DESIGN
-  Widget _buildAnggotaKelompok() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _labelSeksi(String teks) {
+    return Row(
       children: [
-        _labelSeksi('Anggota Kelompok'),
-        const SizedBox(height: 10),
         Container(
+          width: 3,
+          height: 16,
           decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.divider),
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(2),
           ),
-          child: Column(
-            children: [
-              //TODO: HEADER KELOMPOK
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 16,
-                ),
-                decoration: const BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.groups_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Kelompok Konser',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.rajdhani(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    Text(
-                      '${daftarAnggota.length} Anggota',
-                      style: GoogleFonts.spaceGrotesk(
-                        color: Colors.white.withOpacity(0.75),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              //!ListAnggota
-              ...daftarAnggota.asMap().entries.map((entry) {
-                final i = entry.key;
-                final anggota = entry.value;
-                final isLast = i == daftarAnggota.length - 1;
-
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    border: isLast
-                        ? null
-                        : const Border(
-                            bottom: BorderSide(
-                              color: AppColors.divider,
-                            ),
-                          ),
-                  ),
-                  child: Row(
-                    children: [
-                      //! No Urut
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${i + 1}',
-                            style: GoogleFonts.spaceGrotesk(
-                              color: AppColors.primary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 12),
-
-                      //! Forto Anggota
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.primary.withOpacity(0.3),
-                            width: 2,
-                          ),
-                        ),
-                        child: ClipOval(
-                          child: anggota.fotoUrl.isNotEmpty
-                              ? GambarWidget(
-                                  url: anggota.fotoUrl,
-                                  width: 48,
-                                  height: 48,
-                                  ikonDefault: Icons.person_rounded,
-                                )
-                              : _inisialAvatar(anggota.nama),
-                        ),
-                      ),
-
-                      const SizedBox(width: 12),
-
-                      //! Nama Nim
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              anggota.nama,
-                              style: GoogleFonts.spaceGrotesk(
-                                color: AppColors.textPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              anggota.nim,
-                              style: GoogleFonts.spaceGrotesk(
-                                color: AppColors.textMuted,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      //!BadgeAnggota
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: (anggota.peran == 'Ketua'
-                                  ? AppColors.primary
-                                  : AppColors.success)
-                              .withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: (anggota.peran == 'Ketua'
-                                    ? AppColors.primary
-                                    : AppColors.success)
-                                .withOpacity(0.25),
-                          ),
-                        ),
-                        child: Text(
-                          anggota.peran,
-                          style: GoogleFonts.spaceGrotesk(
-                            color: anggota.peran == 'Ketua'
-                                ? AppColors.primary
-                                : AppColors.success,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            ],
+        ),
+        const SizedBox(width: 8),
+        Text(
+          teks,
+          style: GoogleFonts.rajdhani(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
           ),
         ),
       ],
-    );
-  }
-
-  //! Avatar Inisial
-  Widget _inisialAvatar(String nama) {
-    final parts = nama.trim().split(' ');
-    final inisial = parts.length >= 2
-        ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
-        : nama.substring(0, 2).toUpperCase();
-
-    return Container(
-      color: AppColors.primary.withOpacity(0.2),
-      child: Center(
-        child: Text(
-          inisial,
-          style: GoogleFonts.rajdhani(
-            color: AppColors.primary,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _labelSeksi(String teks) {
-    return Text(
-      teks.toUpperCase(),
-      style: GoogleFonts.spaceGrotesk(
-        color: AppColors.textMuted,
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.2,
-      ),
     );
   }
 }

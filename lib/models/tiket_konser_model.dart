@@ -6,7 +6,9 @@ class TiketKonserModel {
   String kategori;
   double harga;
   int stok;
+  int terjual;
   String? deskripsi;
+  int revisionCounter;
 
   TiketKonserModel({
     required this.id,
@@ -16,11 +18,40 @@ class TiketKonserModel {
     required this.kategori,
     required this.harga,
     required this.stok,
+    this.terjual = 0,
     this.deskripsi,
+    this.revisionCounter = 0,
   });
 
-  //TODO: Status Stok
-  //!badge sesaui stok
+  factory TiketKonserModel.fromMap(Map<String, dynamic> map, String id) {
+    return TiketKonserModel(
+      id: id,
+      idKonser: map['idKonser'] ?? '',
+      judulKonser: map['judulKonser'] ?? '',
+      gambarKonser: map['gambarKonser'] ?? '',
+      kategori: map['kategori'] ?? '',
+      harga: (map['harga'] ?? 0.0).toDouble(),
+      stok: (map['stok'] as num?)?.toInt() ?? 0,
+      terjual: (map['terjual'] as num?)?.toInt() ?? 0,
+      deskripsi: map['deskripsi'],
+      revisionCounter: (map['revisionCounter'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'idKonser': idKonser,
+      'judulKonser': judulKonser,
+      'gambarKonser': gambarKonser,
+      'kategori': kategori,
+      'harga': harga,
+      'stok': stok,
+      'terjual': terjual,
+      'deskripsi': deskripsi,
+      'revisionCounter': revisionCounter,
+    };
+  }
+
   String get statusStok {
     if (stok == 0) return 'habis';
     if (stok <= 50) return 'hampir';
@@ -33,7 +64,17 @@ class TiketKonserModel {
     return 'Tersedia';
   }
 
-  //!Format Harga Ripiah
+  bool get isVVIP => kategori.toUpperCase().contains('VVIP');
+  bool get isVIP => kategori.toUpperCase().contains('VIP') && !isVVIP;
+
+  String get zonaVenue {
+    if (isVVIP) return 'VVIP Royal Pass (Front Row)';
+    if (isVIP) return 'VIP Premier (Center Stage)';
+    if (kategori.toUpperCase().contains('FESTIVAL')) return 'Festival (Standing Area)';
+    if (kategori.toUpperCase().contains('TRIBUN')) return 'Tribun (Seating Area)';
+    return 'Reguler (Tribun Atas)';
+  }
+
   String get formatHarga {
     if (harga == 0) return 'GRATIS';
     final formatted = harga
@@ -52,7 +93,9 @@ class TiketKonserModel {
     String? kategori,
     double? harga,
     int? stok,
+    int? terjual,
     String? deskripsi,
+    int? revisionCounter,
   }) {
     return TiketKonserModel(
       id: id,
@@ -62,7 +105,9 @@ class TiketKonserModel {
       kategori: kategori ?? this.kategori,
       harga: harga ?? this.harga,
       stok: stok ?? this.stok,
+      terjual: terjual ?? this.terjual,
       deskripsi: deskripsi ?? this.deskripsi,
+      revisionCounter: revisionCounter ?? this.revisionCounter,
     );
   }
 }

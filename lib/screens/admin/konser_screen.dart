@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../utils/app_theme.dart';
+import '../../constants/app_constants.dart';
 import '../../models/user_model.dart';
 import '../../models/konser_model.dart';
-import '../../data/dummy_data.dart';
+import '../../providers/app_providers.dart';
 import 'form_konser_screen.dart';
 import 'inspect_konser_screen.dart';
 import 'package:soundwave/widgets/gambar_widget.dart';
 
-class KonserScreen extends StatefulWidget {
+class KonserScreen extends ConsumerStatefulWidget {
   final UserModel user;
   final VoidCallback onBukaSidebar;
 
@@ -20,26 +22,14 @@ class KonserScreen extends StatefulWidget {
   });
 
   @override
-  State<KonserScreen> createState() => _KonserScreenState();
+  ConsumerState<KonserScreen> createState() => _KonserScreenState();
 }
 
-class _KonserScreenState extends State<KonserScreen> {
-  //!State
-  bool _sedangLoading = true;
+class _KonserScreenState extends ConsumerState<KonserScreen> {
   String _genreAktif = 'Semua';
   String _kataCari = '';
 
-  //!Controller Search Bar
   final _searchCtrl = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    //! Simulasi Loading Data Server
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) setState(() => _sedangLoading = false);
-    });
-  }
 
   @override
   void dispose() {
@@ -47,9 +37,8 @@ class _KonserScreenState extends State<KonserScreen> {
     super.dispose();
   }
 
-  //! Hasil Konser Yang Di Filter
-  List<KonserModel> get _konserTerfilter {
-    return DummyData.daftarKonser.where((k) {
+  List<KonserModel> _filterKonser(List<KonserModel> allKonser) {
+    return allKonser.where((k) {
       final cocokGenre =
           _genreAktif == 'Semua' || k.genre.contains(_genreAktif);
       final cocokCari = _kataCari.isEmpty ||
@@ -59,7 +48,6 @@ class _KonserScreenState extends State<KonserScreen> {
     }).toList();
   }
 
-  //! Hapus Konser
   void _hapusKonser(KonserModel konser) {
     showDialog(
       context: context,
@@ -77,7 +65,7 @@ class _KonserScreenState extends State<KonserScreen> {
           ),
         ),
         content: Text(
-          '"${konser.judul}" akan dihapus permanen.',
+          '"${konser.judul}" akan dihapus permanen dari Firestore.',
           style: GoogleFonts.spaceGrotesk(
             color: AppColors.textSecondary,
           ),
@@ -93,16 +81,24 @@ class _KonserScreenState extends State<KonserScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              setState(() {
-                DummyData.daftarKonser.removeWhere((k) => k.id == konser.id);
-              });
-              _tampilSnackbar(
-                'Konser berhasil dihapus',
-                AppColors.success,
-                Icons.check_circle_outline,
-              );
+              try {
+                await ref.read(databaseServiceProvider).deleteEvent(konser.id);
+                if (!mounted) return;
+                _tampilSnackbar(
+                  'Konser berhasil dihapus',
+                  AppColors.success,
+                  Icons.check_circle_outline,
+                );
+              } catch (e) {
+                if (!mounted) return;
+                _tampilSnackbar(
+                  'Gagal menghapus konser: $e',
+                  AppColors.error,
+                  Icons.error_outline,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
@@ -125,9 +121,11 @@ class _KonserScreenState extends State<KonserScreen> {
           children: [
             Icon(ikon, color: Colors.white, size: 18),
             const SizedBox(width: 8),
-            Text(
-              pesan,
-              style: GoogleFonts.spaceGrotesk(color: Colors.white),
+            Expanded(
+              child: Text(
+                pesan,
+                style: GoogleFonts.spaceGrotesk(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -142,6 +140,8 @@ class _KonserScreenState extends State<KonserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final eventsAsync = ref.watch(eventsProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -151,16 +151,38 @@ class _KonserScreenState extends State<KonserScreen> {
             _buildSearchBar(),
             _buildFilterChips(),
             Expanded(
-              child: _sedangLoading ? _buildSkeleton() : _buildDaftarKonser(),
+              child: eventsAsync.when(
+                data: (allKonser) {
+                  final terfilter = _filterKonser(allKonser);
+                  return _buildDaftarKonser(terfilter);
+                },
+                loading: () => _buildSkeleton(),
+                error: (e, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline, color: AppColors.error, size: 48),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Gagal memuat konser dari Firestore: $e',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: _buildFAB(), // Tombol yang kita perbaiki warnanya
+      floatingActionButton: _buildFAB(),
     );
   }
 
-  //TODO: Top Bar
   Widget _buildTopbar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -216,7 +238,6 @@ class _KonserScreenState extends State<KonserScreen> {
     );
   }
 
-  //TODO: Search Bar
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
@@ -279,7 +300,6 @@ class _KonserScreenState extends State<KonserScreen> {
     );
   }
 
-  //TODO: Filter Genre
   Widget _buildFilterChips() {
     final genres = ['Semua', ...AppConstants.genres];
     return SizedBox(
@@ -317,7 +337,6 @@ class _KonserScreenState extends State<KonserScreen> {
     );
   }
 
-  //TODO: Animation Skeleton Loading
   Widget _buildSkeleton() {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
@@ -337,10 +356,7 @@ class _KonserScreenState extends State<KonserScreen> {
     );
   }
 
-  //TODO: Daftar Konser
-  Widget _buildDaftarKonser() {
-    final konserList = _konserTerfilter;
-
+  Widget _buildDaftarKonser(List<KonserModel> konserList) {
     if (konserList.isEmpty) {
       return Center(
         child: Column(
@@ -355,10 +371,10 @@ class _KonserScreenState extends State<KonserScreen> {
             Text(
               _kataCari.isNotEmpty
                   ? 'Tidak ada hasil untuk "$_kataCari"'
-                  : 'Belum ada konser',
+                  : 'Belum ada konser di Firestore',
               style: GoogleFonts.spaceGrotesk(
-                color: AppColors.textSecondary,
-                fontSize: 14,
+                color: AppColors.textMuted,
+                fontSize: 15,
               ),
             ),
           ],
@@ -369,12 +385,11 @@ class _KonserScreenState extends State<KonserScreen> {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
       itemCount: konserList.length,
-      itemBuilder: (_, i) => _buildKonserCard(konserList[i]),
+      itemBuilder: (_, i) => _buildCardKonser(konserList[i]),
     );
   }
 
-  //TODO: Card Konser
-  Widget _buildKonserCard(KonserModel konser) {
+  Widget _buildCardKonser(KonserModel konser) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -389,14 +404,13 @@ class _KonserScreenState extends State<KonserScreen> {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: Stack(
               children: [
-                GambarWidget(
-                  url: konser.gambarUrl.isEmpty
-                      ? 'assets/images/logo/default.jpg'
-                      : konser.gambarUrl,
-                  height: 130,
+                SizedBox(
+                  height: 140,
                   width: double.infinity,
-                  fit: BoxFit.cover,
-                  ikonDefault: Icons.music_note_rounded,
+                  child: GambarWidget(
+                    url: konser.gambarUrl,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 Positioned.fill(
                   child: Container(
@@ -406,46 +420,12 @@ class _KonserScreenState extends State<KonserScreen> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          AppColors.card.withValues(alpha: 0.85),
+                          AppColors.card.withValues(alpha: 0.8),
                         ],
                       ),
                     ),
                   ),
                 ),
-
-                //TODO: BADGE
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Wrap(
-                    spacing: 6.0,
-                    runSpacing: 4.0,
-                    children: konser.genre.map((genre) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 11, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: AppColors.background.withValues(alpha: 0.75),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: AppColors.divider.withValues(alpha: 0.5),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Text(
-                          genre,
-                          style: GoogleFonts.spaceGrotesk(
-                            color: AppColors.textPrimary, //! Warna teks
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                //TODO: BUTTON ACTION 3(DELETE,EDIT,INSPECT)
                 Positioned(
                   top: 8,
                   right: 8,
@@ -473,7 +453,6 @@ class _KonserScreenState extends State<KonserScreen> {
                             ),
                           );
                           if (diperbarui == true) {
-                            setState(() {});
                             _tampilSnackbar(
                               'Konser berhasil diperbarui',
                               AppColors.success,
@@ -564,7 +543,6 @@ class _KonserScreenState extends State<KonserScreen> {
     );
   }
 
-  //! CONFIG BASIC BUTTON ACTION
   Widget _tombolAksi({
     required IconData ikon,
     required Color warna,
@@ -576,7 +554,7 @@ class _KonserScreenState extends State<KonserScreen> {
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-          color: AppColors.background.withOpacity(0.7),
+          color: AppColors.background.withValues(alpha: 0.7),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(ikon, color: warna, size: 15),
@@ -584,7 +562,6 @@ class _KonserScreenState extends State<KonserScreen> {
     );
   }
 
-  //! FLOATING ACTION BUTTON
   Widget _buildFAB() {
     return FloatingActionButton.extended(
       onPressed: () async {
@@ -593,7 +570,6 @@ class _KonserScreenState extends State<KonserScreen> {
           MaterialPageRoute(builder: (_) => const FormKonserScreen()),
         );
         if (ditambah == true) {
-          setState(() {});
           _tampilSnackbar(
             'Konser berhasil ditambahkan',
             AppColors.success,
