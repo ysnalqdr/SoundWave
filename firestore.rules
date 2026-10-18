@@ -1,0 +1,185 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return signedIn() && userDoc().role in ['admin', 'super_admin'];
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && userDoc().role == 'super_admin';
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    // ===== USERS =====
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Registration: only own doc, role must be buyer
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'user'
+        && request.resource.data.email == request.auth.token.email;
+
+      // Self-update: cannot change role / email / createdAt
+      allow update: if isOwner(userId)
+        && !request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasAny(['role', 'email', 'createdAt']);
+
+      // Super admin may change roles (and other fields) on other users; cannot modify own role
+      allow update: if isSuperAdmin()
+        && (request.auth.uid != userId || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+        && (request.resource.data.role in ['user', 'admin', 'super_admin']);
+
+      // Only super_admin may delete user documents; cannot delete own account or another super_admin
+      allow delete: if isSuperAdmin()
+        && request.auth.uid != userId
+        && resource.data.role != 'super_admin';
+
+      // ===== CLAIMED PROMOS (voucher yang diklaim user) =====
+      match /claimed_promos/{promoId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update, delete: if isOwner(userId);
+      }
+    }
+
+    // ===== EVENTS =====
+    match /events/{eventId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== TICKETS =====
+    match /tickets/{ticketId} {
+      allow read: if true;
+      // Stock mutations after payment happen via Admin SDK (Cloud Functions)
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== ORDERS =====
+    match /orders/{orderId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+
+      // Buyer creates PENDING order only; cannot self-set PAID/AKTIF
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.keys().hasAll([
+             'kodeBooking', 'idKonser', 'judulKonser', 'kategoriTiket',
+             'jumlahTiket', 'totalHarga', 'tanggalBeli', 'userId', 'status'
+           ]);
+
+      // Buyer may cancel own PENDING order only
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && resource.data.status == 'PENDING'
+        && request.resource.data.status == 'CANCELLED'
+        && request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasOnly(['status', 'updatedAt']);
+
+      // Admin gate scan / management
+      allow update, delete: if isAdmin();
+    }
+
+    // ===== FAVORITES =====
+    match /favorites/{favId} {
+      allow read: if signedIn() && (resource == null || resource.data.userId == request.auth.uid);
+
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll(['userId', 'eventId']);
+
+      allow update: if false;
+
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ===== REVIEWS =====
+    match /reviews/{reviewId} {
+      allow read: if true;
+
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+
+      allow update, delete: if signedIn()
+        && resource.data.userId == request.auth.uid;
+
+      allow delete: if isAdmin();
+    }
+
+    // ===== GATE SCANS (Offline sync ledger) =====
+    match /gate_scans/{scanId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ===== APP CONFIG (Public read for dynamic backend URL) =====
+    match /app_config/{configId} {
+      allow read: if true;
+      allow write: if false; // Admin SDK only
+    }
+
+    // ===== ANALYTICS (Admin SDK / Functions only) =====
+    match /analytics/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ===== PROMO CODES =====
+    match /promo_codes/{promoId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== REFUNDS =====
+    match /refunds/{refundId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ===== SEAT LAYOUTS (public read, admin write) =====
+    match /seat_layouts/{layoutId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ===== BOOKED SEATS (public read, admin write) =====
+    match /booked_seats/{bookedId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ===== NOTIFICATIONS (user read own) =====
+    match /notifications/{notifId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isAdmin();
+      allow update: if signedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ===== PROMO BANNERS (public read, admin write) =====
+    match /promo_banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "77207996033",
+    "project_id": "flutter-firebase-konser-apps",
+    "storage_bucket": "flutter-firebase-konser-apps.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:77207996033:android:775606c64d8e98c807af80",
+        "android_client_info": {
+          "package_name": "com.example.soundwave"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "77207996033-al8v56rm8pu5dje64imv5lgkaqkkeob4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.soundwave",
+            "certificate_hash": "1489565a994d6b17b038d2342531888595e07dc9"
+          }
+        },
+        {
+          "client_id": "77207996033-7edhs397lj5kmkdqa8dt7olgnn9et7dj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmkVPzFA0CLrZtV6grtW1n8vry2tq5qP4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "77207996033-7edhs397lj5kmkdqa8dt7olgnn9et7dj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

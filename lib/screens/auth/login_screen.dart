@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../constants/app_constants.dart';
 import '../../utils/app_theme.dart';
-import '../../data/dummy_data.dart';
+import '../../providers/app_providers.dart';
+import '../../services/auth_service.dart';
 import '../admin/admin_dashboard.dart';
+import '../user/user_main_screen.dart';
 import 'register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-
   bool _loading = false;
   bool _sembunyikan = true;
 
@@ -30,54 +33,86 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _loading = true);
 
-    //! Simulasi Delay Loading 1 Sec
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final user = await ref.read(authServiceProvider).login(
+            email: _emailCtrl.text.trim(),
+            password: _passwordCtrl.text,
+          );
 
-    final email = _emailCtrl.text.trim();
-    final password = _passwordCtrl.text;
-
-    //! Narik Email Yang Udah Regist Ke DummyData
-    final emailAdminTerdaftar =
-        DummyData.adminUser?.email ?? 'admin@soundwave.id';
-
-    //! Testing Pengecekan
-    if (email == emailAdminTerdaftar && password.isNotEmpty) {
       if (!mounted) return;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => AdminDashboard(user: DummyData.adminUser!),
-        ),
-      );
-    } else {
+      if (user == null) {
+        _showError('Gagal masuk. Coba lagi.');
+        return;
+      }
+
+      if (user.isAdmin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AdminDashboard(user: user),
+            settings: const RouteSettings(name: '/admin'),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const UserMainScreen(),
+            settings: const RouteSettings(name: '/user'),
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
       if (!mounted) return;
+      _showError(AuthService.mapAuthError(e));
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      _showError(AuthService.mapFirestoreError(e));
+    } catch (e) {
+      if (!mounted) return;
+      _showError(_cleanErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
-      setState(() => _loading = false);
+  String _cleanErrorMessage(dynamic e) {
+    if (e is FirebaseAuthException) {
+      return AuthService.mapAuthError(e);
+    }
+    if (e is FirebaseException) {
+      return AuthService.mapFirestoreError(e);
+    }
+    final raw = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '').trim();
+    if (raw.isEmpty || raw.toLowerCase() == 'error') {
+      return 'Terjadi kesalahan sistem saat masuk';
+    }
+    return raw;
+  }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                'Email atau password salah!',
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
                 style: GoogleFonts.spaceGrotesk(color: Colors.white),
               ),
-            ],
-          ),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+            ),
+          ],
         ),
-      );
-    }
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   @override
@@ -86,7 +121,6 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          //TODO: Efek Bckground
           Positioned(
             top: -80,
             right: -60,
@@ -97,31 +131,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primary.withOpacity(0.2),
+                    AppColors.primary.withValues(alpha: 0.2),
                     Colors.transparent,
                   ],
                 ),
               ),
             ),
           ),
-          Positioned(
-            bottom: -60,
-            left: -40,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppColors.accent.withOpacity(0.12),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          //TODO: KONTEN UTAMA
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -131,7 +147,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 40),
-                    //TODO LOGO JDUUL
                     Center(
                       child: Column(
                         children: [
@@ -141,13 +156,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             decoration: BoxDecoration(
                               gradient: AppColors.primaryGradient,
                               borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.4),
-                                  blurRadius: 24,
-                                  spreadRadius: 4,
-                                ),
-                              ],
                             ),
                             child: const Icon(
                               Icons.graphic_eq_rounded,
@@ -166,18 +174,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           Text(
-                            'Admin Panel',
+                            'Masuk untuk beli tiket atau kelola konser',
+                            textAlign: TextAlign.center,
                             style: GoogleFonts.spaceGrotesk(
                               fontSize: 13,
                               color: AppColors.textMuted,
-                              letterSpacing: 1.5,
                             ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 48),
-                    // TODO: LABEL EMAIL
                     Text(
                       'Email',
                       style: GoogleFonts.spaceGrotesk(
@@ -187,7 +194,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    //TODO INPUT EMAIL
                     TextFormField(
                       controller: _emailCtrl,
                       keyboardType: TextInputType.emailAddress,
@@ -195,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: AppColors.textPrimary,
                       ),
                       decoration: const InputDecoration(
-                        hintText: 'admin@soundwave.id',
+                        hintText: 'email@contoh.com',
                         prefixIcon: Icon(
                           Icons.email_outlined,
                           color: AppColors.textMuted,
@@ -213,7 +219,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                     const SizedBox(height: 20),
-                    // TODO LABEL PW
                     Text(
                       'Password',
                       style: GoogleFonts.spaceGrotesk(
@@ -223,7 +228,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    //TODO: INPUT PW
                     TextFormField(
                       controller: _passwordCtrl,
                       obscureText: _sembunyikan,
@@ -245,9 +249,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: AppColors.textMuted,
                             size: 20,
                           ),
-                          onPressed: () {
-                            setState(() => _sembunyikan = !_sembunyikan);
-                          },
+                          onPressed: () =>
+                              setState(() => _sembunyikan = !_sembunyikan),
                         ),
                       ),
                       validator: (value) {
@@ -260,90 +263,84 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 12),
-                    //TODO: INFO HINT ACCOUNT
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: AppColors.primary.withOpacity(0.2),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.info_outline,
-                            color: AppColors.primary,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'INFO: admin@soundwave.id',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 12,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     const SizedBox(height: 32),
-                    //TODO: BUTTON LOGIN
                     SizedBox(
                       width: double.infinity,
                       height: 52,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: AppColors.primaryGradient,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.4),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _loading ? null : _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _login,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.warnaTombolBg,
+                          foregroundColor: AppColors.warnaTombolTeks,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          child: _loading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2.5,
-                                  ),
-                                )
-                              : Text(
-                                  'Masuk',
-                                  style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
                         ),
+                        child: _loading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : Text(
+                                'Masuk',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    //TODO: LINK -> Page Regist
+                    // Divider
+                    Row(
+                      children: [
+                        const Expanded(child: Divider(color: AppColors.divider)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'atau',
+                            style: GoogleFonts.spaceGrotesk(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider(color: AppColors.divider)),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Google Sign-In Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton.icon(
+                        onPressed: _loading ? null : _loginWithGoogle,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textPrimary,
+                          side: const BorderSide(color: AppColors.divider),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
+                        label: Text(
+                          'Masuk dengan Google',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Belum punya akun Admin? ',
+                          'Belum punya akun? ',
                           style: GoogleFonts.spaceGrotesk(
                             color: AppColors.textSecondary,
                             fontSize: 14,
@@ -354,7 +351,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) => const RegisterScreen()),
+                                builder: (_) => const RegisterScreen(),
+                              ),
                             );
                           },
                           child: Text(
@@ -369,10 +367,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                     const SizedBox(height: 40),
-                    //TODO: Versi APPS
                     Center(
                       child: Text(
-                        'SoundWave v1.0.0',
+                        AppConstants.appVersionLabel,
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 12,
                           color: AppColors.textMuted,
@@ -384,17 +381,48 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          if (_loading)
-            Container(
-              color: Colors.black.withOpacity(0.3),
-              child: const Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
         ],
       ),
     );
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() => _loading = true);
+    try {
+      final user = await ref.read(authServiceProvider).signInWithGoogle();
+      if (!mounted) return;
+
+      if (user == null) {
+        // User cancelled Google sign-in
+        setState(() => _loading = false);
+        return;
+      }
+
+      if (user.isAdmin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AdminDashboard(user: user),
+            settings: const RouteSettings(name: '/admin'),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const UserMainScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      _showError(AuthService.mapAuthError(e));
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      _showError(AuthService.mapFirestoreError(e));
+    } catch (e) {
+      if (!mounted) return;
+      _showError(_cleanErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 }

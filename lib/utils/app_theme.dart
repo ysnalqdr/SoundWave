@@ -30,7 +30,7 @@ class AppColors {
   //! Garis Pembatas
   static const Color divider = Color(0xFF1F1F29);
 
-  //! Gradient (Header Kelompok)
+  //! Hero Gradient (Profile Header)
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [Color(0xFF1E1E24), Color(0xFF111115)], 
     begin: Alignment.topLeft,
@@ -115,24 +115,3 @@ class AppTheme {
   }
 }
 
-//?Constant 
-
-class AppConstants {
-  static const String appName = 'SoundWave';
-  static const String tagline = 'Feel the Pulse of Live Music';
-
-  static const List<String> genres = [
-    'Pop', 'Rock', 'Jazz', 'Electronic',
-    'Hip-Hop', 'R&B', 'K-Pop', 'Pop Rock',
-    'Indie', 'Metal', 'Classical', 'Dangdut',
-  ];
-
-  static const List<String> ticketCategories = [
-    'Festival', 'Reguler', 'Tribun', 'VIP', 'VVIP',
-  ];
-
-  static const List<String> cities = [
-    'Jakarta', 'Bandung', 'Surabaya', 'Bali',
-    'Medan', 'Yogyakarta', 'Semarang', 'Makassar',
-  ];
-}

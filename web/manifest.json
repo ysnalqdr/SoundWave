@@ -1,6 +1,6 @@
 {
-    "name": "soundwave",
-    "short_name": "soundwave",
+    "name": "SoundWave",
+    "short_name": "SoundWave",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

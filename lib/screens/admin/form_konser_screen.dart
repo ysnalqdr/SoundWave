@@ -1,35 +1,59 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../utils/app_theme.dart';
+import '../../constants/app_constants.dart';
 import '../../models/konser_model.dart';
-import '../../data/dummy_data.dart';
+import '../../providers/app_providers.dart';
 import '../../widgets/gambar_widget.dart';
 
-class FormKonserScreen extends StatefulWidget {
+class FormKonserScreen extends ConsumerStatefulWidget {
   final KonserModel? konser;
 
   const FormKonserScreen({super.key, this.konser});
 
   @override
-  State<FormKonserScreen> createState() => _FormKonserScreenState();
+  ConsumerState<FormKonserScreen> createState() => _FormKonserScreenState();
 }
 
-class _FormKonserScreenState extends State<FormKonserScreen> {
+class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  //!Field Ctrl
   late final TextEditingController _judulCtrl;
-  late final TextEditingController _lokasiCtrl;
+  late final TextEditingController _venueCtrl;
   late final TextEditingController _hargaCtrl;
   late final TextEditingController _gambarCtrl;
   late final TextEditingController _deskripsiCtrl;
   late final TextEditingController _penyelenggaraCtrl;
 
+  late String _selectedKota;
   List<String> _genreTerpilih = [];
   bool _sedangSimpan = false;
 
-  //!Mod Edit/Tambah
   bool get _modeEdit => widget.konser != null;
+
+  static const List<Map<String, String>> _presetPosters = [
+    {
+      'label': 'Rock Stage',
+      'url': 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800',
+    },
+    {
+      'label': 'Electronic EDM',
+      'url': 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
+    },
+    {
+      'label': 'Jazz Night',
+      'url': 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=800',
+    },
+    {
+      'label': 'Pop Festival',
+      'url': 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
+    },
+    {
+      'label': 'Indie Stage',
+      'url': 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800',
+    },
+  ];
 
   @override
   void initState() {
@@ -37,7 +61,22 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
     final k = widget.konser;
     _judulCtrl = TextEditingController(text: k?.judul ?? '');
-    _lokasiCtrl = TextEditingController(text: k?.lokasi ?? '');
+
+    String initKota = AppConstants.cities.first;
+    String initVenue = '';
+    if (k != null && k.lokasi.isNotEmpty) {
+      for (final city in AppConstants.cities) {
+        if (k.lokasi.toLowerCase().contains(city.toLowerCase())) {
+          initKota = city;
+          break;
+        }
+      }
+      initVenue = k.lokasi.replaceAll(RegExp(',\\s*$initKota', caseSensitive: false), '').trim();
+      if (initVenue.isEmpty) initVenue = k.lokasi;
+    }
+    _selectedKota = initKota;
+    _venueCtrl = TextEditingController(text: initVenue);
+
     _hargaCtrl = TextEditingController(
       text: k != null ? k.harga.toStringAsFixed(0) : '',
     );
@@ -62,7 +101,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
   @override
   void dispose() {
     _judulCtrl.dispose();
-    _lokasiCtrl.dispose();
+    _venueCtrl.dispose();
     _hargaCtrl.dispose();
     _gambarCtrl.dispose();
     _deskripsiCtrl.dispose();
@@ -70,17 +109,16 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
     super.dispose();
   }
 
-  //! Open Data Picker
   Future<void> _pilihTanggal() async {
     final hasil = await showDatePicker(
       context: context,
       initialDate: _tanggalPilihan,
       firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+      lastDate: DateTime.now().add(const Duration(days: 730)),
       builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
+        data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
-            primary: Colors.white, //!Config Color
+            primary: AppColors.primary,
             surface: AppColors.surface,
           ),
         ),
@@ -92,7 +130,7 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
     }
   }
 
-  void _simpan() {
+  Future<void> _simpan() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (_genreTerpilih.isEmpty) {
@@ -107,14 +145,31 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
 
     setState(() => _sedangSimpan = true);
 
-    if (_modeEdit) {
-      final index = DummyData.daftarKonser.indexWhere(
-        (k) => k.id == widget.konser!.id,
-      );
-      if (index != -1) {
-        DummyData.daftarKonser[index] = widget.konser!.copyWith(
+    final venueName = _venueCtrl.text.trim();
+    final lokasiLengkap = venueName.isEmpty ? _selectedKota : '$venueName, $_selectedKota';
+
+    try {
+      final db = ref.read(databaseServiceProvider);
+
+      if (_modeEdit) {
+        await db.updateEvent(
+          widget.konser!.id,
+          {
+            'judul': _judulCtrl.text.trim(),
+            'lokasi': lokasiLengkap,
+            'tanggal': _tanggalPilihan,
+            'harga': double.tryParse(_hargaCtrl.text) ?? 0,
+            'genre': _genreTerpilih,
+            'gambarUrl': _gambarCtrl.text.trim(),
+            'deskripsi': _deskripsiCtrl.text.trim(),
+            'penyelenggara': _penyelenggaraCtrl.text.trim(),
+          },
+        );
+      } else {
+        final konserBaru = KonserModel(
+          id: '',
           judul: _judulCtrl.text.trim(),
-          lokasi: _lokasiCtrl.text.trim(),
+          lokasi: lokasiLengkap,
           tanggal: _tanggalPilihan,
           harga: double.tryParse(_hargaCtrl.text) ?? 0,
           genre: _genreTerpilih,
@@ -122,24 +177,21 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
           deskripsi: _deskripsiCtrl.text.trim(),
           penyelenggara: _penyelenggaraCtrl.text.trim(),
         );
+        await db.createEvent(konserBaru);
       }
-    } else {
-      DummyData.daftarKonser.add(
-        KonserModel(
-          id: DummyData.buatId(),
-          judul: _judulCtrl.text.trim(),
-          lokasi: _lokasiCtrl.text.trim(),
-          tanggal: _tanggalPilihan,
-          harga: double.tryParse(_hargaCtrl.text) ?? 0,
-          genre: _genreTerpilih,
-          gambarUrl: _gambarCtrl.text.trim(),
-          deskripsi: _deskripsiCtrl.text.trim(),
-          penyelenggara: _penyelenggaraCtrl.text.trim(),
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _sedangSimpan = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal menyimpan konser: $e'),
+          backgroundColor: AppColors.error,
         ),
       );
     }
-
-    Navigator.pop(context, true);
   }
 
   @override
@@ -148,184 +200,114 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-          _modeEdit ? 'Edit Konser' : 'Tambah Konser',
+          _modeEdit ? 'EDIT KONSER' : 'TAMBAH KONSER BARU',
+          style: GoogleFonts.rajdhani(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+          ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded),
-          onPressed: () => Navigator.pop(context),
-        ),
+        centerTitle: true,
       ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_gambarCtrl.text.isNotEmpty)
-                Container(
-                  height: 160,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.divider),
-                  ),
-                  clipBehavior: Clip.hardEdge,
-                  child: GambarWidget(
-                    url: _gambarCtrl.text,
-                    width: double.infinity,
-                    height: 160,
-                    ikonDefault: Icons.broken_image_outlined,
-                  ),
-                ),
-
               _labelField('Judul Konser'),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               TextFormField(
                 controller: _judulCtrl,
-                style: GoogleFonts.spaceGrotesk(
-                  color: AppColors.textPrimary,
-                ),
                 decoration: const InputDecoration(
-                  hintText: 'Contoh: Hindia',
-                  prefixIcon: Icon(
-                    Icons.title_rounded,
-                    color: AppColors.textMuted,
-                    size: 20,
-                  ),
+                  hintText: 'Contoh: SoundWave Festival 2026',
+                  prefixIcon: Icon(Icons.music_note_outlined),
                 ),
                 validator: (v) =>
-                    v == null || v.isEmpty ? 'Judul wajib diisi' : null,
+                    v == null || v.trim().isEmpty ? 'Judul wajib diisi' : null,
               ),
-
               const SizedBox(height: 16),
 
-              _labelField('Lokasi'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _lokasiCtrl,
-                style: GoogleFonts.spaceGrotesk(
-                  color: AppColors.textPrimary,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Contoh: Gelora Bung Karno, Jakarta',
-                  prefixIcon: Icon(
-                    Icons.location_on_outlined,
-                    color: AppColors.textMuted,
-                    size: 20,
-                  ),
-                ),
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Lokasi wajib diisi' : null,
-              ),
-
-              const SizedBox(height: 16),
-
-              _labelField('Harga Tiket (Rp)'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _hargaCtrl,
-                keyboardType: TextInputType.number,
-                style: GoogleFonts.spaceGrotesk(
-                  //! WarnaHarga Ijo
-                  color: AppColors.warnaHarga,
-                  fontWeight: FontWeight.w700,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Contoh: 850000',
-                  prefixIcon: Icon(
-                    Icons.attach_money_rounded,
-                    color: AppColors
-                        .warnaHarga, //!Icon Dollar
-                    size: 20,
-                  ),
-                ),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Harga wajib diisi';
-                  if (double.tryParse(v) == null) return 'Masukkan angka';
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              _labelField('Genre'),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.divider),
-                ),
-                child: Column(
-                  children: AppConstants.genres.map((g) {
-                    final isChecked = _genreTerpilih.contains(g);
-
-                    return Theme(
-                      data: ThemeData.dark().copyWith(
-                        unselectedWidgetColor: AppColors.textMuted,
-                      ),
-                      child: CheckboxListTile(
-                        title: Text(
-                          g,
-                          style: GoogleFonts.spaceGrotesk(
-                            //! OnClick Warna Harga
-                            color: isChecked
-                                ? AppColors.warnaHarga
-                                : AppColors.textPrimary,
-                            fontSize: 14,
-                            fontWeight:
-                                isChecked ? FontWeight.w700 : FontWeight.w500,
+              // Input Kota & Venue Terstruktur
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _labelField('Kota'),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String>(
+                          isExpanded: true,
+                          initialValue: AppConstants.cities.contains(_selectedKota)
+                              ? _selectedKota
+                              : AppConstants.cities.first,
+                          decoration: const InputDecoration(
+                            prefixIcon: Icon(Icons.location_city_outlined),
                           ),
+                          dropdownColor: AppColors.surface,
+                          style: GoogleFonts.spaceGrotesk(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                          ),
+                          items: AppConstants.cities.map((city) {
+                            return DropdownMenuItem(
+                              value: city,
+                              child: Text(
+                                city,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) setState(() => _selectedKota = val);
+                          },
                         ),
-                        value: isChecked,
-                        activeColor: Colors.transparent,
-                        checkColor:
-                            AppColors.warnaHarga, //! Warna Centang Ijo
-                        controlAffinity: ListTileControlAffinity.trailing,
-                        contentPadding:
-                            const EdgeInsets.symmetric(horizontal: 14),
-                        onChanged: (bool? value) {
-                          setState(() {
-                            if (value == true) {
-                              if (!_genreTerpilih.contains(g)) {
-                                _genreTerpilih.add(g);
-                              }
-                            } else {
-                              _genreTerpilih.remove(g);
-                            }
-                          });
-                        },
-                      ),
-                    );
-                  }).toList(),
-                ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 6,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _labelField('Nama Venue / Tempat'),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          controller: _venueCtrl,
+                          decoration: const InputDecoration(
+                            hintText: 'Contoh: Gelora Bung Karno',
+                            prefixIcon: Icon(Icons.place_outlined),
+                          ),
+                          validator: (v) =>
+                              v == null || v.trim().isEmpty ? 'Venue wajib diisi' : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-
               const SizedBox(height: 16),
 
-              _labelField('Tanggal'),
-              const SizedBox(height: 8),
+              _labelField('Tanggal Konser'),
+              const SizedBox(height: 6),
               GestureDetector(
                 onTap: _pilihTanggal,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.divider),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.calendar_today_outlined,
-                        color: AppColors.textMuted,
-                        size: 18,
-                      ),
+                      const Icon(Icons.calendar_month_outlined,
+                          color: AppColors.textMuted, size: 20),
                       const SizedBox(width: 12),
                       Text(
                         '${_tanggalPilihan.day}/${_tanggalPilihan.month}/${_tanggalPilihan.year}',
@@ -335,109 +317,165 @@ class _FormKonserScreenState extends State<FormKonserScreen> {
                         ),
                       ),
                       const Spacer(),
-                      const Icon(
-                        Icons.arrow_drop_down_rounded,
-                        color: AppColors.textMuted,
-                      ),
+                      const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
                     ],
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
 
-              _labelField('URL Gambar'),
+              _labelField('Harga Tiket Mulai Dari (Rp)'),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _hargaCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  hintText: 'Contoh: 350000',
+                  prefixIcon: Icon(Icons.monetization_on_outlined),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Harga wajib diisi';
+                  if (double.tryParse(v) == null) return 'Masukkan angka yang valid';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              _labelField('Penyelenggara / Promotor'),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _penyelenggaraCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'Contoh: SoundWave Live Inc.',
+                  prefixIcon: Icon(Icons.business_outlined),
+                ),
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Penyelenggara wajib diisi'
+                    : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Poster Preset & Custom URL (Spark Safe - No Storage Upload)
+              _labelField('Sumber Gambar Poster (Bebas Biaya / HTTPS Link)'),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 36,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _presetPosters.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (ctx, i) {
+                    final preset = _presetPosters[i];
+                    final isSelected = _gambarCtrl.text.trim() == preset['url'];
+                    return ActionChip(
+                      label: Text(preset['label']!),
+                      backgroundColor: isSelected ? AppColors.warnaHarga : AppColors.surfaceLight,
+                      labelStyle: GoogleFonts.spaceGrotesk(
+                        color: isSelected ? Colors.black : AppColors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                      side: BorderSide(
+                        color: isSelected ? AppColors.warnaHarga : AppColors.divider,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _gambarCtrl.text = preset['url']!;
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _gambarCtrl,
-                style: GoogleFonts.spaceGrotesk(
-                  color: AppColors.textPrimary,
-                ),
                 decoration: const InputDecoration(
-                  hintText: 'https://...',
-                  prefixIcon: Icon(
-                    Icons.image_outlined,
-                    color: AppColors.textMuted,
-                    size: 20,
-                  ),
+                  hintText: 'Pilih preset di atas atau paste URL gambar https://...',
+                  prefixIcon: Icon(Icons.image_outlined),
                 ),
                 onChanged: (_) => setState(() {}),
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'URL gambar poster wajib diisi'
+                    : null,
               ),
-
-              const SizedBox(height: 16),
-
-              _labelField('Penyelenggara'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _penyelenggaraCtrl,
-                style: GoogleFonts.spaceGrotesk(
-                  color: AppColors.textPrimary,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Contoh: Live Feast',
-                  prefixIcon: Icon(
-                    Icons.business_outlined,
-                    color: AppColors.textMuted,
-                    size: 20,
+              if (_gambarCtrl.text.trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    height: 140,
+                    width: double.infinity,
+                    child: GambarWidget(
+                      url: _gambarCtrl.text.trim(),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
-              ),
-
+              ],
               const SizedBox(height: 16),
 
-              _labelField('Deskripsi'),
-              const SizedBox(height: 8),
+              _labelField('Deskripsi Acara'),
+              const SizedBox(height: 6),
               TextFormField(
                 controller: _deskripsiCtrl,
                 maxLines: 4,
-                style: GoogleFonts.spaceGrotesk(
-                  color: AppColors.textPrimary,
+                decoration: const InputDecoration(
+                  hintText: 'Tuliskan deskripsi lengkap konser...',
+                  alignLabelWithHint: true,
                 ),
-                decoration: InputDecoration(
-                  hintText: 'Ceritakan detail konser ini...',
-                  hintStyle: GoogleFonts.spaceGrotesk(
-                    color: AppColors.textMuted,
-                    fontSize: 14,
-                  ),
-                  filled: true,
-                  fillColor: AppColors.surfaceLight,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.divider),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.divider),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: AppColors.primary,
-                      width: 1.5,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.all(14),
-                ),
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Deskripsi wajib diisi'
+                    : null,
               ),
+              const SizedBox(height: 16),
 
+              _labelField('Genre Musik (Bisa pilih lebih dari satu)'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: AppConstants.genres.map((g) {
+                  final dipilih = _genreTerpilih.contains(g);
+                  return FilterChip(
+                    label: Text(g),
+                    selected: dipilih,
+                    selectedColor: AppColors.primary,
+                    checkmarkColor: Colors.black,
+                    labelStyle: GoogleFonts.spaceGrotesk(
+                      color: dipilih ? Colors.black : AppColors.textSecondary,
+                      fontWeight: dipilih ? FontWeight.w700 : FontWeight.normal,
+                    ),
+                    backgroundColor: AppColors.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(
+                        color: dipilih ? AppColors.primary : AppColors.divider,
+                      ),
+                    ),
+                    onSelected: (aktif) {
+                      setState(() {
+                        if (aktif) {
+                          _genreTerpilih.add(g);
+                        } else {
+                          _genreTerpilih.remove(g);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
               const SizedBox(height: 32),
 
-              //! Button Hitam Putih
               SizedBox(
                 width: double.infinity,
-                height: 52,
                 child: ElevatedButton.icon(
                   onPressed: _sedangSimpan ? null : _simpan,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        AppColors.surfaceLight, //! Warna
-                    foregroundColor: Colors.white, //! Teks Icon
-                    disabledBackgroundColor:
-                        AppColors.surfaceLight.withOpacity(0.5),
-                    elevation: 0,
+                    backgroundColor: AppColors.surfaceLight,
+                    minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      // KUNCI PERBAIKAN: Pakai 'side', bukan 'border'
                       side: const BorderSide(color: AppColors.divider),
                     ),
                   ),

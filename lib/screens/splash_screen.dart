@@ -1,77 +1,86 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/app_theme.dart';
+import '../constants/app_constants.dart';
+import '../providers/app_providers.dart';
 import 'auth/login_screen.dart';
+import 'admin/admin_dashboard.dart';
+import 'user/user_main_screen.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-//!Switch Animation
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
-
-  //* AnimationController/otak animasi
-
   late AnimationController _controller;
-
-  //!Animasi Fade 
   late Animation<double> _fadeAnim;
-  //!Animasi Scale
   late Animation<double> _scaleAnim;
+  bool _navigated = false;
 
   @override
   void initState() {
     super.initState();
-
-    //! Duration Animation
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 1800),
     );
-
-    //! Fade in Ke Default
     _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeIn,
-      ),
+      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
-
-    //! Scale Ke Normal
     _scaleAnim = Tween<double>(begin: 0.7, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.elasticOut, 
-      ),
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
     );
-
-    //! Start Animation
     _controller.forward();
-
-    //! Switch Login Screen
-    _pindahKeLogin();
+    _routeAfterSplash();
   }
 
-  Future<void> _pindahKeLogin() async {
-    //! 3Sec 
-    await Future.delayed(const Duration(seconds: 3));
-    if (!mounted) return;
+  Future<void> _routeAfterSplash() async {
+    await Future.delayed(const Duration(milliseconds: 2200));
+    if (!mounted || _navigated) return;
 
+    final auth = ref.read(authServiceProvider);
+    final firebaseUser = auth.currentUser;
+
+    if (firebaseUser == null) {
+      _go(const LoginScreen(), routeName: '/login');
+      return;
+    }
+
+    try {
+      final profile = await auth.getUserData(firebaseUser.uid);
+      if (!mounted || _navigated) return;
+
+      if (profile != null && profile.isAdmin) {
+        _go(AdminDashboard(user: profile), routeName: '/admin');
+      } else {
+        _go(const UserMainScreen(), routeName: '/user');
+      }
+    } catch (e) {
+      debugPrint('[SplashScreen] getUserData fallback on error: $e');
+      if (!mounted || _navigated) return;
+      _go(const UserMainScreen(), routeName: '/user');
+    }
+  }
+
+  void _go(Widget page, {String? routeName}) {
+    if (_navigated || !mounted) return;
+    _navigated = true;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
+        builder: (_) => page,
+        settings: routeName != null ? RouteSettings(name: routeName) : null,
       ),
     );
   }
 
   @override
   void dispose() {
-
     _controller.dispose();
     super.dispose();
   }
@@ -79,12 +88,9 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      //! Background
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          //! Efek Cahaya Background
-          //! Circle Blur
           Positioned(
             top: -100,
             right: -80,
@@ -95,15 +101,13 @@ class _SplashScreenState extends State<SplashScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primary.withOpacity(0.25),
+                    AppColors.primary.withValues(alpha: 0.25),
                     Colors.transparent,
                   ],
                 ),
               ),
             ),
           ),
-
-          //! Circle Blur Pojok Kiri
           Positioned(
             bottom: 80,
             left: -60,
@@ -114,15 +118,13 @@ class _SplashScreenState extends State<SplashScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.accent.withOpacity(0.15),
+                    AppColors.accent.withValues(alpha: 0.15),
                     Colors.transparent,
                   ],
                 ),
               ),
             ),
           ),
-
-          //! Konter Center
           Center(
             child: AnimatedBuilder(
               animation: _controller,
@@ -134,8 +136,6 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-
-                        //! Logo
                         Container(
                           width: 100,
                           height: 100,
@@ -144,7 +144,7 @@ class _SplashScreenState extends State<SplashScreen>
                             borderRadius: BorderRadius.circular(28),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.5),
+                                color: AppColors.primary.withValues(alpha: 0.5),
                                 blurRadius: 40,
                                 spreadRadius: 8,
                               ),
@@ -156,12 +156,8 @@ class _SplashScreenState extends State<SplashScreen>
                             size: 56,
                           ),
                         ),
-
                         const SizedBox(height: 24),
-
-                        //! Nama Apps
                         ShaderMask(
-                          //! ShaderMask Efek Gradient Teks
                           shaderCallback: (bounds) =>
                               AppColors.primaryGradient.createShader(bounds),
                           child: Text(
@@ -174,10 +170,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 8),
-
-                        //! TagLine
                         Text(
                           AppConstants.tagline,
                           style: GoogleFonts.spaceGrotesk(
@@ -186,21 +179,17 @@ class _SplashScreenState extends State<SplashScreen>
                             letterSpacing: 1.5,
                           ),
                         ),
-
                         const SizedBox(height: 60),
-
-                        //! Animation Gelombang Suara 5 Sec
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: List.generate(5, (index) {
-                            //! Tinggi Perbar
-                            final tinggi = [20.0, 35.0, 50.0, 35.0, 20.0][index];
-
+                            final tinggi =
+                                [20.0, 35.0, 50.0, 35.0, 20.0][index];
                             return Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 3),
                               width: 5,
-                              //! Tinggi Perbar Gerak Sesuai Animasi
                               height: tinggi * _controller.value,
                               decoration: BoxDecoration(
                                 gradient: AppColors.primaryGradient,

@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../utils/app_theme.dart';
-import '../../data/dummy_data.dart';
-import '../../models/user_model.dart';
+import '../../providers/app_providers.dart';
+import '../../services/auth_service.dart';
+import '../user/user_main_screen.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  final _namaCtrl      = TextEditingController();
-  final _emailCtrl     = TextEditingController();
-  final _passwordCtrl  = TextEditingController();
-
-  bool _loading     = false;
+  final _namaCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  bool _loading = false;
   bool _sembunyikan = true;
 
   @override
@@ -31,39 +32,87 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _loading = true);
-    await Future.delayed(const Duration(seconds: 1));
 
-    //TODO: METHOD Static Variables Memory Lifecycle
-    DummyData.adminUser = UserModel(
-      id: DummyData.buatId(),
-      nama: _namaCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
-      role: 'admin',
-    );
+    try {
+      final user = await ref.read(authServiceProvider).register(
+            nama: _namaCtrl.text.trim(),
+            email: _emailCtrl.text.trim(),
+            password: _passwordCtrl.text,
+          );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
+      if (user == null) {
+        _showError('Gagal membuat akun. Silakan coba kembali.');
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Akun berhasil dibuat. Selamat datang!',
+            style: GoogleFonts.spaceGrotesk(color: Colors.white),
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const UserMainScreen()),
+        (_) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      _showError(AuthService.mapAuthError(e));
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      _showError(AuthService.mapFirestoreError(e));
+    } catch (e) {
+      if (!mounted) return;
+      _showError(_cleanErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _cleanErrorMessage(dynamic e) {
+    if (e is FirebaseAuthException) {
+      return AuthService.mapAuthError(e);
+    }
+    if (e is FirebaseException) {
+      return AuthService.mapFirestoreError(e);
+    }
+    final raw = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '').trim();
+    if (raw.isEmpty || raw.toLowerCase() == 'error') {
+      return 'Terjadi kesalahan sistem saat pendaftaran';
+    }
+    return raw;
+  }
+
+  void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              'Akun Admin berhasil dibuat!',
-              style: GoogleFonts.spaceGrotesk(color: Colors.white),
+            const Icon(Icons.error_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.spaceGrotesk(color: Colors.white, fontSize: 13),
+              ),
             ),
           ],
         ),
-        backgroundColor: AppColors.success,
+        backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 5),
       ),
     );
-
-    Navigator.pop(context);
   }
 
   @override
@@ -82,7 +131,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primary.withOpacity(0.15),
+                    AppColors.primary.withValues(alpha: 0.15),
                     Colors.transparent,
                   ],
                 ),
@@ -99,24 +148,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.divider),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: AppColors.textPrimary,
-                          size: 16,
-                        ),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new,
+                        color: AppColors.textPrimary,
+                        size: 20,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
                     Text(
-                      'Daftar Admin',
+                      'Buat Akun',
                       style: GoogleFonts.rajdhani(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,
@@ -124,134 +164,104 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     Text(
-                      'Buat akun admin baru untuk mengelola konser',
+                      'Daftar sebagai pembeli tiket konser',
                       style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13,
                         color: AppColors.textMuted,
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 36),
-                    
-                    //TODO: FIELD NAME
-                    _buildLabelField('Nama Lengkap'),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 32),
                     TextFormField(
                       controller: _namaCtrl,
-                      style: GoogleFonts.spaceGrotesk(color: AppColors.textPrimary),
-                      decoration: const InputDecoration(
-                        hintText: 'Contoh: Admin Baru',
-                        prefixIcon: Icon(Icons.person_outline_rounded, color: AppColors.textMuted, size: 20),
+                      style: GoogleFonts.spaceGrotesk(
+                        color: AppColors.textPrimary,
                       ),
-                      validator: (v) => v == null || v.isEmpty ? 'Nama wajib diisi' : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Nama lengkap',
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
                     ),
-
-                    const SizedBox(height: 18),
-
-                    // TODO: FIELD EMAIL
-                    _buildLabelField('Email Admin'),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _emailCtrl,
                       keyboardType: TextInputType.emailAddress,
-                      style: GoogleFonts.spaceGrotesk(color: AppColors.textPrimary),
+                      style: GoogleFonts.spaceGrotesk(
+                        color: AppColors.textPrimary,
+                      ),
                       decoration: const InputDecoration(
-                        hintText: 'admin2@soundwave.id',
-                        prefixIcon: Icon(Icons.email_outlined, color: AppColors.textMuted, size: 20),
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.email_outlined),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Email wajib diisi';
-                        if (!v.contains('@')) return 'Format email tidak valid';
+                        if (v == null || v.isEmpty) return 'Wajib diisi';
+                        if (!v.contains('@')) return 'Email tidak valid';
                         return null;
                       },
                     ),
-
-                    const SizedBox(height: 18),
-
-                    //TODO FIELD PW
-                    _buildLabelField('Password'),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _passwordCtrl,
                       obscureText: _sembunyikan,
-                      style: GoogleFonts.spaceGrotesk(color: AppColors.textPrimary),
+                      style: GoogleFonts.spaceGrotesk(
+                        color: AppColors.textPrimary,
+                      ),
                       decoration: InputDecoration(
-                        hintText: '••••••••',
-                        prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMuted, size: 20),
+                        labelText: 'Password',
+                        prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _sembunyikan ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                            color: AppColors.textMuted,
-                            size: 20,
+                            _sembunyikan
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
                           ),
-                          onPressed: () => setState(() => _sembunyikan = !_sembunyikan),
+                          onPressed: () =>
+                              setState(() => _sembunyikan = !_sembunyikan),
                         ),
                       ),
-                      validator: (v) => v == null || v.length < 6 ? 'Password minimal 6 karakter' : null,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Wajib diisi';
+                        if (v.length < 6) return 'Minimal 6 karakter';
+                        return null;
+                      },
                     ),
-
-                    const SizedBox(height: 36),
-
-                    //TODO: BUTTON SUBMIT REGIST
+                    const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,
                       height: 52,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: AppColors.primaryGradient,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.4),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _loading ? null : _register,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _register,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.warnaTombolBg,
+                          foregroundColor: AppColors.warnaTombolTeks,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          child: _loading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2.5,
-                                  ),
-                                )
-                              : Text(
-                                  'Daftar Sekarang',
-                                  style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
                         ),
+                        child: _loading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : Text(
+                                'Daftar',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                       ),
                     ),
-                    const SizedBox(height: 24),
                   ],
                 ),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLabelField(String teks) {
-    return Text(
-      teks,
-      style: GoogleFonts.spaceGrotesk(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textSecondary,
       ),
     );
   }
