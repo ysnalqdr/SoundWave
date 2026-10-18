@@ -5,12 +5,12 @@ Semua angka dan nama berkas diambil dari kode per 17 Oktober 2026.
 
 | Ukuran | Nilai |
 |---|---|
-| Kode Flutter | 52 berkas `.dart`, **24.217 baris** |
+| Kode Flutter | 56 berkas `.dart`, **24.202 baris** |
 | Kode backend | `server.js` **2.176 baris**, 26 rute (24 unik + 2 alias) |
-| Test Flutter | **303 test** (unit + widget) |
-| Skrip uji backend | 7 berkas `test_*.js` (dijalankan manual, bukan jest) |
-| Koleksi Firestore | ±11 (users, events, tickets, orders, refunds, promo_codes, claimed_promos, booked_seats, seat_layouts, reviews, notifikasi) |
-| Versi terpasang | 2.4.4 (28) |
+| Test Flutter | **319 test** (unit + widget) |
+| Skrip uji backend | 6 berkas `test_*.js` (dijalankan manual, bukan jest) |
+| Koleksi Firestore | **10** (users, events, tickets, orders, favorites, reviews, notifications, promo_codes, claimed_promos, refunds) |
+| Versi terpasang | 2.4.7 (31) |
 | Biaya operasional | **Rp 0** (Firebase Spark + Midtrans Sandbox + Cloudflare Quick Tunnel) |
 
 ---
@@ -190,7 +190,7 @@ Ini urutan pemahaman yang benar: dari yang paling fisik ke yang paling abstrak.
 | | `GET /check-status/:orderId` | baca status dari Firestore |
 | | `POST /settle-dev` | penanda "sudah dibayar" untuk demo (bukan produksi) |
 | Reservasi | `POST /sweep-expired` | bersihkan reservasi lewat 5 menit |
-| | `POST /reserve-seats`, `DELETE /release-seats`, `GET /seat-layout/:id` | kursi bernomor |
+| | `POST /reserve-seats`, `DELETE /release-seats`, `GET /seat-layout/:id` | **warisan** denah kursi. Masih ada di `server.js`, tidak dipanggil aplikasi lagi |
 | Promo | `POST /validate-promo` | cek kode + hitung diskon di server |
 | | `POST/GET/DELETE /admin/promo*` | CRUD promo |
 | Refund | `POST /request-refund` | pengajuan refund |
@@ -263,7 +263,7 @@ Konsepnya benar (event-driven), tapi: butuh server yang selalu hidup, butuh biay
 - **TRADE-OFF** Skalabilitas & otonomi tim — tapi biaya operasi naik drastis: tracing, versioning API, konsistensi data, latensi jaringan, duplikasi kode.
 - **ALTERNATIVES** Modular monolith (pilih ini), monolith + modul jelas, serverless function per use case.
 - **FAILURE MODE** Kegagalan berantai (cascade), data tidak konsisten antar service, sulit melacak satu request (butuh distributed tracing), deploy jadi rumit.
-- **REAL WORLD** **Sengaja tidak dipakai.** Sistem ini **monolith modular**: satu backend, tapi batas tanggung jawab jelas (checkout / pembayaran / refund / promo / kursi). Kalau nanti dipecah, garis potongnya sudah kelihatan: *payment service*, *order/stock service*, *notification service* — dan tiap potongan itu sekarang sudah punya berkas sendiri (`notifikasi.js`, `pengumuman.js`, `reconcile_refund_orders.js`).
+- **REAL WORLD** **Sengaja tidak dipakai.** Sistem ini **monolith modular**: satu backend, tapi batas tanggung jawab jelas (checkout / pembayaran / refund / promo / gerbang). Kalau nanti dipecah, garis potongnya sudah kelihatan: *payment service*, *order/stock service*, *notification service* — dan tiap potongan itu sekarang sudah punya berkas sendiri (`notifikasi.js`, `pengumuman.js`, `reconcile_refund_orders.js`).
 
 ---
 
@@ -476,7 +476,7 @@ Aturan "tiket yang sudah discan tidak mengembalikan stok" mencegah penjualan ula
 | State | **Riverpod 2.6** | 16 provider, family, stream |
 | Backend runtime | **Node.js 18+** | menjalankan `server.js` |
 | Framework backend | **Express 4** | routing, JSON body, CORS |
-| DB | **Firestore** | 11 koleksi, realtime, transaksi |
+| DB | **Firestore** | 10 koleksi, realtime, transaksi |
 | Auth | **Firebase Auth** | email/password + Google Sign-In |
 | Push | **FCM + flutter_local_notifications** | notifikasi tray & in-app |
 | File | **Firebase Storage** | poster konser, bukti refund |

@@ -50,8 +50,8 @@ Architecturally this is a layered monolith: Flutter feature-first UI over servic
 - [Ringkasan](#ringkasan) · [English Summary](#english-summary)
 - [Tangkapan Layar](#tangkapan-layar)
 - [Fitur](#fitur)
-- [Alur Pembelian Tiket](#alur-pembelian-tiket)
-- [Arsitektur](#arsitektur)
+- [Alur Pembelian Tiket](#alur-pembelian-tiket) · [Status pesanan](#status-pesanan)
+- [Arsitektur](#arsitektur) · [Endpoint backend](#endpoint-backend)
 - [Teknologi](#teknologi)
 - [Struktur Proyek](#struktur-proyek)
 - [Menjalankan Proyek](#menjalankan-proyek)
@@ -123,7 +123,9 @@ Gambar diambil dari aplikasi 2.4.7 dengan data uji. QR pada tiket contoh sengaja
   <img src="docs/workflow_beli_tiket.png" width="720" alt="Workflow pembelian tiket SoundWave">
 </p>
 
-1. Penonton memilih kategori tiket. Aplikasi meminta reservasi ke backend, bukan memotong stok sendiri.
+Gambar ini dihasilkan `docs/generators/gen_workflow.py`. Kalau alurnya berubah, ubah skripnya lalu jalankan ulang, jangan menambal gambarnya.
+
+1. Penonton memilih kategori tiket, boleh menambahkan kode promo. Aplikasi meminta reservasi ke backend, bukan memotong stok sendiri.
 2. Backend menghitung ulang harga dari Firestore, memeriksa kuota, lalu menulis pesanan `RESERVED` di dalam transaksi dengan `revisionCounter`.
 3. Aplikasi membuka halaman pembayaran Midtrans Snap sesuai metode yang dipilih.
 4. Pembayaran dikonfirmasi lewat webhook yang signature SHA512-nya diverifikasi, dengan polling sebagai cadangan bila webhook terlambat.
@@ -132,6 +134,25 @@ Gambar diambil dari aplikasi 2.4.7 dengan data uji. QR pada tiket contoh sengaja
 
 Empat cabang gagal ditangani eksplisit: stok habis (ditolak di UI sebelum request dikirim), balapan stok (`409`, pengguna diminta ulang), reservasi kedaluwarsa (`EXPIRED`, pesan ulang), dan webhook tidak sah (`401`, status pesanan tidak berubah).
 
+### Status pesanan
+
+Satu pesanan berpindah status beberapa kali. Yang menulis status hanya server, kecuali `PENDING` dan `CANCELLED` yang dibuat aplikasi sebelum uang terlibat.
+
+| Status | Arti | Ditulis oleh |
+|---|---|---|
+| `PENDING` | Pesanan dibuat di HP. Stok belum dipotong | aplikasi |
+| `RESERVED` | Stok sudah dipotong, menunggu pembayaran 5 menit | `/checkout-atomic` |
+| `AKTIF` | Pembayaran diterima, tiket dan QR bertanda tangan terbit | webhook, dengan polling sebagai cadangan |
+| `TERPAKAI` | QR sudah dipindai di gerbang | scanner gerbang |
+| `EXPIRED` | Lewat 5 menit tanpa pembayaran, stok dikembalikan | `/sweep-expired` |
+| `CANCELLED` | Dibatalkan sebelum dibayar | aplikasi |
+| `REFUND_REQUESTED` | Pengajuan refund masuk, menunggu admin | `/request-refund` |
+| `REFUND_REQUIRED` | Perlu refund manual, misalnya pembayaran masuk setelah pesanan kedaluwarsa | backend |
+| `REFUNDED` | Dana dikembalikan, tiket dicabut | admin |
+
+`PAID` masih ada di konstanta dan masih diterima halaman tiket serta scanner, tapi tidak ada kode yang menulisnya lagi. Alurnya sekarang langsung dari `RESERVED` ke `AKTIF`.
+
+
 ---
 
 ## Arsitektur
@@ -139,6 +160,8 @@ Empat cabang gagal ditangani eksplisit: stok habis (ditolak di UI sebelum reques
 <p align="center">
   <img src="docs/kerangka_sistem.png" width="820" alt="Kerangka sistem SoundWave">
 </p>
+
+Sumber gambar yang sama: `docs/generators/gen_kerangka.py`.
 
 Layered monolith dengan client-server tiga lapis.
 
@@ -157,6 +180,28 @@ Prinsip yang dipegang:
 - Tanda tangan tiket diverifikasi dengan public key, bukan dengan bertanya ke server.
 
 Microservices tidak dipakai di sini. Bebannya satu kampus, satu tim, satu database; memecah layanan hanya menambah latensi jaringan, biaya operasional, dan langkah deploy. Perbandingan lengkap beserta trade-off-nya ada di [`docs/ARSITEKTUR_SISTEM.md`](docs/ARSITEKTUR_SISTEM.md).
+
+### Endpoint backend
+
+Ada 26 rute di `server.js`. Tiga di antaranya sisa fitur denah kursi yang sudah dihapus dari aplikasi, jadi tidak pernah dipanggil lagi.
+
+| Kelompok | Rute | Guna |
+|---|---|---|
+| Checkout | `POST /checkout-atomic` | Potong stok dan tulis pesanan `RESERVED` dalam satu transaksi |
+| | `POST /validate-promo` | Periksa kode promo dan hitung potongan di server |
+| | `GET /check-status/:orderId` | Status pesanan untuk layar pembayaran |
+| | `GET /invoice/:orderId` | Data tagihan untuk halaman invoice |
+| Pembayaran | `POST /create-transaction`, `/create-va`, `/create-qris`, `/create-gopay` | Buat transaksi Midtrans sesuai metode yang dipilih |
+| | `POST /midtrans-webhook` | Terima notifikasi pembayaran, verifikasi SHA512 |
+| | `POST /poll-payment` | Tanya status langsung ke Midtrans bila webhook terlambat |
+| | `POST /sweep-expired` | Lepas stok pesanan yang lewat 5 menit |
+| | `POST /settle-dev` | Tandai lunas di lingkungan pengembangan, bukan produksi |
+| Refund | `POST /request-refund`, `/approve-refund`, `/reject-refund` | Alur refund dari sisi pengguna |
+| | `GET /admin/refunds`, `POST /admin/refund/approve`, `POST /admin/refund/reject` | Tinjauan refund dari sisi admin |
+| Promo | `GET /admin/promos`, `POST /admin/promo`, `DELETE /admin/promo/:id` | Kelola kode promo |
+| Gerbang | `POST /sync-offline-scans` | Unggah hasil pindai offline saat perangkat kembali online |
+| Warisan | `GET /seat-layout/:idKonser`, `POST /reserve-seats`, `DELETE /release-seats` | Sisa denah kursi, tidak dipakai |
+| Lain | `GET /` | Daftar rute dan status server |
 
 ---
 
@@ -212,7 +257,7 @@ Soundwave/
 │   ├── utils/            tema, hitung mundur, helper rundown, urutan tiket
 │   └── main.dart
 ├── test/                 319 test (unit + widget)
-├── docs/                 arsitektur, workflow, kerangka sistem, screenshot
+├── docs/                 arsitektur, screenshot, diagram, generators/ (skrip pembuat diagram)
 ├── android/ · ios/ · web/ · windows/ · linux/ · macos/
 └── pubspec.yaml
 ```
