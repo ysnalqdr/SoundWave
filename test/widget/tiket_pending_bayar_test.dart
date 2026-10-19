@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// PENJAGA SUMBER — tombol "Bayar Sekarang" untuk tiket PENDING
-// ═══════════════════════════════════════════════════════════════════
+// Penjaga sumber: tombol Bayar Sekarang untuk tiket PENDING
 // Mengunci tiga hal yang pernah salah di halaman tiket:
 //   1. tiket berstatus PENDING tidak punya tombol apa pun untuk
 //      menyelesaikan pembayaran (tombol lama hanya muncul kalau pesanan
@@ -11,7 +9,6 @@
 //      pesanan yang sudah terpotong voucher akan ditagih harga penuh
 //      (harga tiket VVIP Rp 3.000.000 vs total pesanan Rp 5.000).
 // Test ini membaca sumber dan gagal kalau salah satunya balik lagi.
-// ═══════════════════════════════════════════════════════════════════
 
 import 'dart:io';
 

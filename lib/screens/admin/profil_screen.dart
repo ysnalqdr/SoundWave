@@ -155,7 +155,6 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          // Header
           SliverAppBar(
             expandedHeight: 220,
             pinned: true,
@@ -276,26 +275,22 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
             ),
           ),
 
-          // Body
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // Account Info
                 _labelSeksi('Informasi Akun'),
                 const SizedBox(height: 10),
                 _sedangEdit ? _buildFormEdit() : _buildInfoCard(admin),
 
                 const SizedBox(height: 24),
 
-                // Settings
                 _labelSeksi('Pengaturan'),
                 const SizedBox(height: 10),
                 _buildPengaturanCard(admin),
 
                 const SizedBox(height: 24),
 
-                // Logout
                 GestureDetector(
                   onTap: _logout,
                   child: Container(

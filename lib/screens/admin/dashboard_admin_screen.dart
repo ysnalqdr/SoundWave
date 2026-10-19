@@ -13,13 +13,9 @@ import '../../utils/ringkasan_admin.dart';
 
 /// Halaman pertama yang dilihat operator setelah login.
 ///
-/// Menjawab tiga pertanyaan yang biasanya membuat admin mengklik menu
-/// satu-satu: berapa yang masuk, apa yang perlu ditangani sekarang, dan
-/// konser terdekat sudah terjual berapa.
-///
-/// Tidak ada query Firestore baru: seluruh angka dihitung dari
-/// `eventsProvider`, `allTicketsProvider`, dan `allOrdersProvider` yang
-/// sudah streaming di layar lain.
+/// Menjawab tiga pertanyaan sekaligus: berapa yang masuk, apa yang perlu
+/// ditangani sekarang, dan konser terdekat sudah terjual berapa. Semua angka
+/// dihitung dari provider yang sudah streaming, tanpa query Firestore baru.
 class DashboardAdminScreen extends ConsumerWidget {
   final UserModel user;
   final VoidCallback onBukaSidebar;
@@ -127,7 +123,7 @@ class DashboardAdminScreen extends ConsumerWidget {
     );
   }
 
-  // ───────────────────────────── topbar ─────────────────────────────
+  // Topbar
 
   Widget _buildTopbar() {
     return Padding(
@@ -230,7 +226,7 @@ class DashboardAdminScreen extends ConsumerWidget {
     );
   }
 
-  // ─────────────────────────────── KPI ───────────────────────────────
+  // KPI
 
   Widget _buildKpi(RingkasanAdmin r, bool memuat) {
     final kartu = [
@@ -279,7 +275,7 @@ class DashboardAdminScreen extends ConsumerWidget {
     );
   }
 
-  // ────────────────────────────── grafik ─────────────────────────────
+  // Grafik
 
   Widget _buildGrafik(RingkasanAdmin r, bool memuat) {
     final maxNilai = r.penjualanHarian.fold<double>(
@@ -418,7 +414,7 @@ class DashboardAdminScreen extends ConsumerWidget {
     );
   }
 
-  // ────────────────────────── perlu tindakan ──────────────────────────
+  // Perlu tindakan
 
   Widget _buildPerluTindakan(RingkasanAdmin r, bool memuat) {
     if (memuat) {
@@ -537,7 +533,7 @@ class DashboardAdminScreen extends ConsumerWidget {
     );
   }
 
-  // ────────────────────────── konser terdekat ──────────────────────────
+  // Konser terdekat
 
   Widget _buildKonserTerdekat(
     List<KonserModel> daftarKonser,
@@ -644,7 +640,7 @@ class DashboardAdminScreen extends ConsumerWidget {
     );
   }
 
-  // ────────────────────────── jalan pintas ──────────────────────────
+  // Jalan pintas
 
   Widget _buildJalanPintas() {
     return Row(
@@ -705,7 +701,7 @@ class DashboardAdminScreen extends ConsumerWidget {
     );
   }
 
-  // ─────────────────────────── potongan kecil ───────────────────────────
+  // Helper judul bagian.
 
   Widget _bagian(String judul) {
     return Text(

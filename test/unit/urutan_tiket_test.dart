@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// URUTAN KATEGORI TIKET: VVIP -> VIP -> Festival -> Tribun -> Reguler
-// ═══════════════════════════════════════════════════════════════════
+// Urutan kategori tiket: VVIP, VIP, Festival, Tribun, Reguler
 // Sebelum ini daftar tiket diurutkan menurut harga, sehingga kategori bisa
 // bertukar posisi (VIP murah tampil di atas VVIP). Test ini mengunci aturan
 // baru: peringkat kategori lebih dulu, harga hanya penentu kedua.
@@ -65,7 +63,7 @@ void main() {
   });
 
   test('harga tidak bisa membalik urutan kategori', () {
-    // VIP sengaja dibuat paling murah: dulu ini yang membuat VIP naik ke atas.
+    // Vip sengaja dibuat paling murah: dulu ini yang membuat VIP naik ke atas.
     final daftar = [
       tiket('VVIP', 100000),
       tiket('VIP', 1000),

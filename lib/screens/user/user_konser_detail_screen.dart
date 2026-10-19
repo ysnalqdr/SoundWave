@@ -34,7 +34,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
   }
 
   void _onTabChanged() {
-    // Mulai refresh saat user buka tab TIKET (index 1)
+    // Refresh saat user membuka tab Tiket.
     if (_tabController.index == 1) {
       _startAutoRefresh();
     } else {
@@ -42,8 +42,8 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
     }
   }
 
-  /// Petunjuk di bar bawah bisa disentuh -> pindah ke tab TIKET (index 1).
-  /// Gerbang pembayaran tetap di `_pesanTiket`; ini cuma jalan pintas visual.
+  // Petunjuk di bar bawah bisa disentuh untuk pindah ke tab Tiket.
+  // Gerbang pembayaran tetap di _pesanTiket, ini hanya jalan pintas visual.
   void _keTabTiket() {
     if (!mounted) return;
     _tabController.animateTo(1);
@@ -52,7 +52,6 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
   void _startAutoRefresh() {
     _stopAutoRefresh();
     _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      // Refresh tiket data
       ref.invalidate(ticketsByEventProvider(widget.konser.id));
     });
   }
@@ -98,8 +97,8 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
     }
   }
 
-  /// Tiket yang cocok dengan kategori terpilih. `null` = user belum memilih
-  /// jenis tiket (atau kategorinya tidak ada di daftar).
+  // Tiket yang cocok dengan kategori terpilih. Null berarti user belum
+  // memilih atau kategorinya tidak ada di daftar.
   TiketKonserModel? _tiketUntukKategori(List<TiketKonserModel> daftarTiket) {
     final kategori = _kategoriDipilih;
     if (kategori == null) return null;
@@ -120,9 +119,8 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
     );
   }
 
-  /// Pintu masuk pembayaran. HANYA jalan kalau user sudah memilih jenis tiket
-  /// dan kuotanya masih ada — tidak ada lagi jalur yang melompat ke wizard
-  /// 3 langkah tanpa pemilihan.
+  // Pintu masuk pembayaran, hanya jalan setelah user memilih jenis tiket
+  // dan kuotanya masih ada.
   Future<void> _pesanTiket(List<TiketKonserModel> daftarTiket) async {
     if (daftarTiket.isEmpty) {
       _pesan('Tiket untuk konser ini belum tersedia');
@@ -171,7 +169,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
     final ticketsAsync = ref.watch(ticketsByEventProvider(widget.konser.id));
     final rundown = RundownHelper.rundownFor(widget.konser.id);
 
-    // ── Status pemilihan jenis tiket (menggerakkan tombol di bar bawah) ──
+    // Status pemilihan jenis tiket, menggerakkan tombol di bar bawah.
     final daftarTiketSemua = ticketsAsync.valueOrNull ?? const <TiketKonserModel>[];
     final tiketTerpilih = _tiketUntukKategori(daftarTiketSemua);
     final tiketHabis = tiketTerpilih != null && tiketTerpilih.stok <= 0;
@@ -382,7 +380,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
         },
         body: Column(
           children: [
-            // Tab Bar
+            // Tab bar
             Container(
               color: AppColors.background,
               child: TabBar(
@@ -403,12 +401,11 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
               ),
             ),
 
-            // Tab View Body
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // Tab 1: Tentang & Info Konser
+                  // Tab 1: tentang dan info konser.
                   ListView(
                     padding: const EdgeInsets.all(20),
                     children: [
@@ -499,7 +496,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                       }),
                       const SizedBox(height: 30),
 
-                      // ─── Syarat & Ketentuan ───
+                      // Syarat dan ketentuan.
                       const Divider(color: AppColors.divider, height: 32),
                       Text(
                         'SYARAT & KETENTUAN',
@@ -553,7 +550,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                     ],
                   ),
 
-                  // Tab 2: Kategori Tiket
+                  // Tab 2: kategori tiket.
                   ticketsAsync.when(
                     loading: () => const Center(
                       child: CircularProgressIndicator(
@@ -703,9 +700,9 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                                         ),
                                       ),
                                       ElevatedButton(
-                                        // PILIH = memilih jenis tiket saja.
-                                        // Tidak membuka pembayaran; user lanjut
-                                        // lewat tombol "PESAN TIKET" di bawah.
+                                        // Pilih hanya memilih jenis tiket, tidak
+                                        // membuka pembayaran. User lanjut lewat
+                                        // tombol Pesan Tiket di bawah.
                                         onPressed: t.stok <= 0
                                             ? null
                                             : () {
@@ -748,9 +745,8 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
               ),
             ),
 
-            // Sticky Bottom Button — satu-satunya pintu ke pembayaran.
-            // Tombol baru bisa ditekan setelah user MEMILIH jenis tiket
-            // di tab TIKET.
+            // Satu-satunya pintu ke pembayaran, baru aktif setelah user
+            // memilih jenis tiket di tab Tiket.
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
@@ -765,9 +761,8 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          // Petunjuk ini bisa DISENTUH: langsung pindah ke tab
-                          // TIKET (tempat daftar jenis tiket), supaya user tidak
-                          // perlu menebak ke mana harus mencari.
+                          // Petunjuk ini bisa disentuh: langsung pindah ke tab
+                          // Tiket, supaya user tidak perlu menebak.
                           onTap: tiketTerpilih == null ? _keTabTiket : null,
                           borderRadius: BorderRadius.circular(8),
                           child: Padding(

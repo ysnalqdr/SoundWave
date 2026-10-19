@@ -172,7 +172,7 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                     _konserInitialized = true;
                   }
 
-                  // Pastikan _konserDipilih referensinya ada di list
+                  // Pastikan referensi _konserDipilih masih ada di daftar.
                   final matching = events.where((k) => k.id == _konserDipilih?.id).toList();
                   final selectedValue = matching.isNotEmpty ? matching.first : events.first;
 

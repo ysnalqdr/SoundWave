@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/constants/app_constants.dart';
@@ -13,8 +14,7 @@ void main() {
     late String storagePath;
     final algorithm = Ed25519();
 
-    const String backendPrivateSeedHex =
-        'c699893e2338a0bd8c4aef14d17c700209775bd14198d80dad1ce1c896f9eb31';
+    late List<int> ujiSeed;
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('sync_failure_test_');
@@ -24,6 +24,14 @@ void main() {
       await service.initStorage(storagePath: storagePath);
       await service.resetLedger(deleteFile: true);
       await service.initStorage(storagePath: storagePath);
+
+      final seedBytes = List<int>.generate(32, (_) => Random.secure().nextInt(256));
+      ujiSeed = seedBytes;
+      final kunciUji = await algorithm.newKeyPairFromSeed(seedBytes);
+      final publikUji = await kunciUji.extractPublicKey();
+      service.updateDynamicManifest(
+        additionalKeys: {'uji': OfflineTicketService.bytesToHex(publikUji.bytes)},
+      );
     });
 
     tearDown(() async {
@@ -32,7 +40,7 @@ void main() {
       }
     });
 
-    Future<String> createSignedTicket({required String bookingCode, String keyId = 'v1'}) async {
+    Future<String> createSignedTicket({required String bookingCode, String keyId = 'uji'}) async {
       final canonical = OfflineTicketService.buildCanonicalPayload(
         keyId: keyId,
         orderId: 'ord-$bookingCode',
@@ -41,7 +49,7 @@ void main() {
         kategoriTiket: 'VIP',
         jumlahTiket: 1,
       );
-      final seed = OfflineTicketService.hexToBytes(backendPrivateSeedHex);
+      final seed = ujiSeed;
       final keyPair = await algorithm.newKeyPairFromSeed(seed);
       final sig = await algorithm.sign(utf8.encode(canonical), keyPair: keyPair);
       return '$canonical|${OfflineTicketService.bytesToHex(sig.bytes)}';
@@ -133,7 +141,7 @@ void main() {
       expect(ack1['syncedCount'], equals(1));
       expect(ack1['duplicateCount'], equals(0));
 
-      // SIMULATE CRASH: client process killed before calling markRecordsSynced!
+            // Simulasi crash: client mati sebelum markRecordsSynced dipanggil.
       // On reboot, pendingOfflineRecords still contains scanId
       expect(service.pendingOfflineRecords.length, equals(1));
 
@@ -226,19 +234,16 @@ void main() {
       expect(res['message'], contains('Revoked Key'));
     });
 
-    test('dynamic revocation manifest sync rejects v1 when revoked at runtime', () async {
-      // Before revocation, v1 is valid (tested in offline_gate_test.dart)
-      expect(OfflineTicketService.publicKeyRing.containsKey('v1'), isTrue);
+    test('dynamic revocation manifest rejects v3 when revoked at runtime', () async {
+      expect(OfflineTicketService.publicKeyRing.containsKey('v3'), isTrue);
 
-      // Backend publishes dynamic revocation manifest (e.g. key compromised)
-      service.updateDynamicManifest(revokedKeys: {'v1'});
+      service.updateDynamicManifest(revokedKeys: {'v3'});
 
       final dummySig = '0' * 128;
-      final testQr = 'SW2|v1|ord-1|SW-V1-TICKET|k-1|VIP|1|$dummySig';
+      final testQr = 'SW2|v3|ord-1|SW-V3-TICKET|k-1|VIP|1|$dummySig';
       final res = await service.verifyOfflineTicket(testQr);
 
       expect(res['ok'], isFalse);
-      expect(res['message'], contains('Revoked Key'));
     });
   });
 

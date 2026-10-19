@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// ANGKA DASHBOARD ADMIN
-// ═══════════════════════════════════════════════════════════════════
+// Angka dashboard admin
 // Dashboard menghitung sendiri dari stream yang sudah ada. Test ini mengunci
 // definisinya supaya angka di layar tidak pernah "beda rasa" dengan laporan:
 // pendapatan hanya dari pesanan lunas, tiket terjual menghitung lembar,

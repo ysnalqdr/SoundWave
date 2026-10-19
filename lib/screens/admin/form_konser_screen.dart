@@ -229,7 +229,7 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Input Kota & Venue Terstruktur
+              // Kota dan venue disimpan terstruktur.
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -355,7 +355,8 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Poster Preset & Custom URL (Spark Safe - No Storage Upload)
+              // Poster dari preset atau URL. Tidak ada unggah berkas, karena
+              // Storage tidak tersedia di paket Spark.
               _labelField('Sumber Gambar Poster (Bebas Biaya / HTTPS Link)'),
               const SizedBox(height: 6),
               SizedBox(

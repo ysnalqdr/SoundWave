@@ -1,10 +1,7 @@
-// ═══════════════════════════════════════════════════════════════════
-// LAYAR SEMPIT — cek "pixels error" (RenderFlex overflow)
-// ═══════════════════════════════════════════════════════════════════
+// Layar sempit: cek pixels error (RenderFlex overflow)
 // Dijalankan di lebar 320 dp (HP kecil) karena kotak pending memuat teks
 // besar, tombol lebar penuh, dan baris badge. Kalau ada yang meluber,
 // Flutter melempar exception dan test ini gagal.
-// ═══════════════════════════════════════════════════════════════════
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

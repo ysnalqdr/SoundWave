@@ -140,7 +140,7 @@ void main() {
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
-    // Nilai HARUS terlihat di field (inti bug lama: tidak terlihat).
+        // Nilai harus terlihat di field. Bug lama: tidak terlihat.
     expect(find.text(fmt(DateTime.now())), findsOneWidget);
   });
 

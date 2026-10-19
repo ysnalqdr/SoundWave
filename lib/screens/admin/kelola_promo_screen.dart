@@ -6,9 +6,8 @@ import '../../models/promo_model.dart';
 import '../../utils/app_theme.dart';
 import '../../models/user_model.dart';
 
-/// Admin screen untuk mengelola kode promo.
-/// Form di atas untuk membuat promo baru, list di bawah menampilkan
-/// seluruh promo dari koleksi Firestore `promo_codes`.
+/// Admin screen for managing promo codes: a form to create, and the list
+/// below it streamed from `promo_codes`.
 class KelolaPromoScreen extends ConsumerStatefulWidget {
   final UserModel user;
   final VoidCallback? onBukaSidebar;
@@ -59,8 +58,8 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
     return '${t.day.toString().padLeft(2, '0')}/${t.month.toString().padLeft(2, '0')}/${t.year}';
   }
 
-  /// Pilih satu tanggal (mulai / akhir) via date picker sederhana.
-  /// Dipisah 2 field agar nilainya jelas terlihat & pasti tersimpan.
+  /// Pilih tanggal mulai atau akhir lewat date picker.
+  /// Dua field terpisah supaya nilainya terlihat dan pasti tersimpan.
   Future<void> _pilihTanggal({required bool mulai}) async {
     final now = DateTime.now();
     final initial = mulai
@@ -92,7 +91,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
       setState(() {
         _berlakuMulai = d;
         _mulaiCtrl.text = _formatTanggal(d);
-        // Jika akhir sudah dipilih tapi jadi lebih awal, kosongkan agar valid.
+        // Kalau akhir jadi lebih awal dari mulai, kosongkan supaya valid.
         if (_berlakuAkhir != null && _berlakuAkhir!.isBefore(d)) {
           _berlakuAkhir = null;
           _akhirCtrl.clear();
@@ -136,7 +135,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
         maxPakai: int.parse(_maxPakaiCtrl.text.trim()),
         berlakuMulai: DateTime(
             _berlakuMulai!.year, _berlakuMulai!.month, _berlakuMulai!.day),
-        // Simpan akhir hari agar promo tetap valid sampai habis hari terakhir.
+        // Simpan akhir hari supaya promo tetap berlaku sampai hari terakhir.
         berlakuAkhir: DateTime(_berlakuAkhir!.year, _berlakuAkhir!.month,
             _berlakuAkhir!.day, 23, 59, 59),
         deskripsi: _deskripsiCtrl.text.trim().isEmpty
@@ -422,7 +421,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
               ],
             ),
             const SizedBox(height: 14),
-            // Masa berlaku: 2 field terpisah agar nilainya jelas terlihat
+            // Masa berlaku dipecah dua field supaya nilainya terlihat jelas.
             Row(
               children: [
                 Expanded(

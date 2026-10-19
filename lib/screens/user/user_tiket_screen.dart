@@ -31,8 +31,8 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
     _sapuReservasiKedaluwarsa();
   }
 
-  /// Minta backend menyapu reservasi yang jendela bayarnya sudah lewat.
-  /// Hasilnya masuk sendiri lewat stream order (userOrdersProvider).
+  // Minta backend menyapu reservasi yang jendela bayarnya sudah lewat.
+  // Hasilnya masuk sendiri lewat stream order.
   Future<void> _sapuReservasiKedaluwarsa() async {
     try {
       await ref.read(midtransServiceProvider).sweepExpired();
@@ -123,7 +123,7 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
       ),
       body: Column(
         children: [
-          // Filter Tab
+          // Tab filter
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -142,7 +142,7 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
           ),
           const SizedBox(height: 8),
 
-          // List Tiket
+          // Daftar tiket
           Expanded(
             child: ordersAsync.when(
               loading: () => const Center(
@@ -172,20 +172,20 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
                 final List<PesananTiketModel> filteredList;
                 if (_filter == 'AKTIF') {
                   // Tiket yang sedang diproses refund tetap tampil di sini
-                  // (badge "REFUND DIPROSES") agar tidak "menghilang".
+                  // (badge REFUND DIPROSES) supaya tidak menghilang.
                   filteredList = orders
                       .where((p) => p.isAktif || p.isRefundRequired)
                       .toList();
                 } else if (_filter == 'PENDING') {
-                  // Pesanan yang waktunya habis TETAP tampil di sini: user
-                  // melihat status EXPIRED-nya dan bisa langsung "Pesan Ulang".
+                  // Pesanan yang waktunya habis tetap tampil: user melihat
+                  // status EXPIRED dan bisa langsung memesan ulang.
                   filteredList = orders
                       .where((p) => p.isPending || p.isExpired)
                       .toList();
                 } else if (_filter == 'TERPAKAI') {
                   filteredList = orders.where((p) => p.isTerpakai).toList();
                 } else if (_filter == 'REFUND') {
-                  // Termasuk yang sedang diproses DAN yang sudah selesai di-refund.
+                  // Termasuk yang sedang diproses dan yang sudah selesai.
                   filteredList = orders
                       .where((p) => p.isRefundRequired || p.isRefunded)
                       .toList();
@@ -296,7 +296,7 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
         ),
         child: Column(
           children: [
-            // Bagian Atas
+            // Bagian atas kartu
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -317,8 +317,8 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Wrap (bukan Row) supaya dua badge turun baris, bukan
-                        // meluber, di layar sempit.
+                        // Wrap, bukan Row, supaya dua badge turun baris
+                        // dan tidak meluber di layar sempit.
                         SizedBox(
                           width: double.infinity,
                           child: Wrap(
@@ -375,8 +375,7 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        // Tanggal + waktu pembelian: supaya tiket satu sama lain
-                        // tidak membingungkan.
+                        // Tanggal pembelian, supaya tiket tidak tertukar.
                         Row(
                           children: [
                             const Icon(
@@ -405,7 +404,7 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
               ),
             ),
 
-            // Garis Tiket Berlubang (Divider Estetik)
+            // Garis putus-putus ala tiket.
             Row(
               children: [
                 Container(
@@ -450,7 +449,7 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
               ],
             ),
 
-            // Bagian Bawah
+            // Bagian bawah kartu
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Row(
@@ -517,7 +516,7 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
 
 }
 
-// Dialog BottomSheet Detail Tiket & QR Code / Payment Action
+// Bottom sheet detail tiket, QR, dan aksi pembayaran.
 class _DialogDetailTiket extends ConsumerWidget {
   final PesananTiketModel tiket;
 
@@ -525,8 +524,8 @@ class _DialogDetailTiket extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Real-time: pantau perubahan status tiket dari Firestore. Begitu admin
-    // scan QR di gate, status berubah (TERPAKAI) & tampilan ini ikut update.
+    // Status tiket dipantau real-time. Begitu admin memindai QR di gate,
+    // status berubah jadi TERPAKAI dan tampilan ini ikut berubah.
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection(AppConstants.collectionOrders)
@@ -541,9 +540,8 @@ class _DialogDetailTiket extends ConsumerWidget {
     );
   }
 
-  /// Buka wizard pembayaran 3 langkah (Metode -> Bayar -> Konfirmasi) untuk
-  /// pesanan yang SUDAH ada. Tidak membuat pesanan baru: wizard dijalankan
-  /// dalam mode "lanjutkan" sehingga stok hanya dikunci sekali.
+  // Buka wizard pembayaran untuk pesanan yang sudah ada. Tidak membuat
+  // pesanan baru, jadi stok hanya dikunci sekali.
   Future<void> _lanjutkanPembayaran(
       BuildContext context, WidgetRef ref, PesananTiketModel tiket) async {
     final nav = Navigator.of(context);
@@ -605,8 +603,8 @@ class _DialogDetailTiket extends ConsumerWidget {
     }
   }
 
-  /// Hitungan waktu baru saja menyentuh nol → minta server menyapu pesanan
-  /// ini supaya statusnya ikut jadi EXPIRED, lalu segarkan daftar tiket.
+  // Hitungan waktu menyentuh nol: minta server menyapu pesanan ini supaya
+  // statusnya jadi EXPIRED, lalu segarkan daftar tiket.
   Future<void> _sinkronkanKedaluwarsa(
       WidgetRef ref, PesananTiketModel tiket) async {
     try {
@@ -617,8 +615,8 @@ class _DialogDetailTiket extends ConsumerWidget {
     ref.invalidate(userOrdersProvider(tiket.userId));
   }
 
-  /// Reservasi sudah kedaluwarsa (5 menit lewat, stok sudah dilepas) →
-  /// user diantar kembali ke halaman konser untuk memilih tiket lagi.
+  // Reservasi kedaluwarsa: user diantar kembali ke halaman konser untuk
+  // memilih tiket lagi.
   Future<void> _pesanUlang(
       BuildContext context, WidgetRef ref, PesananTiketModel tiket) async {
     final nav = Navigator.of(context);
@@ -669,7 +667,7 @@ class _DialogDetailTiket extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle Bar
+            // Gagang sheet
             Container(
               width: 40,
               height: 4,
@@ -700,12 +698,10 @@ class _DialogDetailTiket extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
 
-            // Badge ganda + catatan penolakan refund.
-            //
-            // Dibaca dari dokumen ORDER (tiket.refundDitolak), BUKAN query ke
-            // koleksi `refunds`: aturan Firestore menolak query tanpa filter
-            // `userId` ("rules are not filters — all or nothing"), jadi versi
-            // lama tidak pernah tampil walau datanya ada di database.
+            // Badge ganda dan catatan penolakan refund. Dibaca dari dokumen
+            // ORDER, bukan query ke koleksi refunds: aturan Firestore menolak
+            // query tanpa filter userId ("rules are not filters"), jadi versi
+            // lama tidak pernah tampil walau datanya ada.
             if (tiket.refundDitolak) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -764,7 +760,7 @@ class _DialogDetailTiket extends ConsumerWidget {
             ],
 
             if (tiket.isAktif || tiket.isTerpakai) ...[
-              // Banner sukses bila tiket sudah dipakai di gate
+              // Banner bila tiket sudah dipakai di gate.
               if (tiket.isTerpakai) ...[
                 Container(
                   width: double.infinity,
@@ -808,7 +804,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
               ],
-              // Box QR Code (di-stempel bila sudah dipakai)
+              // Kotak QR, diberi cap bila tiket sudah dipakai.
               Stack(
                 alignment: Alignment.center,
                 children: [
@@ -913,7 +909,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                 ),
               ),
             ] else if (tiket.isRefundRequired) ...[
-              // Refund Required Notice (pembayaran masuk setelah reservasi kedaluwarsa)
+              // Pembayaran masuk setelah reservasi kedaluwarsa.
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -946,7 +942,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                 ),
               ),
             ] else if (tiket.isRefunded) ...[
-              // Refund sudah disetujui (final): tiket tidak berlaku lagi.
+              // Refund disetujui: tiket tidak berlaku lagi.
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -988,7 +984,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                 onKedaluwarsa: () => _sinkronkanKedaluwarsa(ref, tiket),
               ),
             ] else ...[
-              // Terpakai / Expired / Batal Box
+              // Kotak status terpakai, kedaluwarsa, atau batal.
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -1028,7 +1024,7 @@ class _DialogDetailTiket extends ConsumerWidget {
 
             const SizedBox(height: 16),
 
-            // Kode Booking
+            // Kode booking
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
@@ -1066,7 +1062,7 @@ class _DialogDetailTiket extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
 
-            // Detail List
+            // Rincian
             _buildBarisDetail('Kategori', tiket.kategoriTiket),
             _buildBarisDetail('Jumlah', '${tiket.jumlahTiket} Orang'),
             _buildBarisDetail('Atas Nama', tiket.namaPembeli),
@@ -1090,7 +1086,7 @@ class _DialogDetailTiket extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // Tombol Invoice & Refund
+            // Tombol invoice dan refund
             if (tiket.isAktif || tiket.isTerpakai) ...[
               Row(
                 children: [
@@ -1172,7 +1168,7 @@ class _DialogDetailTiket extends ConsumerWidget {
   }
 
   Future<void> _mintaRefund(BuildContext context, WidgetRef ref, PesananTiketModel tiket) async {
-    // Cek: konser harus > 3 hari lagi
+    // Refund paling lambat 3 hari sebelum konser.
     if (tiket.tanggalKonser.difference(DateTime.now()).inDays < 3) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1225,7 +1221,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                 width: double.infinity,
                 child: Row(
                   children: [
-                    // ── Batal (MERAH) ──
+                    // Batal
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(ctx),
@@ -1243,7 +1239,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // ── Kirim (HIJAU) ──
+                    // Kirim
                     Expanded(
                       child: ElevatedButton(
                         onPressed: selected != null ? () => Navigator.pop(ctx, selected) : null,
@@ -1299,8 +1295,8 @@ class _DialogDetailTiket extends ConsumerWidget {
   }
 }
 
-/// Tanggal + waktu pembelian (jam lokal HP): "16 Okt 2026 · 16:42".
-/// Tanpa paket `intl` supaya tidak butuh inisialisasi locale.
+/// Purchase date and time in device local time: "16 Okt 2026 · 16:42".
+/// No intl package, so no locale initialization is needed.
 String _formatTanggalWaktu(DateTime t) {
   const bulan = [
     'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
@@ -1313,8 +1309,8 @@ String _formatTanggalWaktu(DateTime t) {
       '${bulan[lokal.month - 1]} ${lokal.year} · $jam:$menit';
 }
 
-/// Satu badge status; bila refund terakhir DITOLAK, tambahkan badge merah
-/// "REFUND GAGAL" di sebelah kirinya (bersebelahan kiri-kanan).
+/// One status badge. When the last refund was rejected, a red REFUND GAGAL
+/// badge sits to its left.
 Widget _buildBadgeGanda(PesananTiketModel item, {VoidCallback? onHabis}) {
   // Masih punya waktu bayar → satu pill dengan hitungan waktu yang berdetak,
   // supaya sisa waktunya kelihatan langsung dari daftar tiket.
@@ -1334,7 +1330,7 @@ Widget _buildBadgeGanda(PesananTiketModel item, {VoidCallback? onHabis}) {
   );
 }
 
-/// Pill "MENUNGGU · 02:47" — angkanya berdetak sendiri tiap detik.
+/// "MENUNGGU · 02:47" pill whose number ticks every second.
 Widget _buildBadgeMenunggu(PesananTiketModel item, {VoidCallback? onHabis}) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

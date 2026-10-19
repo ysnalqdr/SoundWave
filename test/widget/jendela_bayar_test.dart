@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// PENJAGA SUMBER — JENDELA BAYAR 5 MENIT & PEMBUKUAN STOK SEKALI
-// ═══════════════════════════════════════════════════════════════════
+// Penjaga sumber: jendela bayar 5 menit dan pembukuan stok sekali
 // Mengunci janji ke pengguna:
 //   1. Jendela pembayaran 5 menit, satu angka (AppConstants + backend).
 //   2. Tiket pending menampilkan hitungan waktu yang berdetak.
@@ -9,7 +7,6 @@
 //   4. Pesanan yang sudah EXPIRED tetap terlihat di filter PENDING.
 //   5. Stok dipotong SEKALI saat reservasi, dilepas SEKALI saat
 //      kedaluwarsa/gagal — tidak pernah dobel.
-// ═══════════════════════════════════════════════════════════════════
 
 import 'dart:io';
 

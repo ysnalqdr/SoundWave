@@ -1,10 +1,8 @@
-// ═══════════════════════════════════════════════════════════════════
-// TEST PENJAGA KABEL — push notification FCM
-// ═══════════════════════════════════════════════════════════════════
-// Push FCM TIDAK bisa diuji lewat `flutter test` (butuh HP + build APK).
-// Yang BISA dan HARUS dikunci adalah RANTAI KABELNYA — persis inilah yang
-// dulu putus: NotificationService sudah lengkap 159 baris tapi tidak pernah
-// dipanggil dari mana pun, sehingga tidak ada HP yang punya token.
+// Test penjaga kabel: rantai push notification FCM
+// Push FCM tidak bisa diuji lewat flutter test, karena butuh HP dan APK.
+// Yang dikunci adalah rantai sambungannya, dan persis itulah yang dulu
+// putus: NotificationService sudah lengkap tapi tidak pernah
+// dipanggil, sehingga tidak ada HP yang punya token.
 //
 // Test ini membaca source code dan memastikan setiap sambungan masih ada.
 // Kalau ada yang menghapus satu sambungan, test GAGAL — bukan diam-diam
@@ -14,7 +12,6 @@
 // (JS). Kalau salah satu berubah sendirian, notifikasi push akan jatuh ke
 // channel bawaan Android (tanpa prioritas tinggi) tanpa error apa pun —
 // jenis bug yang tidak kelihatan sampai ada yang sadar HP-nya tidak bergetar.
-// ═══════════════════════════════════════════════════════════════════
 
 import 'dart:io';
 

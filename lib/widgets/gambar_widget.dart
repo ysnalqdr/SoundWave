@@ -19,10 +19,10 @@ class GambarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    //! Kosong → Lari Ke Placeholder
+    // Tanpa sumber gambar: pakai placeholder.
     if (url.isEmpty) return _placeholder();
 
-    //! Kalo Dari Assets Lokal
+    // Sumber dari aset lokal.
     if (url.startsWith('assets/')) {
       return Image.asset(
         url,
@@ -33,7 +33,7 @@ class GambarWidget extends StatelessWidget {
       );
     }
 
-    //! Kalo Dari Url
+    // Sumber dari URL.
     return Image.network(
       url,
       width: width,

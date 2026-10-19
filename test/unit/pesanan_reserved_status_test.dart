@@ -1,11 +1,8 @@
-// ═══════════════════════════════════════════════════════════════════
-// STATUS RESERVED = MENUNGGU BAYAR (bukan status asing)
-// ═══════════════════════════════════════════════════════════════════
+// Status RESERVED berarti menunggu bayar, bukan status asing
 // Pesanan yang sudah masuk wizard pembayaran disimpan sebagai RESERVED
 // (stok sudah dipotong). Sebelum ini aplikasi tidak mengenal status itu,
 // sehingga tiketnya hilang dari tab PENDING dan tidak punya hitungan waktu.
 // Test ini mengunci pemetaannya.
-// ═══════════════════════════════════════════════════════════════════
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/constants/app_constants.dart';

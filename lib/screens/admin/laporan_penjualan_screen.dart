@@ -54,14 +54,12 @@ class LaporanPenjualanScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Statistik Cards Grid
             ordersAsync.when(
               data: (orders) {
                 double totalPendapatan = 0;
                 int totalTerjual = 0;
 
                 for (var o in orders) {
-                  // Hitung order berbayar/aktif/digunakan
                   if (o.isAktif || o.isTerpakai) {
                     totalPendapatan += o.totalHarga;
                     totalTerjual += o.jumlahTiket;
@@ -140,7 +138,6 @@ class LaporanPenjualanScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // Keterisian per Konser
             Text(
               'RINGKASAN TIKET PER KONSER',
               style: GoogleFonts.rajdhani(
@@ -232,7 +229,6 @@ class LaporanPenjualanScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // Riwayat Pesanan
             Text(
               'RIWAYAT TRANSAKSI TERAKHIR',
               style: GoogleFonts.rajdhani(

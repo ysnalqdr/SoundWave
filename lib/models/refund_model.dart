@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Model permintaan refund tiket.
-/// Disimpan di koleksi Firestore `refunds`.
+/// Permintaan refund tiket, disimpan di koleksi `refunds`.
 class RefundModel {
   final String id;
   final String orderId;
@@ -43,13 +42,13 @@ class RefundModel {
       alasan: map['alasan'] ?? '',
       status: (map['status'] ?? 'PENDING').toString().toUpperCase(),
       alasanReject: map['alasanReject'],
-      // Backend menulis `createdAt`; dukung juga `tanggalRequest`.
+      // Backend menulis `createdAt`, tapi dokumen lama memakai `tanggalRequest`.
       tanggalRequest: _parseDateTime(map['tanggalRequest']) ??
           _parseDateTime(map['createdAt']) ??
           DateTime.now(),
       tanggalProses: _parseDateTime(map['tanggalProses']) ??
           _parseDateTime(map['updatedAt']),
-      // Backend menulis `amount`; dukung juga `refundAmount`.
+      // Backend menulis `amount`, tapi dokumen lama memakai `refundAmount`.
       refundAmount: (map['refundAmount'] as num?)?.toDouble() ??
           (map['amount'] as num?)?.toDouble(),
       kodeBooking: map['kodeBooking'] ?? '',

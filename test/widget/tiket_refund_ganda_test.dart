@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// PENJAGA SUMBER — catatan penolakan refund, badge ganda, tanggal beli
-// ═══════════════════════════════════════════════════════════════════
+// Penjaga sumber: catatan penolakan refund, badge ganda, tanggal beli
 // Mengunci tiga hal yang pernah salah di layar "Tiket Saya":
 //   1. catatan penolakan refund TIDAK muncul (query `refunds` tanpa filter
 //      `userId` → ditolak aturan Firestore → ditelan `catch` → null);
@@ -8,7 +6,6 @@
 //      berdampingan kiri-kanan: [REFUND GAGAL] [AKTIF];
 //   3. tidak ada tanggal + waktu pembelian di tiket.
 // Test ini membaca sumber dan gagal kalau salah satunya balik lagi.
-// ═══════════════════════════════════════════════════════════════════
 
 import 'dart:io';
 

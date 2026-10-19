@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// HITUNGAN WAKTU YANG BERDETAK (widget)
-// ═══════════════════════════════════════════════════════════════════
+// Hitungan waktu yang berdetak, widget
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/widgets/hitung_mundur_teks.dart';

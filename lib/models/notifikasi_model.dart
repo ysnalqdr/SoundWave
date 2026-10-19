@@ -2,12 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Notifikasi in-app milik seorang user.
 ///
-/// Ditulis OTOMATIS oleh backend (`server.js` → `kirimNotifikasi`) setiap ada
-/// kejadian penting — pembayaran berhasil, pembayaran batal, refund diajukan /
-/// disetujui / ditolak. Tidak ada yang perlu diketik manual.
-/// User membacanya di layar Jelajah → ikon lonceng.
-///
-/// Disimpan di koleksi global `notifications/{notifId}`, difilter `userId`.
+/// Ditulis backend setiap ada kejadian penting (pembayaran, refund), jadi
+/// tidak ada yang diketik manual. Disimpan di koleksi `notifications/{id}`
+/// dan difilter per `userId`.
 class NotifikasiModel {
   final String id;
   final String userId;

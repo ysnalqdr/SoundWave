@@ -23,7 +23,12 @@ const snap = new midtransClient.Snap({
   clientKey: clientKey,
 });
 
-const activeKeyId = process.env.ED25519_KEY_ID || 'v1';
+const activeKeyId = process.env.ED25519_KEY_ID;
+if (!activeKeyId) {
+  throw new Error(
+    '[FATAL] ED25519_KEY_ID belum diisi. Kunci tanda tangan QR tidak boleh punya nilai bawaan di dalam repo.',
+  );
+}
 
 /**
  * Returns Ed25519 private key for signing.
@@ -32,13 +37,9 @@ const activeKeyId = process.env.ED25519_KEY_ID || 'v1';
 function getSigningKey() {
   const hex = process.env.ED25519_PRIVATE_KEY_HEX;
   if (!hex) {
-    if (isProduction || process.env.NODE_ENV === 'production') {
-      throw new Error('[FATAL SECURITY EXCEPTION] ED25519_PRIVATE_KEY_HEX missing in production environment.');
-    }
-    // Development sandbox key (never deployed to production)
-    return Buffer.from(
-      '302e020100300506032b657004220420c699893e2338a0bd8c4aef14d17c700209775bd14198d80dad1ce1c896f9eb31',
-      'hex'
+    throw new Error(
+      '[FATAL SECURITY EXCEPTION] ED25519_PRIVATE_KEY_HEX belum diisi. ' +
+        'Isi lewat Secret Manager atau .env. Kunci privat tidak boleh ada di repo.',
     );
   }
   return Buffer.from(hex, 'hex');
@@ -51,7 +52,6 @@ function getSigningKey() {
  * requests Snap token from Midtrans, and updates order with snapToken and paymentUrl.
  */
 exports.createSnapToken = functions.https.onCall(async (data, context) => {
-  // Authentication check
   if (!context.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated',
@@ -79,7 +79,7 @@ exports.createSnapToken = functions.https.onCall(async (data, context) => {
 
   const orderData = orderDoc.data();
 
-  // Authorization: Only the owner can request payment
+  // Hanya pemilik pesanan yang boleh meminta token pembayaran.
   if (orderData.userId !== context.auth.uid) {
     throw new functions.https.HttpsError(
       'permission-denied',
@@ -87,7 +87,7 @@ exports.createSnapToken = functions.https.onCall(async (data, context) => {
     );
   }
 
-  // State validation: only PENDING orders can receive snap tokens
+  // Hanya pesanan PENDING yang boleh menerima Snap token.
   if (orderData.status !== 'PENDING') {
     throw new functions.https.HttpsError(
       'failed-precondition',
@@ -123,7 +123,7 @@ exports.createSnapToken = functions.https.onCall(async (data, context) => {
     ? (authoritativePrice * orderData.jumlahTiket) + serviceFee
     : Math.round(orderData.totalHarga);
 
-  // Security guard against client price tampering:
+  // Harga dari klien ditimpa harga database.
   if (Math.round(orderData.totalHarga) !== authoritativeTotal) {
     console.warn(`[SECURITY] Price mismatch detected for order ${orderId}. Expected ${authoritativeTotal}, got ${orderData.totalHarga}. Overwriting.`);
     await orderRef.update({
@@ -133,7 +133,7 @@ exports.createSnapToken = functions.https.onCall(async (data, context) => {
     orderData.totalHarga = authoritativeTotal;
   }
 
-  // If order already has a valid snapToken, reuse it
+  // Kalau sudah ada snapToken yang sah, pakai ulang.
   if (orderData.snapToken && orderData.snapRedirectUrl) {
     return {
       success: true,
@@ -143,7 +143,6 @@ exports.createSnapToken = functions.https.onCall(async (data, context) => {
     };
   }
 
-  // Create Midtrans Transaction Parameter
   const parameter = {
     transaction_details: {
       order_id: orderData.kodeBooking || orderId,
@@ -268,8 +267,8 @@ exports.paymentWebhook = functions.https.onRequest(async (req, res) => {
     targetStatus = 'PENDING';
   }
 
-  // 4. Idempotency Check:
-  // If order is already in target status or already final (AKTIF or TERPAKAI), do NOT mutate stock again
+  // Idempotency: kalau pesanan sudah di status tujuan atau sudah final,
+  // jangan ubah stok lagi.
   if (currentOrder.status === targetStatus || currentOrder.status === 'TERPAKAI') {
     console.log(`[IDEMPOTENCY] Order ${orderIdOrBookingCode} already status ${currentOrder.status}. No action.`);
     return res.status(200).json({ status: 'already_processed' });
@@ -336,13 +335,13 @@ exports.paymentWebhook = functions.https.onRequest(async (req, res) => {
         }
       }
 
-      // Generate asymmetric Ed25519 digital signature with Key Versioning
+      // Tanda tangan Ed25519 dengan versi kunci.
       const privKey = crypto.createPrivateKey({ key: getSigningKey(), format: 'der', type: 'pkcs8' });
       const canonicalPayload = `SW2|${activeKeyId}|${orderRef.id}|${freshOrderData.kodeBooking}|${freshOrderData.idKonser}|${freshOrderData.kategoriTiket}|${freshOrderData.jumlahTiket}`;
       const edSignatureHex = crypto.sign(null, Buffer.from(canonicalPayload), privKey).toString('hex');
       const signedQrPayload = `SW2|${activeKeyId}|${orderRef.id}|${freshOrderData.kodeBooking}|${freshOrderData.idKonser}|${freshOrderData.kategoriTiket}|${freshOrderData.jumlahTiket}|${edSignatureHex}`;
 
-      // Update Order Status and Audit details
+      // Simpan status dan jejak audit.
       transaction.update(orderRef, {
         status: finalStatus,
         metodePembayaran: paymentType || freshOrderData.metodePembayaran,
@@ -795,7 +794,7 @@ exports.settleOrderDev = functions.https.onCall(async (data, context) => {
       }
     }
 
-    // Generate asymmetric Ed25519 digital signature with Key Versioning
+    // Tanda tangan Ed25519 dengan versi kunci.
     const privKey = crypto.createPrivateKey({ key: getSigningKey(), format: 'der', type: 'pkcs8' });
     const canonicalPayload = `SW2|${activeKeyId}|${orderRef.id}|${orderData.kodeBooking}|${orderData.idKonser}|${orderData.kategoriTiket}|${orderData.jumlahTiket}`;
     const edSignatureHex = crypto.sign(null, Buffer.from(canonicalPayload), privKey).toString('hex');

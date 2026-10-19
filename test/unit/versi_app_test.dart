@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// VERSI APLIKASI TIDAK BOLEH MELENCENG
-// ═══════════════════════════════════════════════════════════════════
+// Versi aplikasi tidak boleh melenceng
 // Footer admin sempat menulis "SoundWave V2.3 (Secure)" padahal APK-nya
 // 2.4.6 — angka versi dipatok manual sementara pubspec naik terus. Test ini
 // membaca pubspec.yaml dan memastikan keduanya sama, jadi lupa menaikkan

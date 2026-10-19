@@ -145,7 +145,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   void _bukaSidebar() {
     final isDesktop = MediaQuery.of(context).size.width >= 960;
     if (isDesktop) {
-      // On desktop, toggle collapsed state instead of opening drawer
+      // Di desktop, sidebar diciutkan, bukan membuka drawer.
       setState(() => _sidebarCollapsed = !_sidebarCollapsed);
     } else {
       _scaffoldKey.currentState?.openDrawer();
@@ -229,12 +229,12 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       if (mounted) setState(() => _halamanAktif = 1);
     });
 
-    // Listen to real-time user profile mutations in Firestore
+    // Pantau perubahan profil user secara real-time.
     ref.listen<AsyncValue<UserModel?>>(currentUserStreamProvider, (prev, next) {
       if (next.hasValue) {
         final updatedUser = next.value;
         if (updatedUser == null || !updatedUser.isAdmin) {
-          // Admin privilege revoked!
+          // Hak admin dicabut.
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -256,7 +256,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     final isSuperAdmin = _currentUser.isSuperAdmin;
     final destinations = _getDestinations(isSuperAdmin);
 
-    // Prevent index out of bounds when role demotes and destinations shrink
+    // Cegah index out of bounds saat role turun dan menu menyusut.
     if (_halamanAktif >= destinations.length) {
       _halamanAktif = 0;
     }
@@ -268,7 +268,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     if (isDesktop) {
       final sidebarWidth = _sidebarCollapsed ? 72.0 : 260.0;
 
-      // Desktop Layout: Collapsible persistent sidebar + active content
+      // Tata letak desktop: sidebar tetap bisa diciutkan.
       return Scaffold(
         backgroundColor: AppColors.background,
         body: Row(
@@ -289,7 +289,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       );
     }
 
-    // Mobile / Tablet Layout: Adaptive Drawer with standard Scaffold
+    // Tata letak ponsel: drawer adaptif.
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
@@ -316,7 +316,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       color: AppColors.surface,
       child: Column(
         children: [
-          // Header Section
           Container(
             width: double.infinity,
             padding: collapsed
@@ -330,7 +329,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               crossAxisAlignment: collapsed ? CrossAxisAlignment.center : CrossAxisAlignment.start,
               children: [
                 if (collapsed) ...[
-                  // Collapsed: avatar only
                   Container(
                     width: 40,
                     height: 40,
@@ -348,7 +346,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     ),
                   ),
                 ] else ...[
-                  // Expanded: full header
                   Row(
                     children: [
                       Container(
@@ -443,7 +440,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             ),
           ),
 
-          // Scrollable Menu Section
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -458,7 +454,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     child: Divider(color: AppColors.divider),
                   ),
 
-                  // Mode Penonton
+                  // Mode penonton
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     child: Text(
@@ -510,7 +506,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     ),
                   ),
                 ] else ...[
-                  // Collapsed: icon-only Mode Penonton
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     child: Divider(color: AppColors.divider),
@@ -557,7 +552,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             ),
           ),
 
-          // Logout Button
           if (collapsed)
             Tooltip(
               message: 'Keluar',
@@ -605,7 +599,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               ),
             ),
 
-          // Desktop collapse/expand toggle
           if (isDesktop)
             InkWell(
               onTap: () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
@@ -666,7 +659,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           final isAktif = _halamanAktif == globalIndex;
 
           if (collapsed) {
-            // Collapsed: icon-only with tooltip
             return Tooltip(
               message: dest.label,
               child: Padding(

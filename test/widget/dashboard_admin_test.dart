@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// DASHBOARD ADMIN — cek tampil tanpa "pixels error"
-// ═══════════════════════════════════════════════════════════════════
+// Dashboard admin: cek tampil tanpa pixels error
 // Dashboard adalah layar pertama setelah login admin, jadi paling sering
 // dilihat dan paling mahal kalau meluber. Dua lebar diuji:
 //   393 dp = HP normal (sumber screenshot README)

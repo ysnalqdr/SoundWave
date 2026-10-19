@@ -21,8 +21,8 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Siapkan kanal notifikasi + izin (Android 13+). DIBUNGKUS try/catch:
-  // kegagalan notifikasi tidak boleh menggagalkan startup app.
+  // Siapkan kanal notifikasi dan izin (Android 13+). Dibungkus try/catch:
+  // kegagalan notifikasi tidak boleh menggagalkan startup.
   try {
     await NotificationService().init();
   } catch (_) {
@@ -54,8 +54,8 @@ class SoundWaveApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FcmGateway membungkus app untuk mencolokkan push notification ke siklus
-    // hidup login: saat login -> ambil & simpan token FCM ke users/{uid}.
+    // FcmGateway mencolokkan push notification ke siklus hidup login: saat
+    // login, token FCM diambil dan disimpan ke users/{uid}.
     return FcmGateway(
       navigatorKey: navigatorKey,
       child: MaterialApp(
@@ -76,4 +76,3 @@ class SoundWaveApp extends StatelessWidget {
     );
   }
 }
-

@@ -35,11 +35,9 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
     super.dispose();
   }
 
-
   List<KonserModel> _filterAndSortKonser(List<KonserModel> rawList) {
     var list = List<KonserModel>.from(rawList);
 
-    // Search query
     final query = _searchCtrl.text.trim().toLowerCase();
     if (query.isNotEmpty) {
       list = list.where((k) {
@@ -54,16 +52,14 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
       }).toList();
     }
 
-    // Genre Filter
-    // Genre filter removed - replaced with date/price/location filters
-    // Price sort
+    // Urutan harga
     if (_selectedPriceSort == 'Termurah') {
       list.sort((a, b) => a.harga.compareTo(b.harga));
     } else if (_selectedPriceSort == 'Termahal') {
       list.sort((a, b) => b.harga.compareTo(a.harga));
     }
 
-    // Kota Filter (Mendukung lokasi terstruktur dan teks legacy yang digabung)
+    // Kota filter, mendukung lokasi terstruktur dan teks lama yang digabung.
     if (_selectedKota != 'Semua Kota') {
       final targetKota = _selectedKota.toLowerCase();
       list = list.where((k) {
@@ -78,7 +74,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
       }).toList();
     }
 
-    // Tanggal Filter
+    // Filter tanggal
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
     if (_selectedDatePreset == '7 Hari Ke Depan') {
@@ -123,7 +119,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
           .toList();
     }
 
-    // Rentang Harga Filter (termurah & termahal)
+    // Rentang harga
     if (_minPrice != null && _minPrice! > 0) {
       list = list.where((k) => k.harga >= _minPrice!).toList();
     }
@@ -131,7 +127,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
       list = list.where((k) => k.harga <= _maxPrice!).toList();
     }
 
-    // Urutan tetap: konser dengan tanggal terdekat dulu.
+    // Urutan tetap: konser terdekat dulu.
     list.sort((a, b) => a.tanggal.compareTo(b.tanggal));
 
     return list;
@@ -187,7 +183,6 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // Header Bar
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -216,15 +211,14 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                         ),
                       ],
                     ),
-                    // Lonceng notifikasi + badge jumlah belum dibaca.
-                    // Isinya ditulis OTOMATIS oleh backend (bukan manual).
+                    // Lonceng notifikasi dengan badge jumlah belum dibaca.
+                    // Isinya ditulis backend, bukan manual.
                     NotifikasiBell(userId: currentUserId),
                   ],
                 ),
               ),
             ),
 
-            // Search Bar
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -249,13 +243,12 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
               ),
             ),
 
-            // 3 Filter Horizontal: Tanggal | Harga | Lokasi
+            // Tiga filter: tanggal, harga, lokasi.
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
                   children: [
-                    // Filter Tanggal
                     Expanded(
                       child: _buildFilterDropdown(
                         icon: Icons.calendar_today_outlined,
@@ -266,7 +259,6 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Filter Harga
                     Expanded(
                       child: _buildFilterDropdown(
                         icon: Icons.monetization_on_outlined,
@@ -277,7 +269,6 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Filter Lokasi
                     Expanded(
                       child: _buildFilterDropdown(
                         icon: Icons.location_on_outlined,
@@ -292,15 +283,13 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
               ),
             ),
 
-            // Kartu Promo & Diskon — scroll kanan-kiri, tap untuk klaim
+            // Kartu promo, bisa digeser dan diketuk untuk klaim.
             SliverToBoxAdapter(
               child: _PromoBannerRow(
                 currentUserId: ref.watch(authStateProvider).valueOrNull?.uid,
               ),
             ),
 
-
-            // Async Body Handler (Loading, Error, Data)
             ...eventsAsync.when(
               loading: () => [
                 const SliverFillRemaining(
@@ -355,7 +344,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                 final konserSpesial = rawEvents.take(3).toList(); // Max 3 concerts for horizontal scroll
 
                 return [
-                  // Banner Headline / Featured Hero (Hanya tampil jika tidak sedang search)
+                  // Banner utama, disembunyikan saat user mencari.
                   if (_searchCtrl.text.isEmpty &&
                       _selectedKota == 'Semua Kota' &&
                       _selectedPriceSort == 'Semua' &&
@@ -479,7 +468,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
               ),
             ),
 
-                  // Section Title: Semua Konser
+                  // Judul bagian.
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -507,7 +496,6 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                     ),
                   ),
 
-                  // List Konser atau Empty State
                   listKonser.isEmpty
                       ? SliverToBoxAdapter(
                           child: Padding(
@@ -569,7 +557,6 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        // Gambar + Favorit Button
                                         Stack(
                                           children: [
                                             ClipRRect(
@@ -642,7 +629,6 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                                           ],
                                         ),
 
-                                        // Konten Teks
                                         Padding(
                                           padding: const EdgeInsets.all(14),
                                           child: Column(
@@ -744,7 +730,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
     required List<String> items,
     required ValueChanged<String?> onChanged,
   }) {
-    // value harus selalu ada di dalam items agar DropdownButton tidak crash.
+    // Value harus ada di dalam items, kalau tidak DropdownButton crash.
     final safeValue = items.contains(value) ? value : items.first;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -763,8 +749,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
             fontSize: 11,
             fontWeight: FontWeight.w600,
           ),
-          // Tampilkan label ringkas (mis. 'Tanggal') untuk item default,
-          // sementara value tetap nilai asli yang valid.
+          // Item default tampil dengan label ringkas, value tetap nilai asli.
           selectedItemBuilder: (context) => items
               .map((item) => Align(
                     alignment: Alignment.centerLeft,
@@ -788,12 +773,11 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
 
 }
 
-/// ─────────────────────────────────────────────────────────────
-/// Kartu promo/diskon horizontal yang bisa DIKLAIM user.
-/// Sumber: koleksi `promo_codes` (aktif). Hasil klaim disimpan di
-/// `users/{uid}/claimed_promos` dan tampil di Akun → "Diskon Saya",
-/// lalu bisa dipakai sebagai potongan harga saat checkout.
-/// ─────────────────────────────────────────────────────────────
+/// Kartu promo horizontal yang bisa diklaim user.
+///
+/// Sumbernya koleksi `promo_codes`. Hasil klaim disimpan di
+/// `users/{uid}/claimed_promos`, tampil di Akun, dan dipakai sebagai
+/// potongan harga saat checkout.
 class _PromoBannerRow extends ConsumerStatefulWidget {
   final String? currentUserId;
   const _PromoBannerRow({required this.currentUserId});

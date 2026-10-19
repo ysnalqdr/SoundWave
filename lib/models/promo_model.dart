@@ -49,9 +49,8 @@ class PromoCodeModel {
     );
   }
 
-  /// Defensive parse tanggal: menerima Timestamp, DateTime, int (epoch ms),
-  /// atau String (ISO-8601 / epoch). Mencegah crash
-  /// `type 'String' is not a subtype of type 'Timestamp?'`.
+  /// Defensive parse tanggal: Timestamp, DateTime, int (epoch ms), atau
+  /// String ISO-8601. Mencegah crash "type 'String' is not a subtype".
   static DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
     if (value is Timestamp) return value.toDate();
@@ -85,10 +84,9 @@ class PromoCodeModel {
     };
   }
 
-  /// Hitung nominal diskon berdasarkan tipe & subtotal.
-  /// - percentage: subtotal * (nilai / 100)
-  /// - fixed: nilai (tidak melebihi subtotal)
-  /// Mengembalikan 0 jika subtotal < minPembelian.
+  /// Nominal diskon untuk subtotal tertentu. Percentage memakai persen,
+  /// fixed memakai nilai tetap, dan hasilnya 0 bila subtotal di bawah
+  /// minPembelian.
   double discountAmount(double subtotal) {
     if (subtotal < minPembelian) return 0;
     if (tipe == 'percentage') {

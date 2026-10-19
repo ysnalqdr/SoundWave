@@ -1,5 +1,4 @@
 class AppConstants {
-  // App
   static const String appName = 'SoundWave';
   static const String tagline = 'Feel the Pulse of Live Music';
   static const String appVersion = '2.4.7';
@@ -9,19 +8,18 @@ class AppConstants {
   static const String appVersionLabelSecure =
       '$appName V$appVersion (Secure)';
 
-  // User Roles
   static const String roleSuperAdmin = 'super_admin';
   static const String roleAdmin = 'admin';
   static const String roleUser = 'user';
 
-  // Super Admin identity (no password in client — bootstrap via Console / dart-define)
+  // Super admin dibuat lewat Console atau dart-define. Tidak ada sandi di client.
   static const String superAdminEmail = String.fromEnvironment(
     'SUPER_ADMIN_EMAIL',
     defaultValue: 'admin@soundwave.id',
   );
   static const String superAdminName = 'Super Admin';
 
-  // Midtrans — client key only from dart-define; server key lives in Cloud Functions
+  // Midtrans: client key dari dart-define. Server key hanya ada di backend.
   static const String midtransClientKey = String.fromEnvironment(
     'MIDTRANS_CLIENT_KEY',
     defaultValue: '',
@@ -34,7 +32,7 @@ class AppConstants {
       ? 'https://app.midtrans.com/snap/snap.js'
       : 'https://app.sandbox.midtrans.com/snap/snap.js';
 
-  // Firestore Collections
+  // Koleksi Firestore
   static const String collectionUsers = 'users';
   static const String collectionEvents = 'events';
   static const String collectionTickets = 'tickets';
@@ -43,7 +41,7 @@ class AppConstants {
   static const String collectionReviews = 'reviews';
   static const String collectionNotifications = 'notifications';
 
-  // Order Status
+  // Status pesanan
   static const String orderStatusPending = 'PENDING';
   static const String orderStatusPaid = 'PAID';
   static const String orderStatusActive = 'AKTIF';
@@ -66,13 +64,13 @@ class AppConstants {
   static const int maxActiveReservationsPerUser = 3;
   static const int maxTicketsPerOrder = 4;
 
-  // Event Status
+  // Status konser
   static const String eventStatusUpcoming = 'upcoming';
   static const String eventStatusOngoing = 'ongoing';
   static const String eventStatusCompleted = 'completed';
   static const String eventStatusCancelled = 'cancelled';
 
-  // Payment Methods
+  // Metode pembayaran
   static const List<String> paymentMethods = [
     'QRIS Instan',
     'Transfer Bank (BCA)',
@@ -84,7 +82,7 @@ class AppConstants {
     'DANA',
   ];
 
-  // Genres
+  // Genre
   static const List<String> genres = [
     'Pop',
     'Rock',
@@ -120,7 +118,7 @@ class AppConstants {
     return i == -1 ? ticketCategories.length : i;
   }
 
-  // Kota
+  // Daftar kota
   static const List<String> cities = [
     'Jakarta',
     'Bandung',

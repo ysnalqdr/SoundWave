@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// UNIT TEST — catatan penolakan refund dibaca dari dokumen ORDER
-// ═══════════════════════════════════════════════════════════════════
+// Unit test: catatan penolakan refund dibaca dari dokumen ORDER
 // Latar belakang: admin menolak refund (order.refundStatus='REJECTED',
 // order.refundRejectReason='Sorry') tetapi detail tiket user tidak
 // menampilkan apa pun. Sebabnya app mengambil catatan itu lewat query ke
@@ -12,7 +10,6 @@
 // Perbaikannya: baca langsung dari dokumen ORDER, yang sudah mengalir
 // real-time ke daftar tiket (tanpa query tambahan, tanpa risiko aturan).
 // Test ini mengunci pemetaan field-nya supaya tidak hilang lagi.
-// ═══════════════════════════════════════════════════════════════════
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';

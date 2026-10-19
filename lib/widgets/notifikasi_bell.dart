@@ -5,13 +5,10 @@ import '../models/notifikasi_model.dart';
 import '../providers/app_providers.dart';
 import '../utils/app_theme.dart';
 
-/// ─────────────────────────────────────────────────────────────
-/// Ikon lonceng di layar Jelajah + badge jumlah notifikasi belum dibaca.
+/// Ikon lonceng di layar Jelajah, lengkap dengan jumlah belum dibaca.
 ///
-/// Notifikasi ditulis OTOMATIS oleh backend (`server.js` → `kirimNotifikasi`)
-/// saat pembayaran berhasil/batal dan refund diajukan/disetujui/ditolak —
-/// admin maupun user tidak perlu mengetik apa pun.
-/// ─────────────────────────────────────────────────────────────
+/// Notifikasi ditulis backend saat status pembayaran atau refund berubah,
+/// jadi admin maupun user tidak perlu mengetik apa pun.
 class NotifikasiBell extends ConsumerWidget {
   final String? userId;
 
@@ -74,7 +71,7 @@ class NotifikasiBell extends ConsumerWidget {
   }
 }
 
-/// Buka bottom sheet daftar notifikasi.
+/// Opens the notification sheet.
 Future<void> tampilkanNotifikasi(BuildContext context, String userId) {
   return showModalBottomSheet<void>(
     context: context,
@@ -87,7 +84,7 @@ Future<void> tampilkanNotifikasi(BuildContext context, String userId) {
   );
 }
 
-/// Isi bottom sheet: daftar notifikasi + aksi "tandai semua dibaca".
+/// Notification list with a "mark all as read" action.
 class NotifikasiSheet extends ConsumerWidget {
   final String userId;
 
@@ -213,15 +210,14 @@ class NotifikasiSheet extends ConsumerWidget {
   }
 }
 
-/// Satu kartu notifikasi. Bisa di-tap untuk menandai sudah dibaca —
-/// TIDAK memindahkan halaman: panel notifikasi tetap terbuka.
+/// One notification card. Tapping it marks the card as read.
 class KartuNotifikasi extends ConsumerWidget {
   final NotifikasiModel notif;
   final String userId;
 
   const KartuNotifikasi({super.key, required this.notif, required this.userId});
 
-  /// Warna + ikon sesuai jenis notifikasi.
+  // Warna dan ikon sesuai jenis notifikasi.
   (Color, IconData) get gaya {
     switch (notif.type) {
       case 'payment_success':
@@ -241,12 +237,11 @@ class KartuNotifikasi extends ConsumerWidget {
     }
   }
 
-  /// Menandai notifikasi ini sudah dibaca.
-  ///
-  /// SENGAJA tidak memindahkan halaman: kartu notifikasi hanya informasi, dan
-  /// panel tetap terbuka supaya user bisa lanjut membaca yang lain. Sebelumnya
-  /// setiap tap menutup panel lalu melempar ke halaman Tiket Saya — padahal
-  /// notifikasi refund tidak ada hubungannya dengan daftar tiket.
+  // Tandai notifikasi ini sudah dibaca.
+  //
+  // Panel sengaja tetap terbuka. Dulu tap menutup panel lalu melempar ke
+  // halaman Tiket Saya, padahal notifikasi refund tidak berhubungan dengan
+  // daftar tiket.
   Future<void> _tandaiDibaca(WidgetRef ref) async {
     if (!notif.belumDibaca) return;
     await ref.read(databaseServiceProvider).tandaiNotifikasiDibaca(notif.id);

@@ -8,10 +8,9 @@ import '../../utils/app_theme.dart';
 import '../../models/user_model.dart';
 
 /// Dashboard analitik pendapatan.
-/// Semua data diagregasi di client side dari Firestore:
-/// - orders (status == AKTIF) untuk revenue
-/// - events (views) untuk funnel
-/// Menggunakan fl_chart untuk Line / Bar / Pie chart.
+///
+/// Semua angka diagregasi di client dari data yang sudah streaming: orders
+/// untuk revenue, events untuk funnel. Grafik memakai fl_chart.
 class LaporanRevenueScreen extends ConsumerStatefulWidget {
   final UserModel user;
   final VoidCallback? onBukaSidebar;
@@ -102,7 +101,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
         }
       }
 
-      // 7 hari terakhir
+      // Tujuh hari terakhir.
       final spots = <FlSpot>[];
       final labels = <String>[];
       for (int i = 6; i >= 0; i--) {
@@ -116,7 +115,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
         labels.add(day.day.toString().padLeft(2, '0'));
       }
 
-      // Top 5 konser by revenue
+      // Lima konser dengan pendapatan terbesar.
       final konserRev = <String, double>{};
       for (final o in aktifOrders) {
         konserRev[o.judulKonser] =
@@ -126,7 +125,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
         ..sort((a, b) => b.value.compareTo(a.value));
       final top5 = sortedKonser.take(5).toList();
 
-      // Distribusi metode pembayaran
+      // Distribusi metode pembayaran.
       final metodeCount = <String, int>{};
       for (final o in aktifOrders) {
         final m = (o.metodePembayaran ?? 'Lainnya').isNotEmpty
@@ -137,7 +136,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
       final sortedMetode = metodeCount.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
 
-      // Funnel: views (events), checkout (all orders), paid (AKTIF)
+      // Funnel: dilihat, checkout, lunas.
       int totalViews = 0;
       for (final d in eventsSnap.docs) {
         totalViews += (d.data()['views'] as num?)?.toInt() ?? 0;

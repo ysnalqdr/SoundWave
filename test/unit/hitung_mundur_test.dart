@@ -1,9 +1,6 @@
-// ═══════════════════════════════════════════════════════════════════
-// HITUNGAN WAKTU PEMBAYARAN (3 MENIT)
-// ═══════════════════════════════════════════════════════════════════
+// Hitungan waktu pembayaran
 // Mengunci: satu format waktu ("02:47"), sisa waktu tidak pernah negatif,
 // dan angka jendela pembayaran hanya ada di satu tempat (AppConstants).
-// ═══════════════════════════════════════════════════════════════════
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/constants/app_constants.dart';

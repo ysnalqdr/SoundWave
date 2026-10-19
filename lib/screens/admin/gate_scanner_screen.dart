@@ -63,7 +63,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
       final code = barcode.rawValue?.trim();
       if (code == null || code.isEmpty) continue;
 
-      // Debounce: ignore same code scanned within 2.5 seconds
+      // Abaikan kode yang sama dalam 2,5 detik.
       if (_lastScannedCode == code &&
           _lastScanTime != null &&
           now.difference(_lastScanTime!).inMilliseconds < 2500) {
@@ -73,7 +73,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
       _lastScannedCode = code;
       _lastScanTime = now;
 
-      // Haptic on detection
+      // Getar saat kode terdeteksi.
       HapticFeedback.selectionClick();
       _prosesValidasi(code);
       break;
@@ -99,7 +99,6 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
       final pesan = (hasil['message'] ?? '') as String;
       final tiket = hasil['order'] as PesananTiketModel?;
 
-      // Tactile Haptic Feedback
       if (isSuccess) {
         HapticFeedback.mediumImpact();
       } else {
@@ -120,7 +119,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
         };
       });
 
-      // Show bottom sheet with instant pass/fail verdict
+      // Tampilkan hasil pindai seketika.
       _showResultBottomSheet();
     } catch (e) {
       if (!mounted) return;
@@ -364,7 +363,6 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
   Widget _buildCameraView() {
     return Stack(
       children: [
-        // Camera Viewport
         Positioned.fill(
           child: MobileScanner(
             controller: _scannerController,
@@ -404,14 +402,12 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
           ),
         ),
 
-        // Dark viewfinder overlay with targeting corners
         Positioned.fill(
           child: CustomPaint(
             painter: _ScannerOverlayPainter(),
           ),
         ),
 
-        // Controls bar (Top)
         Positioned(
           top: 16,
           left: 16,
@@ -468,7 +464,6 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
           ),
         ),
 
-        // Validation Progress Indicator
         if (_validating)
           Positioned.fill(
             child: Container(
@@ -516,7 +511,6 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Manual input card
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -589,7 +583,6 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
           ),
           const SizedBox(height: 24),
 
-          // Orders list
           Text(
             'DAFTAR TIKET TERKINI (FIRESTORE)',
             style: GoogleFonts.rajdhani(
@@ -720,7 +713,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
   }
 }
 
-/// Custom painter to draw viewport cutout and corner targeting brackets
+/// Draws the viewport cutout and the corner targeting brackets.
 class _ScannerOverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -729,7 +722,6 @@ class _ScannerOverlayPainter extends CustomPainter {
     final top = (size.height - scanAreaSize) / 2.2;
     final scanRect = Rect.fromLTWH(left, top, scanAreaSize, scanAreaSize);
 
-    // Dark semi-transparent background
     final backgroundPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.6)
       ..style = PaintingStyle.fill;
@@ -747,7 +739,6 @@ class _ScannerOverlayPainter extends CustomPainter {
 
     canvas.drawPath(combinedPath, backgroundPaint);
 
-    // Corner targeting lines
     final cornerPaint = Paint()
       ..color = AppColors.primary
       ..strokeWidth = 4
@@ -755,19 +746,15 @@ class _ScannerOverlayPainter extends CustomPainter {
 
     const cornerLength = 28.0;
 
-    // Top-Left
     canvas.drawLine(Offset(scanRect.left, scanRect.top + cornerLength), Offset(scanRect.left, scanRect.top), cornerPaint);
     canvas.drawLine(Offset(scanRect.left, scanRect.top), Offset(scanRect.left + cornerLength, scanRect.top), cornerPaint);
 
-    // Top-Right
     canvas.drawLine(Offset(scanRect.right - cornerLength, scanRect.top), Offset(scanRect.right, scanRect.top), cornerPaint);
     canvas.drawLine(Offset(scanRect.right, scanRect.top), Offset(scanRect.right, scanRect.top + cornerLength), cornerPaint);
 
-    // Bottom-Left
     canvas.drawLine(Offset(scanRect.left, scanRect.bottom - cornerLength), Offset(scanRect.left, scanRect.bottom), cornerPaint);
     canvas.drawLine(Offset(scanRect.left, scanRect.bottom), Offset(scanRect.left + cornerLength, scanRect.bottom), cornerPaint);
 
-    // Bottom-Right
     canvas.drawLine(Offset(scanRect.right - cornerLength, scanRect.bottom), Offset(scanRect.right, scanRect.bottom), cornerPaint);
     canvas.drawLine(Offset(scanRect.right, scanRect.bottom), Offset(scanRect.right, scanRect.bottom - cornerLength), cornerPaint);
   }

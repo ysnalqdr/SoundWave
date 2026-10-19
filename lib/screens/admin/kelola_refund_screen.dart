@@ -10,12 +10,11 @@ import '../../services/midtrans_service.dart';
 import '../../utils/app_theme.dart';
 import '../../models/user_model.dart';
 
-/// Admin screen untuk mengelola permintaan refund.
-/// Stream dari koleksi Firestore `refunds` (orderBy tanggalRequest desc).
-/// Approve/Reject memanggil endpoint backend (`/admin/refund/approve` &
-/// `/admin/refund/reject`). Backend adalah SATU-SATUNYA sumber kebenaran:
-/// ia mengubah `refunds.status`, `orders.status`, dan stok tiket sekaligus.
-/// Pengembalian uang dilakukan MANUAL oleh admin (tidak lewat Midtrans).
+/// Admin screen for managing refund requests, streamed from `refunds`.
+///
+/// Approve and reject call the backend, the only source of truth: it
+/// updates refunds, orders, and ticket stock at once. Money is returned
+/// manually by the admin, never through Midtrans.
 class KelolaRefundScreen extends ConsumerStatefulWidget {
   final UserModel user;
   final VoidCallback? onBukaSidebar;
@@ -53,12 +52,10 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
     return '${t.day.toString().padLeft(2, '0')}/${t.month.toString().padLeft(2, '0')}/${t.year} ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
-  /// Approve refund lewat BACKEND (satu-satunya sumber kebenaran).
+  /// Approves a refund through the backend.
   ///
-  /// Backend yang mengubah `refunds.status = APPROVED`,
-  /// `orders.status = REFUNDED`, dan memulihkan stok tiket (bila tiket belum
-  /// pernah discan). Pengembalian uang dilakukan MANUAL oleh admin
-  /// (tidak lewat Midtrans).
+  /// The backend sets refunds.status and orders.status and restores ticket
+  /// stock when the ticket was never scanned. Money is returned manually.
   Future<void> _approveRefund(RefundModel refund) async {
     if (_processing) return;
     setState(() => _processing = true);
@@ -97,8 +94,7 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
     }
   }
 
-  /// Reject refund: tampilkan dialog input alasan, lalu panggil endpoint
-  /// backend refund dan update Firestore dengan status REJECTED.
+  /// Asks for a reason, then rejects the refund through the backend.
   Future<void> _rejectRefund(RefundModel refund) async {
     if (_processing) return;
     _alasanCtrl.clear();

@@ -25,7 +25,6 @@ class DatabaseService {
   String buatKodeBooking() =>
       'SW-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
-  // ===== EVENTS =====
 
   Stream<List<KonserModel>> getAllEvents() {
     return _firestore
@@ -105,7 +104,6 @@ class DatabaseService {
     } catch (_) {}
   }
 
-  // ===== TICKETS =====
 
   Stream<List<TiketKonserModel>> getTicketsByEvent(String eventId) {
     return _firestore
@@ -116,7 +114,7 @@ class DatabaseService {
       final tickets = snapshot.docs
           .map((doc) => TiketKonserModel.fromMap(doc.data(), doc.id))
           .toList();
-      // VVIP -> VIP -> Festival -> Tribun -> Reguler (bukan urutan harga).
+      // Urutan kategori untuk tampilan, bukan urutan harga.
       urutkanTiket(tickets);
       return tickets;
     });
@@ -186,14 +184,11 @@ class DatabaseService {
     }
   }
 
-  // ===== ORDERS =====
 
-  /// Creates a PENDING order with 15-minute reservation window.
-  /// Enforces:
-  /// 1. Maximum 4 tickets per order.
-  /// 2. Maximum 3 active pending orders per user (prevents multiple hold abuse).
-  /// 3. Read-only stock validation (buyer cannot write to /tickets/).
-  /// 4. Actual stock decrement is deferred to Cloud Functions upon payment settlement.
+  /// Creates a PENDING order with a 15-minute reservation window.
+  ///
+  /// At most 4 tickets per order and 3 active pending orders per user.
+  /// Stock is only read here; the backend decrements it on settlement.
   Future<PesananTiketModel> createPendingOrder(PesananTiketModel order) async {
     final docRef = _firestore.collection(AppConstants.collectionOrders).doc();
     final kode = order.kodeBooking.isEmpty ? buatKodeBooking() : order.kodeBooking;
@@ -203,7 +198,7 @@ class DatabaseService {
     }
 
     try {
-      // 1. Guard against Multiple Hold Abuse (max 3 active holds)
+      // Cegah satu user menahan banyak pesanan (maksimal 3).
       final userPendingQuery = await _firestore
           .collection(AppConstants.collectionOrders)
           .where('userId', isEqualTo: order.userId)
@@ -221,7 +216,7 @@ class DatabaseService {
         throw 'Batas reservasi tercapai. Anda memiliki ${AppConstants.maxActiveReservationsPerUser} pesanan aktif yang belum diselesaikan.';
       }
 
-      // 2. Read-only Stock Validation (buyer cannot update /tickets/ per Rules)
+      // Stok hanya dibaca: pembeli tidak boleh menulis ke /tickets/.
       if (order.idTiket != null && order.idTiket!.isNotEmpty) {
         final ticketDoc = await _firestore
             .collection(AppConstants.collectionTickets)
@@ -237,10 +232,10 @@ class DatabaseService {
         }
       }
 
-      // 3. 15-minute reservation window
+      // Jendela bayar 15 menit.
       final reservedUntil = now.add(const Duration(minutes: AppConstants.reservationHoldMinutes));
 
-      // 4. Create PENDING order — stock decrement handled by Cloud Functions on payment
+      // Stok dipotong backend saat pembayaran lunas, bukan di sini.
       final payload = order.copyWith(
         id: docRef.id,
         kodeBooking: kode,
@@ -257,8 +252,8 @@ class DatabaseService {
     }
   }
 
-  /// Cancels a pending order. Stock restoration is handled by Cloud Functions.
-  /// Buyer can only change status from PENDING to CANCELLED (per Firestore Rules).
+  /// Cancels a pending order. Stock restoration is left to the backend, and
+  /// the buyer may only move PENDING to CANCELLED per Firestore Rules.
   Future<void> cancelPendingOrderAndReleaseStock(String orderId) async {
     try {
       final orderRef = _firestore.collection(AppConstants.collectionOrders).doc(orderId);
@@ -267,28 +262,23 @@ class DatabaseService {
 
       final status = orderSnap.data()!['status'];
       if (status == AppConstants.orderStatusPending) {
-        // Buyer-permitted update: PENDING → CANCELLED (matches Firestore Rules)
+        // Satu-satunya perubahan yang diizinkan pembeli: PENDING ke CANCELLED.
         await orderRef.update({
           'status': AppConstants.orderStatusCancelled,
           'updatedAt': FieldValue.serverTimestamp(),
         });
-        // Stock restoration is deferred to Cloud Functions / scheduled cleanup
+        // Stok dikembalikan backend, bukan di sini.
       }
     } catch (e) {
       throw 'Gagal membatalkan pesanan: $e';
     }
   }
 
-  // ===== NOTIFIKASI IN-APP =====
-  // Koleksi global `notifications`, ditulis OTOMATIS oleh backend
-  // (server.js → kirimNotifikasi) saat pembayaran/refund berubah status.
-  //
-  // PENTING: filter `userId` WAJIB ada. Firestore Rules hanya mengizinkan
-  // user membaca dokumen miliknya sendiri, sehingga query tanpa filter ini
-  // akan ditolak (permission-denied). Pengurutan dikerjakan di sisi app
-  // supaya tidak memerlukan composite index.
+  // Notifikasi ditulis backend saat status pembayaran atau refund berubah.
+  // Filter userId wajib ada: Firestore Rules hanya mengizinkan user membaca
+  // dokumennya sendiri. Pengurutan di sisi app supaya tanpa composite index.
 
-  /// Stream notifikasi milik user (terbaru dulu).
+  /// Streams the signed-in user's notifications, newest first.
   Stream<List<NotifikasiModel>> streamNotifikasi(String userId) {
     return _firestore
         .collection(AppConstants.collectionNotifications)
@@ -303,7 +293,7 @@ class DatabaseService {
     });
   }
 
-  /// Tandai SATU notifikasi sudah dibaca.
+  /// Marks one notification as read.
   Future<void> tandaiNotifikasiDibaca(String notifId) async {
     await _firestore
         .collection(AppConstants.collectionNotifications)
@@ -314,8 +304,7 @@ class DatabaseService {
     });
   }
 
-  /// Tandai SEMUA notifikasi user sudah dibaca.
-  /// Mengembalikan jumlah notifikasi yang berubah.
+  /// Marks every notification as read and returns how many changed.
   Future<int> tandaiSemuaNotifikasiDibaca(String userId) async {
     final snap = await _firestore
         .collection(AppConstants.collectionNotifications)
@@ -335,10 +324,9 @@ class DatabaseService {
     return snap.docs.length;
   }
 
-  // ===== CLAIMED PROMOS (voucher milik user) =====
-  // Subkoleksi: users/{userId}/claimed_promos/{promoId}
+  // Subkoleksi users/{userId}/claimed_promos/{promoId}.
 
-  /// Stream voucher yang sudah diklaim user (terbaru dulu).
+  /// Streams the user's claimed vouchers, newest first.
   Stream<List<ClaimedPromoModel>> streamClaimedPromos(String userId) {
     return _firestore
         .collection(AppConstants.collectionUsers)
@@ -354,8 +342,8 @@ class DatabaseService {
     });
   }
 
-  /// Klaim promo ke akun user. Idempotent (docId = promoId).
-  /// Melempar error bila promo sudah pernah diklaim.
+  /// Claims a promo for the user. Idempotent: the doc ID is the promo ID.
+  /// Throws when the promo was already claimed.
   Future<void> claimPromo(String userId, PromoCodeModel promo) async {
     final ref = _firestore
         .collection(AppConstants.collectionUsers)
@@ -383,7 +371,7 @@ class DatabaseService {
     });
   }
 
-  /// Tandai voucher sudah terpakai (dipanggil setelah pembayaran sukses).
+  /// Marks a voucher as used, called after payment succeeds.
   Future<void> markClaimedPromoUsed(
     String userId,
     String promoId, {
@@ -401,18 +389,12 @@ class DatabaseService {
     });
   }
 
-  // ===== REFUND (status pengajuan refund milik user) =====
 
-  /// Menandai reservasi yang jendela bayarnya sudah lewat sebagai EXPIRED.
+  /// Marks reservations whose payment window has passed as EXPIRED.
   ///
-  /// Aturan stok (sama dengan penyapu di backend):
-  ///   PENDING  → stok BELUM pernah dipotong, jadi jangan disentuh.
-  ///   RESERVED → stok sudah dipotong, lepas SEKALI (tandai stokDilepas).
-  ///
-  /// Catatan: jalur utama tetap penyapu di backend (`/sweep-expired`) karena
-  /// hanya server yang boleh mengubah stok. Fungsi ini dipakai sebagai
-  /// jaring pengaman dan sengaja tidak pernah menambah stok untuk PENDING
-  /// (dulu justru menambah → stok naik palsu).
+  /// PENDING orders never had stock taken, so they are left alone. RESERVED
+  /// orders release stock once and get a stokDilepas marker. The backend
+  /// sweeper stays the main path because only the server may change stock.
   Future<int> releaseExpiredReservations() async {
     try {
       final now = Timestamp.fromDate(DateTime.now());
@@ -485,7 +467,7 @@ class DatabaseService {
     }
   }
 
-  /// Flag order as requiring refund
+  /// Flags an order as requiring a refund.
   Future<void> flagOrderRefundRequired(String orderId, String reason) async {
     await _firestore.collection(AppConstants.collectionOrders).doc(orderId).update({
       'status': AppConstants.orderStatusRefundRequired,
@@ -495,7 +477,7 @@ class DatabaseService {
     });
   }
 
-  /// Process refund confirmation by admin
+  /// Applies an admin refund decision.
   Future<void> markOrderRefunded(String orderId, Map<String, dynamic> refundAudit) async {
     await _firestore.collection(AppConstants.collectionOrders).doc(orderId).update({
       'status': AppConstants.orderStatusRefunded,
@@ -517,7 +499,7 @@ class DatabaseService {
         try {
           list.add(PesananTiketModel.fromMap(doc.data(), doc.id));
         } catch (e) {
-          // Lewati 1 dokumen korup agar tidak mengosongkan seluruh daftar tiket.
+          // Lewati satu dokumen korup agar daftar tiket lain tetap tampil.
           // ignore: avoid_print
           print('⚠️ Skip order ${doc.id} (parse gagal): $e');
         }
@@ -591,18 +573,18 @@ class DatabaseService {
     }
   }
 
-  /// Admin gate validation — marks AKTIF/PAID ticket as TERPAKAI atomically.
-  /// Prevents double-scan race conditions if two scanners process the same ticket simultaneously.
-  /// Gracefully falls back to OfflineTicketService if device has no network.
+  /// Marks an AKTIF ticket as TERPAKAI atomically, which stops a double scan
+  /// when two scanners process the same ticket at once. Falls back to
+  /// OfflineTicketService when the device is offline.
   Future<Map<String, dynamic>> validateGateTicket(String rawInput) async {
     final raw = rawInput.trim();
     if (raw.isEmpty) {
       return {'ok': false, 'message': 'Kode booking kosong'};
     }
 
-    // Extract booking code if rawInput is signed QR payload
-    // SW1 format: SW1|orderId|kodeBooking|...
-    // SW2 format: SW2|keyId|orderId|kodeBooking|idKonser|kategoriTiket|jumlahTiket|signatureHex
+    // Kode booking diambil dari payload QR bertanda tangan.
+    // SW1|orderId|kodeBooking|...
+    // SW2|keyId|orderId|kodeBooking|idKonser|kategori|jumlah|signature
     var cleanCode = raw;
     if (raw.startsWith('SW1|') && raw.split('|').length >= 3) {
       cleanCode = raw.split('|')[2];
@@ -611,7 +593,7 @@ class DatabaseService {
     }
 
     try {
-      // 1. Locate order document reference by kodeBooking or orderId
+      // Cari dokumen order lewat kodeBooking atau orderId.
       final query = await _firestore
           .collection(AppConstants.collectionOrders)
           .where('kodeBooking', isEqualTo: cleanCode)
@@ -622,7 +604,7 @@ class DatabaseService {
       if (query.docs.isNotEmpty) {
         orderRef = query.docs.first.reference;
       } else {
-        // Fallback: check if cleanCode is the document ID directly
+        // Cadangan: kode itu mungkin ID dokumen.
         final directDoc = await _firestore
             .collection(AppConstants.collectionOrders)
             .doc(cleanCode)
@@ -634,7 +616,7 @@ class DatabaseService {
         }
       }
 
-      // 2. Atomic Transaction Execution
+      // Status diubah dalam satu transaksi.
       final result = await _firestore.runTransaction<Map<String, dynamic>>((transaction) async {
         final snapshot = await transaction.get(orderRef);
         if (!snapshot.exists || snapshot.data() == null) {
@@ -677,7 +659,6 @@ class DatabaseService {
         }
 
         final now = DateTime.now();
-        // Atomic status mutation
         transaction.update(orderRef, {
           'status': AppConstants.orderStatusUsed,
           'tanggalDigunakan': FieldValue.serverTimestamp(),
@@ -696,7 +677,7 @@ class DatabaseService {
 
       return result;
     } catch (e) {
-      // Offline fallback: if network is down and input has signed token SW2|...
+      // Jaringan mati dan input token SW2 bertanda tangan: verifikasi lokal.
       if (raw.startsWith('SW2|')) {
         return await OfflineTicketService().verifyOfflineTicket(raw);
       }
@@ -707,8 +688,8 @@ class DatabaseService {
     }
   }
 
-  /// Synchronizes un-synced offline gate admission records to the authoritative server
-  /// Uses Cloud Functions syncOfflineScans as the single authoritative ingestion path.
+  /// Pushes unsynced offline scans to the server, the only path allowed to
+  /// write them.
   Future<Map<String, dynamic>> syncPendingOfflineScans() async {
     final pending = OfflineTicketService().pendingOfflineRecords;
     if (pending.isEmpty) {
@@ -742,7 +723,7 @@ class DatabaseService {
       final syncedCount = data['syncedCount'] as int? ?? 0;
       final duplicateCount = data['duplicateCount'] as int? ?? 0;
 
-      // Server Ack Received: Only mark local records synced after server returns success
+      // Tandai tersinkron hanya setelah server membalas sukses.
       final syncedIds = pending.map((r) => r.scanId).toList();
       await OfflineTicketService().markRecordsSynced(syncedIds);
 
@@ -754,7 +735,7 @@ class DatabaseService {
             'Sinkronisasi berhasil: $syncedCount tiket diproses, $duplicateCount duplikat diabaikan.',
       };
     } catch (e) {
-      // Network failure, timeout, or server rejection: records remain strictly PENDING locally
+      // Gagal jaringan atau ditolak server: catatan tetap PENDING di perangkat.
       return {
         'ok': false,
         'message': 'Gagal menyinkronkan scan offline ke server. Coba lagi sebentar.',
@@ -762,7 +743,6 @@ class DatabaseService {
     }
   }
 
-  // ===== FAVORITES =====
 
   Future<void> addToFavorites(String userId, String eventId) async {
     final favId = '$userId-$eventId';
@@ -809,7 +789,6 @@ class DatabaseService {
     return doc.exists;
   }
 
-  // ===== REVIEWS =====
 
   Stream<List<ReviewModel>> getReviewsByEvent(String eventId) {
     return _firestore
@@ -830,7 +809,6 @@ class DatabaseService {
         .add(review.toMap());
   }
 
-  // ===== ANALYTICS =====
 
   Future<Map<String, dynamic>> getEventSalesAnalytics(String eventId) async {
     try {

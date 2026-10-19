@@ -16,13 +16,12 @@ class NotificationService {
   bool _initialized = false;
   int _nextId = 1000;
 
-  /// ID channel Android untuk push FCM saat app ditutup.
-  /// HARUS sama dengan `android.notification.channelId` yang dikirim backend
-  /// (soundwave-backend/notifikasi.js -> CHANNEL_ANDROID).
+  // ID channel Android untuk push saat app ditutup. Harus sama dengan
+  // channelId yang dikirim backend (notifikasi.js -> CHANNEL_ANDROID).
   static const String channelId = 'soundwave_updates';
 
-  /// Diisi oleh FcmGateway (main.dart): dipanggil saat user menekan
-  /// notifikasi push ketika app sedang berjalan di background.
+  // Diisi FcmGateway saat user menekan notifikasi push ketika app berjalan
+  // di background.
   void Function(RemoteMessage message)? onTapNotifikasi;
 
   Future<void> init() async {
@@ -32,7 +31,7 @@ class NotificationService {
     try {
       tz.setLocalLocation(tz.getLocation('Asia/Jakarta'));
     } catch (_) {
-      // Fall back to UTC if timezone data is unavailable.
+      // Pakai UTC kalau data zona waktu tidak tersedia.
     }
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -46,10 +45,9 @@ class NotificationService {
       const InitializationSettings(android: android, iOS: ios),
     );
 
-    // Channel ini dipakai DUA hal: banner saat app terbuka
-    // (showInstantNotification) dan push FCM dari backend saat app ditutup.
-    // Kalau channel belum ada, Android memakai channel bawaan (tanpa
-    // prioritas tinggi / getar), jadi wajib dibuat lebih dulu.
+    // Channel ini dipakai dua hal: banner saat app terbuka dan push dari
+    // backend saat app ditutup. Tanpa channel, Android memakai channel
+    // bawaan tanpa prioritas tinggi dan tanpa getar.
     final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     try {
@@ -63,20 +61,20 @@ class NotificationService {
         ),
       );
     } catch (_) {
-      // channel gagal dibuat: notifikasi lokal tetap dicoba, tidak fatal
+      // Channel gagal dibuat: notifikasi lokal tetap dicoba, tidak fatal.
     }
 
     try {
       await androidPlugin?.requestNotificationsPermission();
     } catch (_) {
-      // izin ditolak / belum bisa diminta: tidak boleh menggagalkan app
+      // Izin ditolak: tidak boleh menggagalkan app.
     }
 
     _initialized = true;
   }
 
-  /// Registers device FCM token and syncs to user document in Firestore.
-  /// Sets up foreground notification listeners.
+  /// Registers the device FCM token, syncs it to the user document, and
+  /// sets up foreground listeners.
   Future<void> initFcmForUser(String userId) async {
     await init();
 
@@ -94,12 +92,12 @@ class NotificationService {
           await _saveFcmTokenToUser(userId, token);
         }
 
-        // Listen for token updates (e.g. app re-install or rotation)
+        // Token bisa berubah setelah reinstall.
         _fcm.onTokenRefresh.listen((newToken) {
           _saveFcmTokenToUser(userId, newToken);
         });
 
-        // Handle foreground notifications
+        // Notifikasi yang masuk saat app terbuka.
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
           final notification = message.notification;
           if (notification != null) {
@@ -117,7 +115,7 @@ class NotificationService {
         });
       }
     } catch (_) {
-      // Graceful fallback: FCM failure must not break app core execution
+      // FCM gagal tidak boleh menghentikan app.
     }
   }
 
@@ -131,11 +129,11 @@ class NotificationService {
         'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
       });
     } catch (_) {
-      // User doc might not exist yet during initial registration
+      // Dokumen user mungkin belum ada saat pendaftaran awal.
     }
   }
 
-  /// Displays an instant high-priority local banner
+  /// Shows an instant high-priority local banner.
   Future<void> showInstantNotification({
     required String title,
     required String body,
@@ -193,13 +191,12 @@ class NotificationService {
     );
   }
 
-  /// Lepas token push device ini. Dipanggil saat LOGOUT — sengaja dari
-  /// AuthService.logout() selagi user masih punya izin tulis ke dokumennya
-  /// (rules butuh userId == request.auth.uid).
-  ///
-  /// Tanpa ini, HP yang dipakai bergantian akun masih bisa menerima push
-  /// milik akun sebelumnya. Kalau pun gagal, backend membersihkannya
-  /// otomatis begitu FCM menolak token (lihat notifikasi.js).
+  // Lepas token push device ini saat logout, selagi user masih punya izin
+  // tulis ke dokumennya (rules butuh userId == request.auth.uid).
+  //
+  // Tanpa ini, HP yang dipakai bergantian akun masih menerima push milik
+  // akun sebelumnya. Kalau gagal, backend membersihkannya begitu FCM
+  // menolak token.
   Future<void> lepasToken(String userId) async {
     try {
       await FirebaseFirestore.instance
@@ -207,12 +204,12 @@ class NotificationService {
           .doc(userId)
           .update({'fcmToken': null});
     } catch (_) {
-      // non-fatal
+      // Non-fatal.
     }
     try {
       await _fcm.deleteToken();
     } catch (_) {
-      // non-fatal
+      // Non-fatal.
     }
   }
 }

@@ -1,14 +1,11 @@
-// ═══════════════════════════════════════════════════════════════════
-// WIDGET TEST — NotifikasiBell + NotifikasiSheet
-// ═══════════════════════════════════════════════════════════════════
-// Notifikasi ditulis OTOMATIS oleh backend (server.js → kirimNotifikasi).
+// Widget test: NotifikasiBell dan NotifikasiSheet
+// Notifikasi ditulis backend, bukan app.
 // Test ini mengunci perilaku UI-nya:
 //   · badge lonceng menampilkan JUMLAH yang belum dibaca
 //   · badge hilang bila semua sudah dibaca
 //   · user belum login (userId null) tidak error
 //   · sheet menampilkan isi notifikasi apa adanya dari data
 //   · sheet kosong menampilkan pesan "Belum ada notifikasi"
-// ═══════════════════════════════════════════════════════════════════
 
 import 'dart:io';
 
@@ -196,7 +193,7 @@ void main() {
     await tester.tap(find.text('Refund Disetujui'));
     await tester.pumpAndSettle();
 
-    // Panel HARUS masih terbuka. Dulu setiap tap menutup panel lalu melempar
+        // Panel harus tetap terbuka. Dulu tap menutup panel lalu error.
     // user ke halaman Tiket Saya.
     expect(find.text('NOTIFIKASI'), findsOneWidget,
         reason: 'tap kartu tidak boleh menutup panel / pindah halaman');

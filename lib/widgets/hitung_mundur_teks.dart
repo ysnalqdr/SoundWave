@@ -6,8 +6,8 @@ import '../utils/hitung_mundur.dart';
 
 /// Teks hitungan waktu yang berdetak tiap detik ("02:47").
 ///
-/// Sengaja dibuat widget sendiri supaya yang di-rebuild tiap detik HANYA teks
-/// ini — bukan seluruh layar atau seluruh daftar tiket.
+/// Widget sendiri supaya yang di-rebuild tiap detik hanya teks ini, bukan
+/// seluruh layar atau seluruh daftar tiket.
 class HitungMundurTeks extends StatefulWidget {
   /// Batas waktu dari server (`reservedUntil`).
   final DateTime? sampai;
@@ -21,13 +21,11 @@ class HitungMundurTeks extends StatefulWidget {
   /// Teks saat waktunya sudah habis.
   final String teksHabis;
 
-  /// Sumber waktu. Default jam perangkat; bisa diganti di test supaya
-  /// hitungannya deterministik (tidak bergantung waktu nyata).
+  /// Sumber waktu. Bisa diganti di test supaya hasilnya deterministik.
   final DateTime Function()? jam;
 
-  /// Dipanggil SEKALI tepat saat hitungan menyentuh nol. Dipakai induknya
-  /// untuk langsung berpindah ke keadaan "waktu habis" tanpa menunggu
-  /// refresh dari server.
+  /// Dipanggil sekali tepat saat hitungan menyentuh nol, supaya induknya
+  /// langsung berpindah ke keadaan waktu habis.
   final VoidCallback? onHabis;
 
   const HitungMundurTeks({

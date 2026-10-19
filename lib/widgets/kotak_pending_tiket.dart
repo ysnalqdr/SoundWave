@@ -1,17 +1,8 @@
-// ═══════════════════════════════════════════════════════════════════
-// KOTAK STATUS PENDING — hitungan waktu 5 menit yang berubah sendiri
-// ═══════════════════════════════════════════════════════════════════
-// Satu kotak, dua keadaan, tanpa jeda:
-//   masih ada waktu → "Menunggu Pembayaran" + hitungan waktu + tombol bayar
+// Kotak status PENDING dengan hitungan waktu yang berubah sendiri.
 //
-// Hanya SATU tombol aksi ("Bayar Sekarang"). Tombol lama "Buka Halaman
-// Pembayaran Midtrans" sudah dihapus: isinya membuka snapRedirectUrl di browser
-// dengan tujuan yang sama, jadi user dihadapkan dua tombol untuk satu urusan.
-//   waktu habis     → "RESERVASI BERAKHIR" + tombol "Pesan Ulang"
-//
-// Perpindahannya terjadi TEPAT saat hitungan menyentuh 00:00 (bukan menunggu
-// layar lain di-refresh), karena keadaan itu disimpan di widget ini sendiri.
-// ═══════════════════════════════════════════════════════════════════
+// Satu tombol aksi saja: "Bayar Sekarang" selama waktu masih ada, lalu
+// "Pesan Ulang" saat habis. Perpindahan terjadi tepat di 00:00 karena
+// keadaannya disimpan di widget ini, bukan menunggu layar lain di-refresh.
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -34,17 +25,17 @@ class KotakPendingTiket extends StatefulWidget {
 
   final PesananTiketModel tiket;
 
-  /// Lanjut ke wizard pembayaran (hanya tersedia selama waktu masih ada).
+  /// Opens the payment wizard while time remains.
   final VoidCallback onBayar;
 
-  /// Antar kembali ke halaman konser untuk memesan tiket lagi.
+  /// Sends the user back to the concert page to order again.
   final VoidCallback onPesanUlang;
 
-  /// Dipanggil sekali saat hitungan menyentuh nol — dipakai untuk meminta
-  /// server menyapu reservasi ini supaya statusnya ikut jadi EXPIRED.
+  /// Called once when the countdown hits zero, so the backend can sweep this
+  /// reservation and mark it EXPIRED.
   final VoidCallback? onKedaluwarsa;
 
-  /// Sumber waktu (bisa diganti di test).
+  /// Time source, replaceable in tests.
   final DateTime Function()? jam;
 
   @override
@@ -76,7 +67,7 @@ class _KotakPendingTiketState extends State<KotakPendingTiket> {
     return _habis ? _kotakBerakhir() : _kotakMenunggu();
   }
 
-  // ── Masih ada waktu ──
+  // Masih ada waktu
   Widget _kotakMenunggu() {
     final tiket = widget.tiket;
     return Container(
@@ -148,7 +139,7 @@ class _KotakPendingTiketState extends State<KotakPendingTiket> {
     );
   }
 
-  // ── Waktu habis ──
+  // Waktu habis
   Widget _kotakBerakhir() {
     return Container(
       padding: const EdgeInsets.all(16),

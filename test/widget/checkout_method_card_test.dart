@@ -1,8 +1,6 @@
-// ═══════════════════════════════════════════════════════════════════
-// WIDGET TEST — kartu "Pilih Metode Pembayaran" di CheckoutScreen
-// ═══════════════════════════════════════════════════════════════════
+// Widget test: kartu "Pilih Metode Pembayaran" di CheckoutScreen
 //
-// LATAR BELAKANG
+// Latar belakang
 // User melaporkan "warna teks nama metode tidak terbaca" + screenshot
 // (image_709131.png) yang menunjukkan 4 kartu KOSONG. Analisis piksel +
 // timestamp membuktikan screenshot itu berasal dari APK usang
@@ -14,7 +12,6 @@
 //   2. warnanya putih #FFFFFF di atas kartu #1C1C26 (kontras AA >= 4.5:1)
 //   3. BUKTI PIKSEL: di dalam area nama metode benar-benar ada glif putih
 //      di atas latar gelap — persis kebalikan dari screenshot bug.
-// ═══════════════════════════════════════════════════════════════════
 
 import 'dart:io';
 import 'dart:math' as math;
@@ -31,13 +28,11 @@ import 'package:soundwave/models/tiket_konser_model.dart';
 import 'package:soundwave/providers/app_providers.dart';
 import 'package:soundwave/screens/user/checkout_screen.dart';
 
-// ── palet yang diharapkan (lihat _SwWhite di checkout_screen.dart) ──
 const Color _inkWhite = Color(0xFFFFFFFF); // teks nama metode
 const Color _cardSurface = Color(0xFF1C1C26); // latar kartu
 
 const double _dpr = 3.0;
 
-// ── nama metode + subtitle yang WAJIB muncul di layar ──
 const Map<String, String> _methods = <String, String>{
   'Transfer Bank': 'BCA, BNI, Mandiri',
   'Kartu Kredit/Debit': 'Visa, Mastercard',
@@ -52,9 +47,7 @@ const List<IconData> _methodIcons = <IconData>[
   Icons.qr_code,
 ];
 
-// ─────────────────────────────────────────────
 // util warna — kontras WCAG 2.1
-// ─────────────────────────────────────────────
 double _luminance(Color c) {
   final int v = c.toARGB32();
   double chan(int x) {
@@ -77,9 +70,7 @@ double _contrastRatio(Color a, Color b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-// ─────────────────────────────────────────────
 // data uji
-// ─────────────────────────────────────────────
 KonserModel _konser() => KonserModel(
       id: 'konser-test',
       judul: 'Jakarta Fest',
@@ -122,12 +113,10 @@ Future<void> _pumpCheckout(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 200));
 }
 
-// ─────────────────────────────────────────────
-// FONT — `flutter test` tidak memuat font asli: glif digambar KOSONG dan
+// Font — `flutter test` tidak memuat font asli: glif digambar KOSONG dan
 // font fallback-nya berlebar 1em/karakter, sehingga layout palsu jadi
 // overflow 79px. Kita daftarkan font sistem sebagai 'SpaceGrotesk' &
 // 'Rajdhani' agar glif benar-benar ter-render dan metrik lebar wajar.
-// ─────────────────────────────────────────────
 const List<String> _fontCandidates = <String>[
   r'C:\Windows\Fonts\arial.ttf',
   '/System/Library/Fonts/Supplemental/Arial.ttf',
@@ -296,7 +285,6 @@ void main() {
     // ignore: avoid_print
     print('DEBUG PNG tersimpan: ${outFile.path}');
 
-    // ── DIAGNOSTIK: bandingkan rect widget vs piksel di gambar ──
     int paintedIn(Rect r, int minChannel) {
       final int ax = (r.left * _dpr).floor().clamp(0, iw - 1);
       final int bx = (r.right * _dpr).ceil().clamp(0, iw);

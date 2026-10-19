@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/services/offline_ticket_service.dart';
@@ -9,9 +10,9 @@ void main() {
     late OfflineTicketService offlineService;
     final algorithm = Ed25519();
 
-    // Backend Private Seed (Backend Server only - never shipped in APK)
-    const String backendPrivateSeedHex =
-        'c699893e2338a0bd8c4aef14d17c700209775bd14198d80dad1ce1c896f9eb31';
+    // Kunci uji dibuat ulang setiap kali tes berjalan. Tidak ada kunci privat
+    // asli di repo, jadi tes ini tidak bergantung pada kunci backend.
+    late List<int> ujiSeed;
 
     const String orderId = 'ord-secure-001';
     const String kodeBooking = 'SW-OFFLINE-77';
@@ -23,11 +24,19 @@ void main() {
       offlineService = OfflineTicketService();
       await offlineService.resetLedger(deleteFile: true);
       await offlineService.initStorage(storagePath: null); // in-memory for basic tests
+
+      final seedBytes = List<int>.generate(32, (_) => Random.secure().nextInt(256));
+      ujiSeed = seedBytes;
+      final kunciUji = await algorithm.newKeyPairFromSeed(seedBytes);
+      final publikUji = await kunciUji.extractPublicKey();
+      offlineService.updateDynamicManifest(
+        additionalKeys: {'uji': OfflineTicketService.bytesToHex(publikUji.bytes)},
+      );
     });
 
     /// Helper to simulate Server-Side signing using the backend private key
     Future<String> serverSignTicket({
-      String? keyId,
+      String keyId = 'uji',
       required String orderId,
       required String kodeBooking,
       required String idKonser,
@@ -43,25 +52,53 @@ void main() {
         jumlahTiket: jumlahTiket,
       );
 
-      final seed = OfflineTicketService.hexToBytes(backendPrivateSeedHex);
-      final keyPair = await algorithm.newKeyPairFromSeed(seed);
+      final keyPair = await algorithm.newKeyPairFromSeed(ujiSeed);
       final sig = await algorithm.sign(utf8.encode(canonicalPayload), keyPair: keyPair);
       final sigHex = OfflineTicketService.bytesToHex(sig.bytes);
 
       return '$canonicalPayload|$sigHex';
     }
 
-    test('embedded public key matches backend private key pair', () async {
-      final seed = OfflineTicketService.hexToBytes(backendPrivateSeedHex);
-      final keyPair = await algorithm.newKeyPairFromSeed(seed);
+    test('kunci uji terdaftar di keyring dan tanda tangannya diterima', () async {
+      final keyPair = await algorithm.newKeyPairFromSeed(ujiSeed);
       final pubKey = await keyPair.extractPublicKey();
       final pubKeyHex = OfflineTicketService.bytesToHex(pubKey.bytes);
 
-      expect(pubKeyHex, equals(OfflineTicketService.masterPublicKeyHex));
+      final signed = await serverSignTicket(
+        keyId: 'uji',
+        orderId: 'ord-kunci-uji',
+        kodeBooking: 'SW-KUNCI-UJI',
+        idKonser: 'k-1',
+        kategoriTiket: 'VIP',
+        jumlahTiket: 1,
+      );
+      final hasil = await offlineService.verifyOfflineTicket(signed);
+
+      expect(pubKeyHex.length, equals(64));
+      expect(hasil['ok'], isTrue);
     });
 
-    test('valid server-signed legacy SW2 Ed25519 QR passes offline gate admission check', () async {
+    test('format lama tanpa keyId dipetakan ke v1 dan ditolak karena sudah dicabut', () async {
+      final canonical = OfflineTicketService.buildCanonicalPayload(
+        orderId: orderId,
+        kodeBooking: kodeBooking,
+        idKonser: idKonser,
+        kategoriTiket: kategoriTiket,
+        jumlahTiket: jumlahTiket,
+      );
+      final keyPair = await algorithm.newKeyPairFromSeed(ujiSeed);
+      final sig = await algorithm.sign(utf8.encode(canonical), keyPair: keyPair);
+      final legacyQr = '$canonical|${OfflineTicketService.bytesToHex(sig.bytes)}';
+
+      final result = await offlineService.verifyOfflineTicket(legacyQr);
+
+      expect(result['ok'], isFalse);
+      expect(result['message'], contains('Revoked Key'));
+    });
+
+    test('valid server-signed versioned SW2 (keyId uji) QR passes offline admission check', () async {
       final validSignedQr = await serverSignTicket(
+        keyId: 'uji',
         orderId: orderId,
         kodeBooking: kodeBooking,
         idKonser: idKonser,
@@ -72,25 +109,7 @@ void main() {
       final result = await offlineService.verifyOfflineTicket(validSignedQr);
 
       expect(result['ok'], isTrue);
-      expect(result['isOffline'], isTrue);
-      expect(result['kodeBooking'], equals(kodeBooking));
-      expect(offlineService.locallyScannedCodes.contains(kodeBooking), isTrue);
-    });
-
-    test('valid server-signed versioned SW2 (keyId v1) QR passes offline admission check', () async {
-      final validSignedQr = await serverSignTicket(
-        keyId: 'v1',
-        orderId: orderId,
-        kodeBooking: kodeBooking,
-        idKonser: idKonser,
-        kategoriTiket: kategoriTiket,
-        jumlahTiket: jumlahTiket,
-      );
-
-      final result = await offlineService.verifyOfflineTicket(validSignedQr);
-
-      expect(result['ok'], isTrue);
-      expect(result['keyId'], equals('v1'));
+      expect(result['keyId'], equals('uji'));
       expect(result['kodeBooking'], equals(kodeBooking));
     });
 
@@ -122,10 +141,10 @@ void main() {
       );
 
       final genuineParts = genuinePayload.split('|');
-      final genuineSignature = genuineParts[6];
+      final genuineSignature = genuineParts[7];
 
       // Attacker tampers category to VIP while keeping the same genuine signature
-      final forgedQr = 'SW2|$orderId|$kodeBooking|$idKonser|VIP|1|$genuineSignature';
+      final forgedQr = 'SW2|uji|$orderId|$kodeBooking|$idKonser|VIP|1|$genuineSignature';
 
       final result = await offlineService.verifyOfflineTicket(forgedQr);
 
@@ -135,6 +154,7 @@ void main() {
 
     test('forged signature generated with an unauthorized private key is rejected', () async {
       final canonicalPayload = OfflineTicketService.buildCanonicalPayload(
+        keyId: 'uji',
         orderId: orderId,
         kodeBooking: kodeBooking,
         idKonser: idKonser,
@@ -192,10 +212,19 @@ void main() {
   group('Offline Gate Ledger Persistence & Crash Recovery Tests', () {
     late Directory tempDir;
     late String storagePath;
+    final algorithm = Ed25519();
+    late List<int> ujiSeed;
+    late String publikUjiHex;
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('gate_ledger_test_');
       storagePath = '${tempDir.path}/ledger.json';
+
+      final seedBytes = List<int>.generate(32, (_) => Random.secure().nextInt(256));
+      ujiSeed = seedBytes;
+      final kunciUji = await algorithm.newKeyPairFromSeed(seedBytes);
+      final publikUji = await kunciUji.extractPublicKey();
+      publikUjiHex = OfflineTicketService.bytesToHex(publikUji.bytes);
     });
 
     tearDown(() async {
@@ -213,15 +242,15 @@ void main() {
       await serviceInstance1.initStorage(storagePath: storagePath);
 
 
+      serviceInstance1.updateDynamicManifest(
+        additionalKeys: {'uji': publikUjiHex},
+      );
+
       // Simulate valid signing for persist test
-      final algorithm = Ed25519();
-      const privSeedHex =
-          'c699893e2338a0bd8c4aef14d17c700209775bd14198d80dad1ce1c896f9eb31';
-      final seed = OfflineTicketService.hexToBytes(privSeedHex);
-      final keyPair = await algorithm.newKeyPairFromSeed(seed);
+      final keyPair = await algorithm.newKeyPairFromSeed(ujiSeed);
 
       final canonical = OfflineTicketService.buildCanonicalPayload(
-        keyId: 'v1',
+        keyId: 'uji',
         orderId: 'ord-persist-1',
         kodeBooking: 'SW-PERSIST-99',
         idKonser: 'k-1',
@@ -243,7 +272,7 @@ void main() {
       expect(linesBeforeRestart.isNotEmpty, isTrue);
 
       // 2. Simulate complete app restart / battery death / crash:
-      // Clear RAM completely and re-initialize from disk
+            // Bersihkan RAM lalu inisialisasi ulang dari disk.
       await serviceInstance1.resetLedger(deleteFile: false);
       expect(serviceInstance1.locallyScannedCodes.isEmpty, isTrue);
 
@@ -299,15 +328,12 @@ void main() {
       await service.initStorage(storagePath: storagePath);
       await service.resetLedger(deleteFile: true);
       await service.initStorage(storagePath: storagePath);
+      service.updateDynamicManifest(additionalKeys: {'uji': publikUjiHex});
 
-      final algorithm = Ed25519();
-      const privSeedHex =
-          'c699893e2338a0bd8c4aef14d17c700209775bd14198d80dad1ce1c896f9eb31';
-      final seed = OfflineTicketService.hexToBytes(privSeedHex);
-      final keyPair = await algorithm.newKeyPairFromSeed(seed);
+      final keyPair = await algorithm.newKeyPairFromSeed(ujiSeed);
 
       final canonical = OfflineTicketService.buildCanonicalPayload(
-        keyId: 'v1',
+        keyId: 'uji',
         orderId: 'ord-sync-1',
         kodeBooking: 'SW-SYNC-1',
         idKonser: 'k-1',

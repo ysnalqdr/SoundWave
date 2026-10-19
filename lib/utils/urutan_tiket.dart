@@ -1,15 +1,11 @@
 import '../constants/app_constants.dart';
 import '../models/tiket_konser_model.dart';
 
-/// Mengurutkan daftar tiket untuk ditampilkan: VVIP -> VIP -> Festival ->
-/// Tribun -> Reguler.
+/// Mengurutkan tiket: VVIP, VIP, Festival, Tribun, Reguler.
 ///
-/// Peringkat kategori diambil dari `AppConstants.ticketCategories`, bukan dari
-/// harga. Harga hanya menjadi penentu KEDUA, sehingga urutan kategori tidak
-/// pernah bergeser gara-gara ada harga promo yang lebih murah.
-///
-/// Kategori yang belum terdaftar (mis. 'Platinum') tidak dibuang: ia ditaruh di
-/// bawah semua kategori resmi, diurutkan dari harga termahal.
+/// Peringkat diambil dari `AppConstants.ticketCategories`, bukan dari harga,
+/// sehingga urutan tidak bergeser karena ada harga promo. Kategori yang
+/// belum terdaftar tidak dibuang, hanya ditaruh paling bawah.
 void urutkanTiket(List<TiketKonserModel> tiket) {
   tiket.sort((a, b) {
     final peringkatA = AppConstants.peringkatKategori(a.kategori);

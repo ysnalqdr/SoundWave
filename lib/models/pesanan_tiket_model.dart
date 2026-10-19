@@ -27,12 +27,11 @@ class PesananTiketModel {
   String? qrPayloadSignature;
   Map<String, dynamic>? paymentDetails;
 
-  /// Status refund terakhir pada level ORDER ('REJECTED' bila admin menolak).
+  /// Status refund terakhir pada level ORDER ('REJECTED' bila ditolak).
   ///
-  /// Sengaja dibaca dari dokumen ORDER (yang sudah mengalir real-time ke daftar
-  /// tiket), BUKAN dari koleksi `refunds`: aturan Firestore menolak query yang
-  /// tidak memfilter `userId` ("rules are not filters — all or nothing"),
-  /// sehingga catatan penolakan tidak pernah muncul walau datanya ada.
+  /// Dibaca dari dokumen ORDER, bukan koleksi `refunds`: aturan Firestore
+  /// menolak query tanpa filter `userId` ("rules are not filters"), jadi
+  /// catatan penolakan tidak pernah muncul walau datanya ada.
   final String? refundStatus;
   final String? refundRejectReason;
 

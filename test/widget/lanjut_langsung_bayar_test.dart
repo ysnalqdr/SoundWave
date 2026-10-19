@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// PENJAGA SUMBER — "Bayar Sekarang" pada pesanan yang sudah ada
-// ═══════════════════════════════════════════════════════════════════
+// Penjaga sumber: tombol Bayar Sekarang pada pesanan yang sudah ada
 // Metode pembayaran sudah dipilih saat pesanan dibuat, jadi user tidak
 // boleh dipaksa memilihnya lagi. Yang dikunci di sini:
 //   1. wizard mode lanjut mulai di langkah 2 (Bayar), bukan langkah 1;
@@ -9,7 +7,6 @@
 //   4. tetap ada jalan keluar "Ganti metode pembayaran";
 //   5. VA/QR yang sudah ada langsung tampil (backend memakai ulang),
 //      dan berganti metode membuang instrumen lama.
-// ═══════════════════════════════════════════════════════════════════
 
 import 'dart:io';
 

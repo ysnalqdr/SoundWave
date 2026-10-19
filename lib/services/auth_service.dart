@@ -164,7 +164,7 @@ class AuthService {
 
       var profile = await getUserData(credential.user!.uid);
 
-      // Ensure Firestore profile exists for Auth-only accounts
+      // Pastikan profil Firestore ada untuk akun yang hanya punya Auth.
       if (profile == null) {
         profile = UserModel(
           id: credential.user!.uid,
@@ -197,13 +197,13 @@ class AuthService {
     }
   }
 
-  /// Google Sign-In: authenticates via Google provider and creates/reconciles
-  /// Firestore profile. Does not duplicate accounts — existing profiles are preserved.
+  /// Signs in with Google and reconciles the Firestore profile without
+  /// duplicating accounts.
   Future<UserModel?> signInWithGoogle() async {
     try {
       final googleUser = await _getGoogleSignIn().signIn();
       if (googleUser == null) {
-        // User cancelled the sign-in flow
+        // User membatalkan proses masuk.
         return null;
       }
 
@@ -217,11 +217,11 @@ class AuthService {
       final firebaseUser = userCredential.user;
       if (firebaseUser == null) return null;
 
-      // Check if Firestore profile already exists
+      // Profil Firestore mungkin sudah ada.
       var profile = await getUserData(firebaseUser.uid);
 
       if (profile == null) {
-        // First-time Google sign-in: create Firestore profile
+        // Masuk pertama kali lewat Google: buat profil.
         profile = UserModel(
           id: firebaseUser.uid,
           nama: firebaseUser.displayName ?? googleUser.displayName ?? 'Pengguna SoundWave',
@@ -240,7 +240,7 @@ class AuthService {
           debugPrint('[AuthService.signInWithGoogle] Firestore profile write failed: [${e.code}] ${e.message}');
         }
       } else {
-        // Existing user — update photo if available and currently empty
+        // Pengguna lama: perbarui foto kalau masih kosong.
         if (profile.fotoUrl == null || profile.fotoUrl!.isEmpty) {
           final photoUrl = firebaseUser.photoURL ?? googleUser.photoUrl;
           if (photoUrl != null && photoUrl.isNotEmpty) {
@@ -287,10 +287,8 @@ class AuthService {
       }
     }
 
-    // Best-effort Google provider cleanup.
-    // Only attempt if GoogleSignIn was already initialised or injected — never trigger
-    // construction here, because a missing Web client-ID would throw and
-    // could prevent Firebase Auth sign-out.
+    // Bersihkan sesi Google hanya kalau GoogleSignIn sudah diinisialisasi.
+    // Membuatnya di sini bisa melempar error dan menggagalkan sign-out.
     final gsi = _googleSignIn ?? _injectedGoogleSignIn;
     if (gsi != null) {
       try {

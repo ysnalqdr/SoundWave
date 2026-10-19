@@ -62,8 +62,7 @@ final allOrdersProvider = StreamProvider<List<PesananTiketModel>>((ref) {
   return ref.watch(databaseServiceProvider).getAllOrders();
 });
 
-/// Notifikasi in-app milik user (terbaru dulu).
-/// Ditulis OTOMATIS oleh backend — lihat server.js → kirimNotifikasi.
+/// Notifikasi in-app milik user, terbaru dulu. Ditulis backend, bukan app.
 final notifikasiProvider =
     StreamProvider.family<List<NotifikasiModel>, String>((ref, userId) {
   return ref.watch(databaseServiceProvider).streamNotifikasi(userId);
@@ -74,23 +73,16 @@ final favoriteIdsProvider =
   return ref.watch(databaseServiceProvider).getUserFavoriteEventIds(userId);
 });
 
-/// Sinyal "buka menu utama" dari tap notifikasi push (FCM).
+/// Sinyal "buka menu utama" dari tap notifikasi push.
 ///
-/// Kenapa perlu: tap push tidak boleh menumpuk halaman baru di atas yang
-/// sedang dibuka. FcmGateway cukup kembali ke halaman utama akun yang sedang
-/// login (`popUntil(isFirst)`) lalu menaikkan nilai ini — dan halaman utama
-/// yang SEDANG terpasang yang menentukan tujuannya sendiri, sehingga user dan
-/// admin otomatis mendarat di tempat yang benar:
-///   · UserMainScreen -> tab Jelajah (index 0)
-///   · AdminDashboard -> menu Konser (index 0)
-///
-/// Sengaja berupa PENGHITUNG, bukan bool: kalau memakai bool, nilai `true`
-/// yang tertinggal dari push sebelumnya membuat `ref.listen` tidak melihat
-/// PERUBAHAN sama sekali, sehingga perintah pindah menu diam-diam tidak jalan.
+/// Tap push tidak boleh menumpuk halaman baru. FcmGateway kembali ke halaman
+/// utama lalu menaikkan nilai ini, dan halaman utama yang menentukan tujuan.
+/// Sengaja penghitung, bukan bool: nilai true yang tertinggal membuat
+/// ref.listen tidak melihat perubahan dan perintah pindah menu diam-diam
+/// tidak jalan.
 final permintaanMenuUtamaProvider = StateProvider<int>((ref) => 0);
 
 /// Permintaan pindah tab dari layar lain di menu utama user.
 /// Nilai = indeks tab tujuan (0 Jelajah, 1 Tiket Saya, 2 Wishlist, 3 Akun).
-/// Dipakai alur pembayaran: setelah user menutup pembayaran, ia mendarat
-/// langsung di Tiket Saya, bukan tertinggal di langkah 3 checkout.
+/// Dipakai alur pembayaran supaya user mendarat di Tiket Saya.
 final permintaanTabUserProvider = StateProvider<int>((ref) => 0);

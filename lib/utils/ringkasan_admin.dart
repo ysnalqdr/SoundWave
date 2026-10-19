@@ -2,13 +2,11 @@ import '../constants/app_constants.dart';
 import '../models/pesanan_tiket_model.dart';
 import '../models/tiket_konser_model.dart';
 
-/// Angka-angka ringkas untuk Dashboard Admin.
+/// Angka ringkas untuk Dashboard Admin.
 ///
-/// Semua dihitung dari stream yang SUDAH dipakai layar lain
-/// (`allOrdersProvider`, `allTicketsProvider`, `eventsProvider`) — tidak ada
-/// query Firestore baru, jadi kuota Spark tidak bertambah karena dashboard.
-///
-/// Dipisah dari widget supaya bisa diuji tanpa Flutter widget test.
+/// Semua dihitung dari stream yang sudah dipakai layar lain, jadi tidak ada
+/// query Firestore baru dan kuota Spark tidak bertambah. Dipisah dari widget
+/// supaya bisa diuji tanpa Flutter.
 class RingkasanAdmin {
   /// Uang yang benar-benar masuk: pesanan AKTIF + TERPAKAI.
   /// Pesanan REFUNDED tidak dihitung, REFUND_REQUESTED belum diputuskan.

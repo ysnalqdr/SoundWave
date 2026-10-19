@@ -3,14 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../utils/app_theme.dart';
 
-/// Dua tombol dialog yang SELALU sejajar kiri-kanan: [labelBatal] di kiri,
-/// [labelKonfirmasi] di kanan, lebarnya dibagi rata.
+/// Dua tombol dialog yang selalu sejajar kiri-kanan, lebarnya dibagi rata.
 ///
-/// JANGAN mengembalikan tombol dialog ke `AlertDialog.actions:` — `actions`
-/// memakai `OverflowBar`, yang MENUMPUK tombol ke atas-bawah begitu lebar
-/// layar tidak cukup. Itulah penyebab tombol "Batal" muncul di ATAS tombol
-/// "Keluar". Widget ini memakai `Row` + `Expanded` sehingga lebarnya selalu
-/// dibagi dua dan tetap sejajar di layar sesempit apa pun.
+/// Jangan mengembalikan tombol dialog ke `AlertDialog.actions`: `actions`
+/// memakai `OverflowBar`, yang menumpuk tombol ke atas-bawah begitu layar
+/// sempit. Itu penyebab tombol Batal muncul di atas tombol Keluar. Di sini
+/// `Row` + `Expanded` menjaga keduanya tetap sejajar.
 class TombolDialogSejajar extends StatelessWidget {
   const TombolDialogSejajar({
     super.key,

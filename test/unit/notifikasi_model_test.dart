@@ -1,12 +1,9 @@
-// ═══════════════════════════════════════════════════════════════════
-// UNIT TEST — NotifikasiModel
-// ═══════════════════════════════════════════════════════════════════
-// Model ini membaca dokumen yang ditulis OTOMATIS oleh backend
+// Unit test NotifikasiModel
+// Model ini membaca dokumen yang ditulis backend
 // (server.js → kirimNotifikasi). Test ini mengunci:
 //   · parsing semua field + tahan terhadap field hilang / tipe aneh
 //   · createdAt bisa Timestamp / ISO string / epoch ms
 //   · label jenis & umur notifikasi ("baru saja", "3 jam lalu", ...)
-// ═══════════════════════════════════════════════════════════════════
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';

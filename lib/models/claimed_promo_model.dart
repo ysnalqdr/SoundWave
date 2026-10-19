@@ -1,12 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Voucher/promo yang SUDAH DIKLAIM user.
+/// Voucher yang sudah diklaim user.
 ///
-/// Disimpan sebagai subkoleksi: `users/{userId}/claimed_promos/{promoId}`
-/// (docId = promoId sehingga klaim ganda otomatis tidak dobel).
-///
-/// Nilai diskon di-snapshot saat klaim, supaya voucher yang sudah di tangan
-/// user tidak berubah walau admin mengedit promo aslinya.
+/// Disimpan di `users/{userId}/claimed_promos/{promoId}`, docId = promoId,
+/// jadi klaim ganda tidak menghasilkan dokumen dobel. Nilai diskon
+/// di-snapshot saat klaim supaya tidak berubah walau admin mengedit promo.
 class ClaimedPromoModel {
   final String promoId;
   final String kode;

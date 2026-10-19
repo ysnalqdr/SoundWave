@@ -5,17 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/app_providers.dart';
 import '../services/notification_service.dart';
 
-/// Menyambungkan PUSH NOTIFICATION (FCM) ke siklus hidup login.
+/// Menyambungkan push notification ke siklus hidup login.
 ///
-/// Kenapa widget ini perlu ada: `NotificationService` sebenarnya sudah lengkap
-/// sejak awal (minta izin, ambil token, simpan ke `users/{uid}.fcmToken`),
-/// TAPI tidak pernah dipanggil dari mana pun — jadi tidak ada satu HP pun yang
-/// punya token, dan push mustahil dikirim. Widget ini yang mencolokkannya:
-///
-///   login  -> initFcmForUser(uid) : ambil token + pasang listener
-///   logout -> AuthService.logout() : lepas token (ada di notification_service)
-///
-/// Semua kegagalan NON-FATAL: push tidak boleh mengganggu alur utama app.
+/// NotificationService sudah lengkap sejak awal, tapi tidak pernah dipanggil,
+/// jadi tidak ada HP yang punya token dan push mustahil dikirim. Widget ini
+/// yang mencolokkannya: login memanggil initFcmForUser, logout melepas token.
 class FcmGateway extends ConsumerStatefulWidget {
   const FcmGateway({
     super.key,
@@ -46,24 +40,15 @@ class _FcmGatewayState extends ConsumerState<FcmGateway> {
     super.dispose();
   }
 
-  /// Notifikasi push ditekan saat app ada di background -> kembali ke MENU
-  /// UTAMA akun yang sedang login, TANPA menumpuk halaman baru:
-  ///   · user  -> halaman utama user, tab Jelajah
-  ///   · admin -> dashboard admin, menu Konser
-  ///
-  /// Yang menentukan tujuan adalah halaman utama yang SEDANG terpasang (lihat
-  /// `permintaanMenuUtamaProvider`), jadi tidak mungkin salah akun: admin
-  /// tidak akan pernah dilempar ke halaman user, dan sebaliknya.
-  ///
-  /// Catatan: kalau app benar-benar TERTUTUP (bukan sekadar background), app
-  /// dibuka lewat SplashScreen seperti biasa — SplashScreen yang menentukan
-  /// rute berdasarkan peran, jadi di sini tidak perlu dipaksa apa pun.
+  /// Notifikasi push ditekan saat app di background: kembali ke menu utama
+  /// akun yang sedang login tanpa menumpuk halaman baru. User mendarat di tab
+  /// Jelajah, admin di dashboard. Tujuan ditentukan halaman utama yang sedang
+  /// terpasang, jadi tidak mungkin salah akun.
   void _bukaMenuUtama(RemoteMessage message) {
     final NavigatorState? navigator = widget.navigatorKey.currentState;
     if (navigator == null) return;
     // Balik ke halaman utama — bukan push halaman baru di atasnya.
     navigator.popUntil((route) => route.isFirst);
-    // Minta halaman utama pindah ke menu utamanya.
     ref.read(permintaanMenuUtamaProvider.notifier).state++;
   }
 

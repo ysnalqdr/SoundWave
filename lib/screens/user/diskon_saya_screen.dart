@@ -5,11 +5,11 @@ import '../../models/claimed_promo_model.dart';
 import '../../providers/app_providers.dart';
 import '../../utils/app_theme.dart';
 
-/// Halaman "Diskon Saya" (bagian Akun/Profil user).
+/// Halaman "Diskon Saya" di bagian Akun.
 ///
-/// Menampilkan voucher promo yang sudah DIKLAIM dari halaman Jelajah.
-/// Sumber data: subkoleksi `users/{uid}/claimed_promos`.
-/// Voucher berstatus TERSEDIA bisa dipilih sebagai potongan harga saat checkout.
+/// Menampilkan voucher yang sudah diklaim dari halaman Jelajah, sumbernya
+/// `users/{uid}/claimed_promos`. Voucher berstatus tersedia bisa dipakai
+/// sebagai potongan harga saat checkout.
 class DiskonSayaScreen extends ConsumerStatefulWidget {
   const DiskonSayaScreen({super.key});
 

@@ -294,7 +294,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // Divider
                     Row(
                       children: [
                         const Expanded(child: Divider(color: AppColors.divider)),
@@ -312,7 +311,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    // Google Sign-In Button
                     SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -393,7 +391,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
 
       if (user == null) {
-        // User cancelled Google sign-in
+        // User membatalkan proses masuk Google.
         setState(() => _loading = false);
         return;
       }

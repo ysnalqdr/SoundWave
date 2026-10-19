@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:crypto/crypto.dart' as dart_crypto;
 import 'package:cryptography/cryptography.dart';
 
-/// Represents a validated offline admission record
+/// A validated offline admission record.
 class OfflineScanRecord {
   final String scanId;
   final String kodeBooking;
@@ -70,26 +70,28 @@ class OfflineTicketService {
   factory OfflineTicketService() => _instance;
   OfflineTicketService._internal();
 
-  /// Public Key Ring: Maps keyId -> Ed25519 Public Key (32 bytes in Hex)
-  /// Enables seamless key rotation without invalidating previously issued valid tickets.
+  /// Maps key ID to Ed25519 public key (32 bytes, hex), so rotating a key
+  /// does not invalidate tickets issued earlier.
   static const Map<String, String> publicKeyRing = {
-    'v1': '738e21632d5a495fd5ea57d289333bf2cca00d84f8810f7e4961c417eff91697',
-    'v2': '3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29',
+    'v3': '850e6f046f020a0c24dec7c29ba5290304bcaaae8c2da2870778c2e4df831aea',
   };
 
-  /// Set of compromised or retired key IDs that must be immediately rejected
+  /// Revoked key IDs. v0 to v2 were once committed to a public repo, so their
+  /// private keys count as leaked and their tickets are rejected.
   static const Set<String> revokedKeyIds = <String>{
-    'v0', // Compromised historical test key
+    'v0',
+    'v1',
+    'v2',
   };
 
-  /// Active default key version for new signatures
-  static const String activeKeyId = 'v1';
+  /// Key ID the backend signs with today (ED25519_KEY_ID in .env).
+  static const String activeKeyId = 'v3';
 
-  /// Primary master public key hex alias for backwards compatibility
+  /// Primary public key, used by the UI and tests.
   static const String masterPublicKeyHex =
-      '738e21632d5a495fd5ea57d289333bf2cca00d84f8810f7e4961c417eff91697';
+      '850e6f046f020a0c24dec7c29ba5290304bcaaae8c2da2870778c2e4df831aea';
 
-  /// Dynamic key ring fetched when online to allow runtime revocation & rotation
+  /// Key ring fetched while online, so revocation and rotation work at runtime.
   final Map<String, String> _dynamicKeyRing = {};
   final Set<String> _dynamicRevokedKeyIds = {};
 
@@ -103,16 +105,16 @@ class OfflineTicketService {
 
   final Ed25519 _ed25519 = Ed25519();
 
-  /// Device hardware identifier for audit trail
+  /// Device identifier for the audit trail.
   String deviceId = 'gate-handheld-01';
 
-  /// In-memory fast-lookup index of scanned booking codes
+  /// In-memory index of scanned booking codes.
   final Set<String> _locallyScannedCodes = <String>{};
 
-  /// Chronological audit ledger of offline scans
+  /// Chronological ledger of offline scans.
   final List<OfflineScanRecord> _offlineScanRecords = <OfflineScanRecord>[];
 
-  /// Persistent ledger file path (null = in-memory mode for unit tests)
+  /// Ledger file path. Null keeps everything in memory for unit tests.
   File? _ledgerFile;
 
   Set<String> get locallyScannedCodes => Set.unmodifiable(_locallyScannedCodes);
@@ -120,8 +122,8 @@ class OfflineTicketService {
   List<OfflineScanRecord> get pendingOfflineRecords =>
       List.unmodifiable(_offlineScanRecords.where((r) => !r.isSynced));
 
-  /// Initializes persistent storage for the offline ledger.
-  /// Reads existing entries on disk into RAM index so restart/crash preserves scan history.
+  /// Opens the ledger file and rebuilds the in-memory index, so a restart or
+  /// crash keeps the scan history.
   Future<void> initStorage({String? storagePath}) async {
     if (storagePath == null || storagePath.isEmpty) {
       _ledgerFile = null;
@@ -132,7 +134,7 @@ class OfflineTicketService {
     await loadFromStorage();
   }
 
-  /// Loads records from persistent file, verifies integrity, and repopulates the index.
+  /// Loads the ledger, verifies each record, and rebuilds the index.
   Future<int> loadFromStorage() async {
     if (_ledgerFile == null || !await _ledgerFile!.exists()) {
       return 0;
@@ -150,7 +152,7 @@ class OfflineTicketService {
         final map = jsonDecode(line.trim()) as Map<String, dynamic>;
         final record = OfflineScanRecord.fromMap(map);
 
-        // Integrity Verification: Reject partially written or tampered records
+        // Tolak catatan yang tertulis separuh atau sudah diubah.
         if (!record.verifyIntegrity()) {
           continue;
         }
@@ -159,7 +161,7 @@ class OfflineTicketService {
         _offlineScanRecords.add(record);
         recoveredCount++;
       } catch (_) {
-        // Skip corrupted line from crash/partial write
+        // Baris korup dari penulisan yang terputus dilewati.
         continue;
       }
     }
@@ -167,7 +169,7 @@ class OfflineTicketService {
     return recoveredCount;
   }
 
-  /// Persists a single scan record to disk with append-only semantics
+  /// Appends one scan record to disk.
   Future<void> _persistRecord(OfflineScanRecord record) async {
     if (_ledgerFile == null) return;
 
@@ -177,11 +179,10 @@ class OfflineTicketService {
       await sink.flush();
       await sink.close();
     } catch (_) {
-      // In critical environments, persistent write failures can be logged to telemetry
+      // Gagal menulis tidak menggagalkan pemindaian yang sudah divalidasi.
     }
   }
 
-  /// Helper: converts hex string to byte list
   static List<int> hexToBytes(String hex) {
     final result = <int>[];
     for (int i = 0; i < hex.length; i += 2) {
@@ -190,13 +191,12 @@ class OfflineTicketService {
     return result;
   }
 
-  /// Helper: converts byte list to hex string
   static String bytesToHex(List<int> bytes) {
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 
-  /// Constructs canonical payload for signing and verification.
-  /// If [keyId] is provided, incorporates key version into the canonical structure.
+  /// Builds the canonical payload used for signing and verification. The key
+  /// ID is part of it, so a rotated key yields a different signature.
   static String buildCanonicalPayload({
     String? keyId,
     required String orderId,
@@ -211,10 +211,10 @@ class OfflineTicketService {
     return 'SW2|$orderId|$kodeBooking|$idKonser|$kategoriTiket|$jumlahTiket';
   }
 
-  /// Verifies an offline signed QR code payload using the public key ring.
-  /// Supports:
-  /// - Versioned protocol: SW2|keyId|orderId|kodeBooking|idKonser|kategoriTiket|jumlahTiket|sigHex (8 parts)
-  /// - Legacy unversioned: SW2|orderId|kodeBooking|idKonser|kategoriTiket|jumlahTiket|sigHex (7 parts -> maps to 'v1')
+  /// Verifies a signed offline QR payload against the public key ring.
+  ///
+  /// SW2|keyId|orderId|kodeBooking|idKonser|kategori|jumlah|signature is the
+  /// current form (8 parts). The legacy 7-part form is treated as v1.
   Future<Map<String, dynamic>> verifyOfflineTicket(String rawQr) async {
     final parts = rawQr.trim().split('|');
 
@@ -236,7 +236,6 @@ class OfflineTicketService {
     String canonicalPayload;
 
     if (parts.length == 8) {
-      // Versioned SW2
       keyId = parts[1];
       orderId = parts[2];
       kodeBooking = parts[3];
@@ -253,7 +252,7 @@ class OfflineTicketService {
         jumlahTiket: jumlahTiket,
       );
     } else if (parts.length == 7) {
-      // Legacy unversioned SW2 (defaults to keyId v1)
+      // Format lama tanpa keyId diperlakukan sebagai v1.
       keyId = 'v1';
       orderId = parts[1];
       kodeBooking = parts[2];
@@ -276,7 +275,7 @@ class OfflineTicketService {
       };
     }
 
-    // 1. Signature Structure Validation
+    // Bentuk tanda tangan diperiksa lebih dulu.
     if (signatureHex.length != 128) {
       return {
         'ok': false,
@@ -285,7 +284,7 @@ class OfflineTicketService {
       };
     }
 
-    // 2. Key Ring & Revocation Enforcement
+    // Kunci harus dikenal dan belum dicabut.
     if (revokedKeyIds.contains(keyId)) {
       return {
         'ok': false,
@@ -312,7 +311,7 @@ class OfflineTicketService {
       };
     }
 
-    // 3. Asymmetric Digital Signature Verification (Ed25519)
+    // Verifikasi tanda tangan Ed25519.
     try {
       final payloadBytes = utf8.encode(canonicalPayload);
       final signatureBytes = hexToBytes(signatureHex);
@@ -338,7 +337,7 @@ class OfflineTicketService {
       };
     }
 
-    // 4. Local Double-Scan Protection (Anti Double-Spend on this device)
+    // Tolak pindai ganda di perangkat yang sama.
     if (_locallyScannedCodes.contains(kodeBooking)) {
       return {
         'ok': false,
@@ -348,7 +347,7 @@ class OfflineTicketService {
       };
     }
 
-    // 5. Create scan record with high-entropy unique scanId (collision-proof)
+    // scanId acak supaya tidak pernah bertabrakan.
     final randHex = bytesToHex(List<int>.generate(8, (_) => Random.secure().nextInt(256)));
     final scanId = 'scan_${kodeBooking}_${DateTime.now().millisecondsSinceEpoch}_$randHex';
     final record = OfflineScanRecord(
@@ -360,7 +359,7 @@ class OfflineTicketService {
       scannedAt: DateTime.now(),
     );
 
-    // 6. Atomically update in-memory ledger and append to persistent file
+    // Perbarui indeks di memori, lalu tambahkan ke berkas.
     _locallyScannedCodes.add(kodeBooking);
     _offlineScanRecords.add(record);
     await _persistRecord(record);
@@ -379,7 +378,7 @@ class OfflineTicketService {
     };
   }
 
-  /// Marks a list of scanIds as successfully synced with the server and flushes to disk
+  /// Marks scans as synced and writes the ledger back to disk.
   Future<void> markRecordsSynced(List<String> scanIds) async {
     final idSet = scanIds.toSet();
     for (final record in _offlineScanRecords) {
@@ -390,7 +389,7 @@ class OfflineTicketService {
     await _flushLedgerToDisk();
   }
 
-  /// Flushes current in-memory ledger state to persistent storage
+  /// Writes the in-memory ledger to disk.
   Future<void> _flushLedgerToDisk() async {
     if (_ledgerFile == null) return;
     try {
@@ -403,7 +402,7 @@ class OfflineTicketService {
     } catch (_) {}
   }
 
-  /// Clears local scanned ledger (e.g. at the start of a new concert shift)
+  /// Clears the ledger, for example at the start of a new shift.
   Future<void> resetLedger({bool deleteFile = false}) async {
     _locallyScannedCodes.clear();
     _offlineScanRecords.clear();

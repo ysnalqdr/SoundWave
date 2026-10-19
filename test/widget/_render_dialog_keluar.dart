@@ -1,4 +1,4 @@
-// SKRIP RENDER SEMENTARA — hanya untuk melihat hasil tata letak dialog.
+// Skrip render sementara, hanya untuk melihat hasil tata letak dialog.
 // Memakai TextStyle(fontFamily:) langsung (bukan GoogleFonts.*) supaya font
 // sistem yang didaftarkan benar-benar dipakai saat render di `flutter test`.
 import 'dart:io';
@@ -82,7 +82,6 @@ Future<void> _render(WidgetTester tester, double lebar, String nama) async {
   );
   await tester.pump(const Duration(milliseconds: 300));
 
-  // ── UKUR GEOMETRI NYATA (bukan menebak dari gambar) ──
   final Rect rBatal = tester.getRect(find.widgetWithText(OutlinedButton, 'Batal'));
   final Rect rKeluar = tester.getRect(find.widgetWithText(ElevatedButton, 'Keluar'));
   // ignore: avoid_print

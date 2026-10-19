@@ -11,36 +11,33 @@ class MidtransService {
   factory MidtransService() => _instance;
   MidtransService._internal();
 
-  /// Lama cache alamat backend. Dulu 10 menit: kalau tunnel di-restart,
-  /// APK masih memakai alamat mati sampai 10 menit ke depan.
+  // Lama cache alamat backend. Pendek, supaya tunnel yang di-restart
+  // tidak membuat APK memakai alamat mati terlalu lama.
   static const Duration _umurCache = Duration(seconds: 60);
 
-  /// Batas tunggu satu permintaan ke backend.
+  // Batas tunggu satu permintaan ke backend.
   static const Duration _batasTunggu = Duration(seconds: 25);
 
-  /// Pesan yang dilihat user saat server tidak bisa dihubungi.
+  // Pesan yang dilihat user saat server tidak bisa dihubungi.
   static const String pesanServerMati =
       'Server pembayaran sedang tidak bisa dihubungi. Coba lagi sebentar.';
 
-  /// Pesan saat alamat backend belum tersedia sama sekali.
+  // Pesan saat alamat backend belum tersedia sama sekali.
   static const String pesanServerBelumSiap =
       'Server pembayaran belum siap. Pastikan START_SOUNDWAVE sedang berjalan, lalu coba lagi.';
 
   static String? _cachedBackendUrl;
   static DateTime? _lastFetch;
 
-  /// Buang alamat tersimpan supaya permintaan berikutnya membaca ulang
-  /// dari Firestore.
+  /// Drops the cached address so the next request re-reads Firestore.
   static void lupakanCacheUrl() {
     _cachedBackendUrl = null;
     _lastFetch = null;
   }
 
-  /// Ambil URL backend dinamis dari Firestore.
-  ///
-  /// Tidak ada alamat cadangan yang ditanam di kode: kalau Firestore tidak
-  /// memberi alamat yang sah, permintaan dihentikan dengan pesan jelas
-  /// daripada mencoba alamat tunnel lama yang sudah mati.
+  /// Resolves the backend URL from Firestore. No fallback address is baked
+  /// in, so a missing value fails with a clear message instead of calling
+  /// a tunnel that is already dead.
   static Future<String> getBackendUrl({bool paksa = false}) async {
     if (!paksa &&
         _cachedBackendUrl != null &&
@@ -65,8 +62,7 @@ class MidtransService {
     throw const ServerTidakTerhubungException(pesanServerBelumSiap);
   }
 
-  /// Benar bila [e] berarti "tidak bisa menghubungi server", bukan jawaban
-  /// error dari server.
+  /// True when [e] means the server was unreachable, not a server error.
   static bool _galatKoneksi(Object e) {
     if (e is ServerTidakTerhubungException) return true;
     if (e is http.ClientException) return true;
@@ -81,7 +77,7 @@ class MidtransService {
         t.contains('network is unreachable');
   }
 
-  /// Pesan siap tampil untuk user — tidak pernah membocorkan teks exception.
+  /// User-facing message. Never leaks exception text.
   static String _pesanGalat(Object e, String awalan) {
     if (e is ServerTidakTerhubungException) return e.pesan;
     if (e is FormatException) {
@@ -91,16 +87,11 @@ class MidtransService {
     return '$awalan. Coba lagi sebentar.';
   }
 
-  /// Versi publik [pesanRamah] untuk layar yang menangkap exception sendiri.
+  /// Public form of [pesanRamah] for screens that catch their own errors.
   static String pesanRamah(Object e, String awalan) => _pesanGalat(e, awalan);
 
-  /// Kirim permintaan ke backend dengan alamat yang selalu segar.
-  ///
-  /// Kalau percobaan pertama gagal karena jaringan / alamat tidak ditemukan,
-  /// cache dibuang, alamat dibaca ulang dari Firestore, lalu dicoba SEKALI
-  /// lagi. Ini yang membuat APK tetap jalan setelah tunnel di-restart.
-  /// Header untuk rute /admin/*. Backend menolak permintaan yang tidak
-  /// membawa ID token milik akun ber-role admin (lihat auth_admin.js).
+  // Header rute /admin/*. Backend menolak token yang bukan milik admin
+  // (lihat auth_admin.js).
   static Future<Map<String, String>> kepalaAdmin() async {
     final pengguna = FirebaseAuth.instance.currentUser;
     final token = await pengguna?.getIdToken();
@@ -110,24 +101,39 @@ class MidtransService {
     };
   }
 
+  /// Sends a request to the backend using a freshly resolved address.
+  ///
+  /// A network or address-not-found failure drops the cache, re-reads
+  /// Firestore, and retries once, so the app survives a tunnel restart.
   static Future<http.Response> _kirim(
     String jalur, {
     String metode = 'POST',
     Map<String, String>? headers,
     String? body,
   }) async {
+    // Setiap permintaan membawa ID token pengguna. Backend memakai token
+    // itu sebagai identitas, bukan userId yang dikirim di body.
+    final kepala = <String, String>{
+      'Content-Type': 'application/json',
+      ...?headers,
+    };
+    if (!kepala.containsKey('Authorization')) {
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      if (token != null) kepala['Authorization'] = 'Bearer $token';
+    }
+
     Future<http.Response> sekali(String baseUrl) {
       final uri = Uri.parse('$baseUrl$jalur');
       switch (metode) {
         case 'GET':
-          return http.get(uri, headers: headers).timeout(_batasTunggu);
+          return http.get(uri, headers: kepala).timeout(_batasTunggu);
         case 'DELETE':
           return http
-              .delete(uri, headers: headers, body: body)
+              .delete(uri, headers: kepala, body: body)
               .timeout(_batasTunggu);
         default:
           return http
-              .post(uri, headers: headers, body: body)
+              .post(uri, headers: kepala, body: body)
               .timeout(_batasTunggu);
       }
     }
@@ -188,16 +194,11 @@ class MidtransService {
     }
   }
 
-  /// Atomic checkout: reserve tiket + create Snap token dalam 1 transaction
-  /// Menghindari race condition pada tiket viral
-  /// 
-  /// Returns:
-  /// - success: true/false
-  /// - token: Snap token (jika sukses)
-  /// - redirect_url: Snap payment URL
-  /// - ticketRevision: versi ticket saat ini (untuk retry jika conflict)
-  /// - conflict: true jika terjadi revision mismatch (409)
-  /// - message: error message
+  /// Reserves stock and creates a Snap token in one backend transaction,
+  /// which avoids overselling on popular tickets.
+  /// Returns a map with `success`, `token`, `redirect_url`,
+  /// `ticketRevision`, `conflict` (true on a 409 revision mismatch), and
+  /// `message`.
   Future<Map<String, dynamic>> checkoutAtomic({
     required String orderId,
     required String ticketId,
@@ -220,7 +221,7 @@ class MidtransService {
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
-      // 409 Conflict: stok atau revision berubah
+      // 409 Conflict: stok atau revision berubah.
       if (response.statusCode == 409) {
         return {
           'success': false,
@@ -230,7 +231,6 @@ class MidtransService {
         };
       }
 
-      // Sukses atau error lainnya
       return {
         'success': response.statusCode == 200 && data['success'] == true,
         'token': data['token'],
@@ -247,7 +247,7 @@ class MidtransService {
     }
   }
 
-  /// Dev/sandbox helper: settle payment via backend when Snap UI unavailable.
+  /// Dev/sandbox helper: settles a payment when the Snap UI is unavailable.
   Future<Map<String, dynamic>> settleOrderDev(String orderId) async {
     try {
       final response = await _kirim('/settle-dev',
@@ -268,8 +268,8 @@ class MidtransService {
     }
   }
 
-  /// POST /create-va — buat Virtual Account untuk Transfer Bank (bca/bni/mandiri)
-  /// Return: { success, va_number, bank, expires_at, order_id, ... }
+  /// Creates a bank transfer virtual account (bca, bni, or mandiri).
+  /// Returns `{ success, va_number, bank, expires_at, order_id }`.
   Future<Map<String, dynamic>> createVA({
     required String orderId,
     required String bank,
@@ -303,8 +303,8 @@ class MidtransService {
     }
   }
 
-  /// POST /create-gopay — buat transaksi GoPay + QR code (berlaku 5 menit)
-  /// Return: { success, qr_string, qr_image_url, expires_at, order_id, ... }
+  /// Creates a GoPay QR charge, valid for 5 minutes.
+  /// Returns `{ success, qr_string, qr_image_url, expires_at, order_id }`.
   Future<Map<String, dynamic>> createGoPay({required String orderId}) async {
     try {
       final response = await _kirim('/create-gopay',
@@ -330,8 +330,8 @@ class MidtransService {
     }
   }
 
-  /// POST /create-qris — buat transaksi QRIS + QR code (berlaku 5 menit)
-  /// Return: { success, qr_string, qr_image_url, expires_at, order_id, ... }
+  /// Creates a QRIS charge, valid for 5 minutes.
+  /// Returns `{ success, qr_string, qr_image_url, expires_at, order_id }`.
   Future<Map<String, dynamic>> createQRIS({required String orderId}) async {
     try {
       final response = await _kirim('/create-qris',
@@ -357,8 +357,8 @@ class MidtransService {
     }
   }
 
-  /// POST /poll-payment — cek status pembayaran Midtrans secara periodik
-  /// Return: { success, transaction_status, status, is_paid, ... }
+  /// Polls Midtrans payment status.
+  /// Returns `{ success, transaction_status, status, is_paid }`.
   Future<Map<String, dynamic>> pollPayment({required String orderId}) async {
     try {
       final response = await _kirim('/poll-payment',
@@ -403,14 +403,11 @@ class MidtransService {
     }
   }
 
-  // ══════════════════════════════════════════
-  // PROMO CODES
-  // ══════════════════════════════════════════
 
-  /// POST /validate-promo — validasi kode promo
-  /// Minta backend menyapu reservasi yang jendela bayarnya sudah lewat
-  /// (status -> EXPIRED, stok dilepas SEKALI). Backend juga menyapu sendiri
-  /// tiap 30 detik; panggilan ini hanya mempercepat saat layar tiket dibuka.
+  /// Validates a promo code before checkout.
+  /// Sweeps reservations whose payment window has passed: status becomes
+  /// EXPIRED and stock is released once. The backend sweeps every 30
+  /// seconds on its own, so this only speeds up the ticket screen.
   Future<Map<String, dynamic>> sweepExpired() async {
     try {
       final response = await _kirim('/sweep-expired',
@@ -457,11 +454,8 @@ class MidtransService {
     }
   }
 
-  // ══════════════════════════════════════════
-  // REFUND WORKFLOW
-  // ══════════════════════════════════════════
 
-  /// POST /request-refund — user minta refund
+  /// Asks the backend to refund an order.
   Future<Map<String, dynamic>> requestRefund({
     required String orderId,
     required String userId,
@@ -487,7 +481,7 @@ class MidtransService {
     }
   }
 
-  /// GET /admin/refunds — list semua refund
+  /// Lists refund requests, optionally filtered by status.
   Future<Map<String, dynamic>> getRefunds({String? status}) async {
     try {
       final response = await _kirim(
@@ -509,7 +503,7 @@ class MidtransService {
     }
   }
 
-  /// POST /admin/refund/approve — admin setujui refund
+  /// Approves a refund request. Money is returned manually by the admin.
   Future<Map<String, dynamic>> approveRefund({
     required String refundId,
     required String orderId,
@@ -532,7 +526,8 @@ class MidtransService {
     }
   }
 
-  /// POST /admin/refund/reject — admin tolak refund
+  /// Rejects a refund and returns the order to AKTIF, or TERPAKAI when the
+  /// ticket was already scanned.
   Future<Map<String, dynamic>> rejectRefund({
     required String refundId,
     required String alasanReject,
@@ -555,11 +550,8 @@ class MidtransService {
     }
   }
 
-  // ══════════════════════════════════════════
-  // INVOICE
-  // ══════════════════════════════════════════
 
-  /// GET /invoice/:orderId — generate invoice
+  /// Returns invoice details for an order.
   Future<Map<String, dynamic>> getInvoice({required String orderId}) async {
     try {
       final response = await _kirim('/invoice/$orderId', metode: 'GET');
@@ -582,11 +574,8 @@ class MidtransService {
     }
   }
 
-  // ══════════════════════════════════════════
-  // SEAT SELECTION
-  // ══════════════════════════════════════════
 
-  /// GET /seat-layout/:idKonser — ambil layout kursi + booked seats
+  /// Returns the seat layout and the seats already booked for a concert.
   Future<Map<String, dynamic>> getSeatLayout({required String idKonser}) async {
     try {
       final response = await _kirim('/seat-layout/$idKonser', metode: 'GET');
@@ -601,7 +590,7 @@ class MidtransService {
     }
   }
 
-  /// POST /reserve-seats — booking kursi atomically
+  /// Reserves seats atomically.
   Future<Map<String, dynamic>> reserveSeats({
     required String idKonser,
     required List<String> seats,
@@ -626,7 +615,7 @@ class MidtransService {
     }
   }
 
-  /// DELETE /release-seats — lepas booking kursi
+  /// Releases a seat booking.
   Future<Map<String, dynamic>> releaseSeats({
     required String idKonser,
     required List<String> seats,
@@ -650,10 +639,10 @@ class MidtransService {
   }
 }
 
-/// Dilempar saat backend tidak bisa dihubungi sama sekali.
+/// Thrown when the backend cannot be reached at all.
 ///
-/// [toString] sengaja hanya berisi pesan untuk user, tanpa detail teknis
-/// seperti `ClientException with SocketException`.
+/// [toString] returns only the user-facing message, never technical detail
+/// such as `ClientException with SocketException`.
 class ServerTidakTerhubungException implements Exception {
   final String pesan;
   const ServerTidakTerhubungException(

@@ -6,9 +6,9 @@ import 'package:share_plus/share_plus.dart';
 import '../../models/pesanan_tiket_model.dart';
 import '../../utils/app_theme.dart';
 
-/// Tampilan invoice / struk pembelian tiket.
-/// Dark theme, menerima [tiket] PesananTiketModel.
-/// Nomor invoice di-generate client-side: INV-SW-{year}-{kodeBooking}.
+/// Invoice or receipt for a ticket purchase, built from [tiket].
+///
+/// The invoice number follows INV-SW-{year}-{kodeBooking}.
 class InvoiceScreen extends StatelessWidget {
   final PesananTiketModel tiket;
 
@@ -201,7 +201,6 @@ class InvoiceScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Header
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
@@ -236,7 +235,6 @@ class InvoiceScreen extends StatelessWidget {
               ],
             ),
           ),
-          // Body
           Padding(
             padding: const EdgeInsets.all(20),
             child: Column(

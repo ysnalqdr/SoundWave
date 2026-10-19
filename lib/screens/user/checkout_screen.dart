@@ -13,11 +13,8 @@ import '../../providers/app_providers.dart';
 import '../../services/midtrans_service.dart';
 import '../../widgets/gambar_widget.dart';
 
-/// ─────────────────────────────────────────────────────────────
-/// WHITE THEME PALETTE (Zara / Apple-style checkout)
-/// Background putih, teks hitam, aksen Soundwave green #00E676,
-/// secondary dark navy. Dipisah dari AppColors (yang dark-themed).
-/// ─────────────────────────────────────────────────────────────
+// Palet khusus layar ini: latar putih, teks hitam, aksen hijau Soundwave.
+// Terpisah dari AppColors yang bertema gelap.
 class _SwWhite {
   static const Color bg = Color(0xFF0A0A0F);
   static const Color ink = Color(0xFFFFFFFF);
@@ -67,7 +64,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
   final _emailCtrl = TextEditingController();
   final _teleponCtrl = TextEditingController(text: '081234567890');
 
-  // Kartu kredit
   final _cardNumberCtrl = TextEditingController();
   final _expiryCtrl = TextEditingController();
   final _cvvCtrl = TextEditingController();
@@ -78,11 +74,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
 
   final double _biayaAdmin = 5000;
 
-  // ── Step flow ──
+  // Alur langkah
   int _currentStep = 0; // 0=metode, 1=form metode, 2=konfirmasi
   String? _selectedMethod; // 'va' | 'card' | 'gopay' | 'qris'
 
-  // ── VA state ──
+  // Status VA
   String _selectedBank = 'bca';
   String? _vaNumber;
   String? _vaBank;
@@ -90,7 +86,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
   Timer? _vaTimer;
   int _vaRemaining = 24 * 60 * 60; // 24 jam dalam detik
 
-  // ── GoPay / QRIS state ──
+  // Status GoPay dan QRIS
   String? _qrString;
   String? _gopayPhone; // nomor HP untuk GoPay
   Timer? _qrTimer;
@@ -101,18 +97,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
   bool _autoInstrumenDicoba =
       false; // mode lanjut: instrumen sudah dicoba ditampilkan
 
-  // ── Order ──
+  // Pesanan
   PesananTiketModel? _savedOrder;
   bool _orderCreated = false;
   bool _paymentDetected = false; // poll / settle-dev mendeteksi lunas
 
-  // ── Voucher / diskon yang sudah diklaim user ──
+  // Voucher yang sudah diklaim user
   List<ClaimedPromoModel> _claimedPromos = const [];
   ClaimedPromoModel? _selectedClaim;
   StreamSubscription<List<ClaimedPromoModel>>? _claimedSub;
   String? _claimedUid;
 
-  // ── Success animation ──
+  // Animasi sukses
   bool _showSuccess = false;
   late AnimationController _checkController;
   late Animation<double> _checkScale;
@@ -131,7 +127,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     super.initState();
     _tiket = widget.tiketDipilih;
 
-    // ── Mode LANJUTKAN PEMBAYARAN: pakai pesanan yang sudah ada ──
+    // Mode lanjutkan pembayaran: pakai pesanan yang sudah ada.
     final lanjut = widget.orderLanjutan;
     if (lanjut != null) {
       _savedOrder = lanjut;
@@ -177,7 +173,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
 
   double get _subtotal => _tiket.harga * _jumlahTiket;
 
-  /// Potongan dari voucher yang dipilih (0 bila tak ada / min. belanja belum terpenuhi).
+  /// Potongan voucher terpilih. Nol bila tidak ada voucher atau minimum
+  /// belanja belum terpenuhi.
   double get _diskon => _selectedClaim?.discountAmount(_subtotal) ?? 0;
 
   double get _totalBayar {
@@ -185,7 +182,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     return t < 0 ? 0 : t;
   }
 
-  /// Ikuti daftar voucher user secara realtime (dipanggil dari build).
   void _bindClaimedPromos(String? uid) {
     if (uid == null || uid.isEmpty || uid == _claimedUid) return;
     _claimedUid = uid;
@@ -206,7 +202,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     }, onError: (_) {});
   }
 
-  /// Tandai voucher sudah terpakai setelah pembayaran sukses.
   Future<void> _markVoucherUsed() async {
     final uid = _claimedUid;
     final claim = _selectedClaim;
@@ -216,22 +211,22 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
           .read(databaseServiceProvider)
           .markClaimedPromoUsed(uid, claim.promoId, orderId: _savedOrder?.id);
     } catch (_) {
-      // tidak fatal: pembayaran sudah sukses
+      // Tidak fatal: pembayaran sudah sukses.
     }
     _selectedClaim = null;
   }
 
   int get _maxTiket => _tiket.stok < 5 ? _tiket.stok : 5;
 
-  /// Mode "lanjutkan pembayaran" untuk pesanan yang sudah ada.
+  /// Mode lanjutkan pembayaran untuk pesanan yang sudah ada.
   bool get _lanjut => widget.orderLanjutan != null;
 
-  /// Total yang ditagih & ditampilkan. Di mode lanjut = total pesanan asli
-  /// (mis. sudah terpotong voucher) — backend juga menagih order.totalHarga.
+  /// Total yang ditagih dan ditampilkan. Di mode lanjut nilainya total
+  /// pesanan asli yang sudah terpotong voucher; backend menagih angka sama.
   double get _totalTagih =>
       _lanjut ? widget.orderLanjutan!.totalHarga : _totalBayar;
 
-  /// Petakan label metode pembayaran di pesanan -> kode metode wizard.
+  /// Petakan label metode di pesanan ke kode metode wizard.
   static String? _metodeDariLabel(String? label) {
     final l = (label ?? '').toLowerCase();
     if (l.contains('gopay')) return 'gopay';
@@ -281,9 +276,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     }
   }
 
-  // ─────────────────────────────────────────────
-  // NAVIGATION
-  // ─────────────────────────────────────────────
   void _goToStep(int step) => setState(() => _currentStep = step);
 
   void _nextFromStep1() {
@@ -296,7 +288,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
 
   void _nextFromStep2() {
     if (!_formKey.currentState!.validate()) return;
-    // VA/GoPay/QRIS: instrumen pembayaran harus dibuat dulu sebelum lanjut.
+    // VA, GoPay, dan QRIS harus dibuat dulu sebelum user bisa membayar.
     if (_selectedMethod == 'va' && (_vaNumber == null || _vaNumber!.isEmpty)) {
       _toast('Generate Virtual Account terlebih dahulu', _SwWhite.warning);
       return;
@@ -313,9 +305,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     _goToStep(2);
   }
 
-  // ─────────────────────────────────────────────
-  // ORDER CREATION (dibutuhkan sebelum /create-va, /create-gopay, /create-qris)
-  // ─────────────────────────────────────────────
   Future<PesananTiketModel?> _ensureOrderCreated(String currentUserId) async {
     if (_orderCreated && _savedOrder != null) return _savedOrder;
     if (!_formKey.currentState!.validate()) return null;
@@ -356,9 +345,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     }
   }
 
-  // ─────────────────────────────────────────────
-  // STEP 2 — GENERATE VA / GOPAY / QRIS
-  // ─────────────────────────────────────────────
+  // Langkah 2: buat instrumen VA, GoPay, atau QRIS.
   Future<void> _generateVA(String currentUserId) async {
     final order = await _ensureOrderCreated(currentUserId);
     if (order == null) return;
@@ -405,7 +392,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     setState(() => _methodLoading = true);
     try {
       final midtrans = ref.read(midtransServiceProvider);
-      // Retry logic: 3 attempts with 1s delay
       Map<String, dynamic> res = {};
       for (int attempt = 0; attempt < 3; attempt++) {
         res = await midtrans.createGoPay(orderId: order.id);
@@ -444,7 +430,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     setState(() => _methodLoading = true);
     try {
       final midtrans = ref.read(midtransServiceProvider);
-      // Retry logic: 3 attempts with 1s delay
       Map<String, dynamic> res = {};
       for (int attempt = 0; attempt < 3; attempt++) {
         res = await midtrans.createQRIS(orderId: order.id);
@@ -470,9 +455,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     }
   }
 
-  // ─────────────────────────────────────────────
-  // TIMERS
-  // ─────────────────────────────────────────────
   void _startVaTimer() {
     _vaTimer?.cancel();
     _vaTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -521,9 +503,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     return '${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
   }
 
-  // ─────────────────────────────────────────────
-  // POLLING (setiap 3 detik setelah QR/VA ditampilkan)
-  // ─────────────────────────────────────────────
+  // Polling status tiap 3 detik setelah QR atau VA tampil.
   void _startPolling(String orderId) {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
@@ -544,17 +524,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     });
   }
 
-  // ─────────────────────────────────────────────
-  // STEP 3 — BAYAR SEKARANG (checkoutAtomic)
-  // ─────────────────────────────────────────────
+  // Langkah 3: bayar sekarang lewat checkoutAtomic.
   Future<void> _bayarSekarang(String currentUserId) async {
-    // Jika pembayaran sudah terdeteksi (VA/QR lunas via poll/settle), langsung sukses.
+    // Kalau pelunasan sudah terdeteksi lewat polling, langsung sukses.
     if (_paymentDetected) {
       _showSuccessScreen();
       return;
     }
 
-    // Pastikan order ada (untuk metode kartu, order belum dibuat di Step 2)
+    // Metode kartu belum membuat order di langkah 2, jadi order dibuat di sini.
     final order = await _ensureOrderCreated(currentUserId);
     if (order == null) return;
 
@@ -572,7 +550,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
       if (!mounted) return;
       setState(() => _loading = false);
 
-      // 409 conflict: stok berubah
+      // 409: stok atau revisi tiket berubah.
       if (result['conflict'] == true) {
         _toast(
           result['message'] ?? 'Stok berubah, silakan refresh',
@@ -581,21 +559,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
         return;
       }
 
-      // Sukses
       if (result['success'] == true) {
-        // Untuk metode kartu, ada Snap token; untuk VA/QR sudah dibayar via Core API.
+      // Kartu memakai Snap token; VA dan QR sudah dibayar lewat Core API.
         if (_selectedMethod == 'card') {
-          // Mulai polling untuk deteksi settlement (Snap / simulasi)
+          // Polling untuk mendeteksi pelunasan.
           _startPolling(order.id);
           _showCardPayInfo(order);
         } else {
-          // VA/QR: instrumen sudah dibuat, stok sudah direservasi → tunggu pembayaran
+          // Instrumen sudah dibuat dan stok sudah direservasi: tunggu bayar.
           _showWaitingInfo();
         }
         return;
       }
 
-      // Insufficient stock
       final msg = (result['message'] ?? '').toString();
       if (msg.toLowerCase().contains('stok') ||
           msg.toLowerCase().contains('cukup') ||
@@ -730,12 +706,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  /// Keluar dari alur pembayaran dan mendarat di tab **Tiket Saya**.
+  /// Keluar dari alur pembayaran dan mendarat di tab Tiket Saya.
   ///
-  /// Reservasi TIDAK dibatalkan: pesanan tetap PENDING dengan hitungan 5 menit,
-  /// stok tetap tertahan, dan user bisa lanjut membayar dari daftar tiket.
-  /// Notifier diambil lebih dulu supaya tetap sah walau layar ini ikut ditutup
-  /// oleh popUntil.
+  /// Reservasi tidak dibatalkan: pesanan tetap PENDING dan stok tetap
+  /// tertahan, jadi user bisa melanjutkan dari daftar tiket.
   void _keTiketSaya() {
     final tab = ref.read(permintaanTabUserProvider.notifier);
     Navigator.of(context).popUntil((r) => r.isFirst);
@@ -847,9 +821,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  // ─────────────────────────────────────────────
-  // SUCCESS SCREEN (in-state, checkmark animation)
-  // ─────────────────────────────────────────────
   void _showSuccessScreen() {
     _pollTimer?.cancel();
     _vaTimer?.cancel();
@@ -859,9 +830,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     _checkController.forward(from: 0);
   }
 
-  // ─────────────────────────────────────────────
-  // HELPERS
-  // ─────────────────────────────────────────────
   void _toast(String msg, Color color) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -926,7 +894,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  /// Dropdown pilihan voucher yang sudah diklaim user.
+  /// Dropdown voucher yang sudah diklaim user.
   Widget _buildVoucherPicker() {
     if (_claimedPromos.isEmpty) {
       return Container(
@@ -1049,9 +1017,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // BUILD
-  // ═══════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     final currentUserAsync = ref.watch(currentUserStreamProvider);
@@ -1097,7 +1062,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  // ── AppBar ──
+  // AppBar
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: _SwWhite.bg,
@@ -1113,8 +1078,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
             Navigator.of(context).pop();
             return;
           }
-          // Mode lanjut: langkah metode bukan bagian alur lagi, jadi back dari
-          // Bayar/Konfirmasi membawa user ke Tiket Saya (bukan mundur ke metode).
+          // Mode lanjut: mundur dari Bayar membawa user ke Tiket Saya,
+          // bukan kembali ke daftar metode.
           if (_lanjut && _currentStep <= 1) {
             _keTiketSaya();
             return;
@@ -1142,12 +1107,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  // ═══════════════════════════════════════════
-  // MODE LANJUT — tampilan yang tidak perlu diulang user
-  // ═══════════════════════════════════════════
+  // Tampilan mode lanjut: bagian yang tidak perlu diulang user.
 
-  /// Kartu pemesan ringkas: data pemesan memang terkunci ke pesanan, jadi
-  /// tiga kolom formulir readOnly tidak ada gunanya.
+  /// Kartu pemesan ringkas. Data pemesan terkunci ke pesanan, jadi tiga
+  /// kolom formulir readOnly tidak ada gunanya.
   Widget _buildKartuPemesanTerkunci() {
     final o = widget.orderLanjutan!;
     final hp = (o.teleponPembeli ?? '').trim();
@@ -1205,9 +1168,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  /// Jalan keluar kalau metode yang dipilih ternyata tidak bisa dipakai
-  /// (mis. saldo GoPay kurang). Sengaja berupa tautan kecil, bukan tombol,
-  /// supaya user tidak dirayu berganti-ganti metode.
+  /// Jalan keluar kalau metode terpilih ternyata tidak bisa dipakai, misalnya
+  /// saldo GoPay kurang. Sengaja tautan kecil, bukan tombol, supaya user tidak
+  /// dirayu berganti-ganti metode.
   Widget _buildTautanGantiMetode() {
     return Align(
       alignment: Alignment.centerLeft,
@@ -1231,10 +1194,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  /// Mode lanjut: tampilkan VA/QR yang SUDAH ada tanpa user menekan
-  /// "Generate" lagi. Backend memakai ulang instrumen yang belum kedaluwarsa
-  /// (server.js: VA baris 577 · GoPay 704 · QRIS 817), jadi tidak ada tagihan
-  /// ganda. Hanya dicoba sekali per layar; kalau gagal, tombol manual tetap ada.
+  /// Mode lanjut: tampilkan VA atau QR yang sudah ada tanpa menekan Generate.
+  /// Backend memakai ulang instrumen yang belum kedaluwarsa, jadi tidak ada
+  /// tagihan ganda. Dicoba sekali per layar; tombol manual tetap tersedia.
   void _cobaTampilkanInstrumen(String uid) {
     if (_autoInstrumenDicoba || !_lanjut || _currentStep != 1) return;
     if (uid.isEmpty || uid == 'guest') return;
@@ -1271,7 +1233,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     });
   }
 
-  // ── Banner mode "lanjutkan pembayaran" ──
+  // Banner mode lanjutkan pembayaran.
   Widget _buildBannerLanjut() {
     final o = widget.orderLanjutan!;
     return Container(
@@ -1318,10 +1280,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  // ── Step indicator (1 · 2 · 3) ──
+  // Indikator langkah.
   Widget _buildStepIndicator() {
     // Mode lanjut: langkah metode sudah selesai, jadi labelnya diganti nama
-    // metode supaya user melihat centang + metode yang dia pilih.
+    // metode supaya user melihat centang dan pilihannya.
     final labels = [
       _lanjut && _selectedMethod != null ? _methodLabel : 'Metode',
       'Bayar',
@@ -1394,9 +1356,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  // ═══════════════════════════════════════════
-  // STEP 1 — PAYMENT METHOD PICKER
-  // ═══════════════════════════════════════════
+  // Langkah 1: pilih metode pembayaran.
   Widget _buildStep1Methods() {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -1456,20 +1416,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
 
   Widget _buildMethodCard(_PaymentMethod m) {
     final selected = _selectedMethod == m.id;
-    // PENTING — jangan pakai `Colors.transparent` di salah satu sisi border
-    // selama ada `borderRadius`: Flutter menghitung warna transparan sebagai
-    // warna yang TERLIHAT, sehingga warnanya jadi tidak seragam dan Flutter
-    // melempar "A borderRadius can only be given on borders with uniform
-    // colors." SAAT PAINT. Akibatnya background kartu tergambar tapi seluruh
-    // isinya (nama metode, subtitle, ikon, radio) tidak pernah tergambar —
-    // kartu tampak kosong. Semua sisi wajib SATU warna yang sama; lebar boleh
-    // berbeda (aksen kiri 4px) karena aturannya hanya soal warna.
+    // Jangan pakai Colors.transparent di satu sisi border selama ada
+    // borderRadius: Flutter menghitung transparan sebagai warna yang terlihat,
+    // lalu melempar "A borderRadius can only be given on borders with uniform
+    // colors" saat paint. Kartu tampak kosong karena isinya tidak pernah
+    // digambar. Semua sisi wajib satu warna; lebar boleh berbeda.
     final Color borderColor =
         selected ? _SwWhite.green.withValues(alpha: 0.4) : _SwWhite.line;
     return GestureDetector(
       onTap: () => setState(() {
         if (_selectedMethod != m.id) {
-          // Metode berganti → instrumen lama (VA/QR) tidak dipakai lagi.
+          // Metode berganti: instrumen lama tidak dipakai lagi.
           _vaNumber = null;
           _vaBank = null;
           _billerCode = null;
@@ -1613,18 +1570,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  // ═══════════════════════════════════════════
-  // STEP 2 — METHOD-SPECIFIC FORM
-  // ═══════════════════════════════════════════
+  // Langkah 2: formulir sesuai metode.
   Widget _buildStep2Form(String currentUserId) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Buyer info ──
-          // Mode lanjut: data pemesan sudah terkunci di pesanan, jadi tiga kolom
-          // formulir yang tidak bisa diisi hanya memanjangkan layar. Cukup kartu.
+          // Data pemesan.
+          // Mode lanjut: data pemesan terkunci di pesanan, jadi tiga kolom
+          // formulir readOnly hanya memanjangkan layar.
           if (_lanjut) ...[
             _buildKartuPemesanTerkunci(),
             const SizedBox(height: 6),
@@ -1666,9 +1621,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
             ),
           ],
 
-          // ── Ticket quantity (kept here for visibility) ──
-          // Mode lanjut: jumlah tiket & voucher TERKUNCI ke pesanan asli
-          // (pesanan sudah dibuat; mengubahnya membuat data tidak sinkron).
+          // Jumlah tiket.
+          // Mode lanjut: jumlah tiket dan voucher terkunci ke pesanan asli.
           if (_lanjut) ...[
             const SizedBox(height: 20),
             Row(
@@ -1752,7 +1706,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
           const Divider(color: _SwWhite.line, height: 1),
           const SizedBox(height: 20),
 
-          // ── Method-specific form ──
           if (_selectedMethod == 'va') ..._buildVaForm(currentUserId),
           if (_selectedMethod == 'card') ..._buildCardForm(),
           if (_selectedMethod == 'gopay') ..._buildGoPayForm(currentUserId),
@@ -1762,7 +1715,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  // ── Transfer Bank form ──
+  // Formulir transfer bank.
   List<Widget> _buildVaForm(String currentUserId) {
     const banks = [
       ('bca', 'BCA'),
@@ -1779,7 +1732,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
             child: GestureDetector(
               onTap: () => setState(() {
                 _selectedBank = b.$1;
-                // Reset VA saat ganti bank
+                // Ganti bank berarti VA lama tidak dipakai lagi.
                 _vaNumber = null;
                 _vaTimer?.cancel();
               }),
@@ -1852,7 +1805,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
           ),
         )
       else ...[
-        // VA generated box
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1978,7 +1930,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     ];
   }
 
-  // ── Kartu Kredit/Debit form ──
+  // Formulir kartu kredit atau debit.
   List<Widget> _buildCardForm() {
     return [
       _sectionTitle('Data Kartu'),
@@ -2076,9 +2028,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     ];
   }
 
-  // ── GoPay / QRIS QR form ──
-
-  // ── GoPay form (phone number, no QR) ──
+  // Formulir GoPay: nomor HP, tanpa QR.
   List<Widget> _buildGoPayForm(String currentUserId) {
     return [
       _sectionTitle('Pembayaran GoPay'),
@@ -2088,7 +2038,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
         style: GoogleFonts.spaceGrotesk(color: _SwWhite.sub, fontSize: 13),
       ),
       const SizedBox(height: 16),
-      // Phone number display
       Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -2152,7 +2101,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
           ),
         )
       else ...[
-        // Countdown
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -2247,7 +2195,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
           ),
         )
       else ...[
-        // Countdown
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -2326,9 +2273,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  // ═══════════════════════════════════════════
-  // STEP 3 — CONFIRM & PAY
-  // ═══════════════════════════════════════════
+  // Langkah 3: konfirmasi dan bayar.
   Widget _buildStep3Confirm(String currentUserId) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -2350,7 +2295,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
           ),
           const SizedBox(height: 20),
 
-          // Summary card
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -2499,9 +2443,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  // ═══════════════════════════════════════════
-  // BOTTOM BAR
-  // ═══════════════════════════════════════════
+  // Bilah bawah.
   Widget _buildBottomBar(String currentUserId) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
@@ -2541,7 +2483,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
   }
 
   Widget _buildBottomButton(String currentUserId) {
-    // Step 1
     if (_currentStep == 0) {
       return SizedBox(
         width: double.infinity,
@@ -2566,7 +2507,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
       );
     }
 
-    // Step 2
     if (_currentStep == 1) {
       return Row(
         children: [
@@ -2613,7 +2553,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
       );
     }
 
-    // Step 3
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -2645,9 +2584,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
     );
   }
 
-  // ═══════════════════════════════════════════
-  // SUCCESS VIEW (checkmark animation)
-  // ═══════════════════════════════════════════
+  // Tampilan sukses.
   Widget _buildSuccessView() {
     return Scaffold(
       backgroundColor: _SwWhite.bg,
@@ -2797,9 +2734,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen>
   }
 }
 
-// ─────────────────────────────────────────────
-// DATA CLASS — payment method descriptor
-// ─────────────────────────────────────────────
 class _PaymentMethod {
   final String id;
   final String title;
@@ -2808,9 +2742,6 @@ class _PaymentMethod {
   const _PaymentMethod(this.id, this.title, this.icon, this.subtitle);
 }
 
-// ─────────────────────────────────────────────
-// INPUT FORMATTERS — card number & expiry
-// ─────────────────────────────────────────────
 class _CardNumberFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(

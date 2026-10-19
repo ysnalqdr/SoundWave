@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// PENJAGA SUMBER — "pilih dulu, baru pesan" di halaman detail konser
-// ═══════════════════════════════════════════════════════════════════
+// Penjaga sumber: pilih dulu, baru pesan, di halaman detail konser
 // Mengunci aturan alur pembelian:
 //   1. Tombol "PILIH" di kartu jenis tiket hanya MEMILIH kategori —
 //      tidak boleh membuka wizard pembayaran 3 langkah.
@@ -8,7 +6,6 @@
 //      memilih jenis tiket yang kuotanya masih ada.
 //   3. Tidak ada jalur lain yang bisa menembus gerbang itu.
 // Test ini membaca sumber dan gagal kalau salah satunya balik lagi.
-// ═══════════════════════════════════════════════════════════════════
 
 import 'dart:io';
 
@@ -24,7 +21,7 @@ void main() {
   });
 
   test('tombol PILIH hanya memilih kategori, tidak membuka pembayaran', () {
-    final int idx = sumber.indexOf('// PILIH = memilih jenis tiket saja.');
+    final int idx = sumber.indexOf('// Pilih hanya memilih jenis tiket');
     expect(idx, greaterThanOrEqualTo(0),
         reason: 'penanda komentar PILIH hilang — periksa blok kartu tiket');
 

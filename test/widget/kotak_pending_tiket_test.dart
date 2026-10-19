@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════
-// KOTAK PENDING — BERPIINDAH SENDIRI SAAT WAKTU HABIS
-// ═══════════════════════════════════════════════════════════════════
+// Kotak pending: berpindah sendiri saat waktu habis
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/constants/app_constants.dart';

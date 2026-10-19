@@ -31,13 +31,13 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Tap notifikasi push -> mendarat di menu utama: tab Jelajah (index 0).
+    // Notifikasi push ditekan: mendarat di tab Jelajah.
     ref.listen<int>(permintaanMenuUtamaProvider, (_, __) {
       if (mounted) _pindahKeTab(0);
     });
 
-    // Layar lain (mis. checkout) boleh meminta tab tertentu — dipakai tombol
-    // "Ke Tiket Saya" supaya user tidak tertinggal di langkah pembayaran.
+    // Layar lain boleh meminta tab tertentu, dipakai tombol "Ke Tiket Saya"
+    // supaya user tidak tertinggal di langkah pembayaran.
     ref.listen<int>(permintaanTabUserProvider, (_, tab) {
       if (mounted && tab >= 0 && tab < 4) _pindahKeTab(tab);
     });
@@ -123,7 +123,6 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          // Profile Hero Header
           SliverToBoxAdapter(
             child: Container(
               width: double.infinity,
@@ -144,10 +143,8 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
                   child: Column(
                     children: [
-                      // Profile Photo
                       _buildProfilePhoto(user, authUser: authUser),
                       const SizedBox(height: 16),
-                      // Name
                       Text(
                         displayName,
                         style: GoogleFonts.rajdhani(
@@ -158,7 +155,6 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      // Email
                       Text(
                         displayEmail,
                         style: GoogleFonts.spaceGrotesk(
@@ -167,7 +163,6 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // Role Badge
                       if (user != null)
                         _buildRoleBadge(user)
                       else if (isAuthenticated)
@@ -187,7 +182,6 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                             ),
                           ),
                         ),
-                      // Member Since
                       if (user != null && user.createdAt != null) ...[
                         const SizedBox(height: 10),
                         Row(
@@ -216,7 +210,6 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
             ),
           ),
 
-          // Diagnostic Banners for Profile States (Semantics Isolation)
           if (hasProfileError)
             SliverToBoxAdapter(
               child: Padding(
@@ -282,7 +275,6 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
               ),
             ),
 
-          // Stats Cards (real data only)
           if (user != null)
             SliverToBoxAdapter(
               child: Padding(
@@ -291,12 +283,10 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
               ),
             ),
 
-          // Menu Sections
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // Account Section
                 _sectionLabel('Akun'),
                 const SizedBox(height: 8),
                 _buildMenuCard([
@@ -326,7 +316,6 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
 
                 const SizedBox(height: 20),
 
-                // Activity Section
                 _sectionLabel('Aktivitas'),
                 const SizedBox(height: 8),
                 _buildMenuCard([
@@ -357,7 +346,6 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
 
                 const SizedBox(height: 20),
 
-                // Settings Section
                 _sectionLabel('Pengaturan'),
                 const SizedBox(height: 8),
                 _buildMenuCard([
@@ -376,7 +364,6 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
 
                 const SizedBox(height: 20),
 
-                // Session Section (Strict Authentication Isolation)
                 if (isAuthenticated)
                   GestureDetector(
                     onTap: _confirmLogout,
@@ -459,7 +446,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
     );
   }
 
-  // --- Profile Photo ---
+  // Foto profil
   Widget _buildProfilePhoto(UserModel? user, {User? authUser}) {
     const double size = 88;
     final photoUrl = (user != null && user.fotoUrl != null && user.fotoUrl!.isNotEmpty)
@@ -540,7 +527,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
     );
   }
 
-  // --- Role Badge ---
+  // Badge role
   Widget _buildRoleBadge(UserModel user) {
     final isSuperAdmin = user.isSuperAdmin;
     final isAdmin = user.isAdmin;
@@ -580,7 +567,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
     );
   }
 
-  // --- Stats Row (real data from providers) ---
+  // Baris statistik
   Widget _buildStatsRow(UserModel user) {
     final ordersAsync = ref.watch(userOrdersProvider(user.id));
     final favAsync = ref.watch(favoriteIdsProvider(user.id));
@@ -636,7 +623,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
     );
   }
 
-  // --- Section Label ---
+  // Label bagian
   Widget _sectionLabel(String text) {
     return Row(
       children: [
@@ -662,7 +649,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
     );
   }
 
-  // --- Menu Card ---
+  // Kartu menu
   Widget _buildMenuCard(List<Widget> items) {
     if (items.isEmpty) return const SizedBox.shrink();
 
@@ -692,7 +679,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
     );
   }
 
-  // --- Edit Profile Bottom Sheet ---
+  // Sheet ubah profil
   void _showEditProfileSheet(UserModel user) {
     final nameCtrl = TextEditingController(text: user.nama);
 
@@ -737,7 +724,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Avatar (read-only — custom upload deferred)
+                  // Avatar hanya baca, unggah foto belum didukung.
                   Center(
                     child: Column(
                       children: [

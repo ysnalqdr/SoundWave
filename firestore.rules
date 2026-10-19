@@ -58,7 +58,9 @@ service cloud.firestore {
 
     // ===== EVENTS =====
     match /events/{eventId} {
-      allow read: if true;
+      // Dokumen _backend_config menyimpan alamat tunnel backend.
+      // Katalog event tetap terbuka, konfigurasi backend hanya untuk yang login.
+      allow read: if eventId != '_backend_config' || signedIn();
       allow create, update, delete: if isAdmin();
     }
 
@@ -156,17 +158,6 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ===== SEAT LAYOUTS (public read, admin write) =====
-    match /seat_layouts/{layoutId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // ===== BOOKED SEATS (public read, admin write) =====
-    match /booked_seats/{bookedId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
 
     // ===== NOTIFICATIONS (user read own) =====
     match /notifications/{notifId} {

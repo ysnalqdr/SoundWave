@@ -345,7 +345,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // If caller is not Super Admin, show access denied view
+    // Selain super admin melihat tampilan akses ditolak.
     if (!widget.currentUser.isSuperAdmin) {
       return Scaffold(
         backgroundColor: AppColors.background,
@@ -471,7 +471,6 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      // --- Live Statistics Counters Strip ---
                       _buildStatsStrip(
                         totalUsers: totalUsers,
                         superAdmins: totalSuperAdmins,
@@ -480,11 +479,9 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // --- Search & Filter Bar ---
                       _buildSearchAndFilter(),
                       const SizedBox(height: 16),
 
-                      // --- User List Content ---
                       if (filteredUsers.isEmpty)
                         _buildEmptyState()
                       else
@@ -699,7 +696,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Avatar with initials fallback
+            // Avatar dengan inisial sebagai cadangan.
             Container(
               width: 46,
               height: 46,
@@ -722,7 +719,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             ),
             const SizedBox(width: 14),
 
-            // User Info
+            // Info user
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -793,7 +790,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
               ),
             ),
 
-            // Action Menu (Only Super Admin can act, and cannot act on self or other super_admin)
+            // Menu aksi, hanya untuk super admin dan bukan pada dirinya sendiri.
             if (isSelf)
               const Tooltip(
                 message: 'Akun Anda sendiri terproteksi',

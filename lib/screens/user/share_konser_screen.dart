@@ -6,8 +6,8 @@ import '../../models/konser_model.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/gambar_widget.dart';
 
-/// Screen berbagi info konser ke WhatsApp / Instagram / Copy Link.
-/// Dark theme. Menerima [konser] dan opsional [userId] untuk referral.
+/// Shares a concert to WhatsApp, Instagram, or the clipboard.
+/// Takes the concert and an optional user ID for referrals.
 class ShareKonserScreen extends StatelessWidget {
   final KonserModel konser;
   final String? userId;
