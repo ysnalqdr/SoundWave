@@ -8,8 +8,14 @@ const db = admin.firestore();
 
 // Midtrans Snap client initialization (Environment Config or Secrets)
 const isProduction = process.env.MIDTRANS_IS_PRODUCTION === 'true';
-const serverKey = process.env.MIDTRANS_SERVER_KEY || 'xxxxxxxx';
-const clientKey = process.env.MIDTRANS_CLIENT_KEY || 'xxxxxxxx';
+const serverKey = process.env.MIDTRANS_SERVER_KEY;
+const clientKey = process.env.MIDTRANS_CLIENT_KEY;
+
+if (!serverKey || !clientKey) {
+  throw new Error(
+    'MIDTRANS_SERVER_KEY dan MIDTRANS_CLIENT_KEY wajib diisi lewat environment',
+  );
+}
 
 const snap = new midtransClient.Snap({
   isProduction: isProduction,

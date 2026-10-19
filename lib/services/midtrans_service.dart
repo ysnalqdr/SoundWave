@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import '../constants/app_constants.dart';
 
@@ -98,6 +99,17 @@ class MidtransService {
   /// Kalau percobaan pertama gagal karena jaringan / alamat tidak ditemukan,
   /// cache dibuang, alamat dibaca ulang dari Firestore, lalu dicoba SEKALI
   /// lagi. Ini yang membuat APK tetap jalan setelah tunnel di-restart.
+  /// Header untuk rute /admin/*. Backend menolak permintaan yang tidak
+  /// membawa ID token milik akun ber-role admin (lihat auth_admin.js).
+  static Future<Map<String, String>> kepalaAdmin() async {
+    final pengguna = FirebaseAuth.instance.currentUser;
+    final token = await pengguna?.getIdToken();
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+
   static Future<http.Response> _kirim(
     String jalur, {
     String metode = 'POST',
@@ -481,6 +493,7 @@ class MidtransService {
       final response = await _kirim(
         '/admin/refunds${status != null ? '?status=\$status' : ''}',
         metode: 'GET',
+        headers: await kepalaAdmin(),
       );
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       return {
@@ -503,7 +516,7 @@ class MidtransService {
   }) async {
     try {
       final response = await _kirim('/admin/refund/approve',
-        headers: {'Content-Type': 'application/json'},
+        headers: await kepalaAdmin(),
         body: jsonEncode({
           'refundId': refundId,
           'orderId': orderId,
@@ -526,7 +539,7 @@ class MidtransService {
   }) async {
     try {
       final response = await _kirim('/admin/refund/reject',
-        headers: {'Content-Type': 'application/json'},
+        headers: await kepalaAdmin(),
         body: jsonEncode({
           'refundId': refundId,
           'alasanReject': alasanReject,

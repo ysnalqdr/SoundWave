@@ -67,7 +67,7 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
       final res = await http
           .post(
             Uri.parse('$baseUrl/admin/refund/approve'),
-            headers: {'Content-Type': 'application/json'},
+            headers: await MidtransService.kepalaAdmin(),
             body: jsonEncode({
               'refundId': refund.id,
               'orderId': refund.orderId,
@@ -175,7 +175,7 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
       final res = await http
           .post(
             Uri.parse('$baseUrl/admin/refund/reject'),
-            headers: {'Content-Type': 'application/json'},
+            headers: await MidtransService.kepalaAdmin(),
             body: jsonEncode({
               'refundId': refund.id,
               'alasanReject': alasan,
