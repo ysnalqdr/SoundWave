@@ -56,3 +56,4 @@ node_modules/
 .env
 *.env
 serviceAccountKey.json
+lib/firebase_options.dart
