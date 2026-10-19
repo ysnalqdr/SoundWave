@@ -6,7 +6,7 @@ Semua angka dan nama berkas diambil dari kode per 17 Oktober 2026.
 | Ukuran | Nilai |
 |---|---|
 | Kode Flutter | 56 berkas `.dart`, **24.202 baris** |
-| Kode backend | `server.js` **2.176 baris**, 26 rute (24 unik + 2 alias) |
+| Kode backend | `server.js` **2.043 baris**, 23 rute (21 unik + 2 alias) |
 | Test Flutter | **319 test** (unit + widget) |
 | Skrip uji backend | 6 berkas `test_*.js` (dijalankan manual, bukan jest) |
 | Koleksi Firestore | **10** (users, events, tickets, orders, favorites, reviews, notifications, promo_codes, claimed_promos, refunds) |
@@ -102,7 +102,7 @@ berkas tanpa menambah kejelasan.
 
 ### 2.3 Arsitektur backend: **monolith satu berkas (deliberate)**
 
-`server.js` berisi 26 rute dalam satu berkas. Ini pilihan sadar, bukan
+`server.js` berisi 23 rute dalam satu berkas. Ini pilihan sadar, bukan
 kemalasan: satu proses, satu `npm start`, satu tempat untuk melihat semua
 aturan uang. Konsekuensinya dibahas di §12 (trade-off) dan §15 (kritik).
 
@@ -171,7 +171,7 @@ Ini urutan pemahaman yang benar: dari yang paling fisik ke yang paling abstrak.
 - **WHEN NOT** Kalau yang butuh data adalah kode di proses yang sama (panggil fungsi langsung, bukan HTTP ke diri sendiri).
 - **TRADE-OFF** Kontrak jelas & bisa diuji terpisah — tapi menambah lapisan, dan endpoint adalah permukaan serangan.
 - **FAILURE MODE** Path berubah → klien 404; endpoint tanpa autentikasi → siapa pun bisa memanggil.
-- **REAL WORLD** 26 rute di `server.js`; pengelompokannya di §4.
+- **REAL WORLD** 23 rute di `server.js`; pengelompokannya di §4.
 
 ---
 
@@ -190,7 +190,6 @@ Ini urutan pemahaman yang benar: dari yang paling fisik ke yang paling abstrak.
 | | `GET /check-status/:orderId` | baca status dari Firestore |
 | | `POST /settle-dev` | penanda "sudah dibayar" untuk demo (bukan produksi) |
 | Reservasi | `POST /sweep-expired` | bersihkan reservasi lewat 5 menit |
-| | `POST /reserve-seats`, `DELETE /release-seats`, `GET /seat-layout/:id` | **warisan** denah kursi. Masih ada di `server.js`, tidak dipanggil aplikasi lagi |
 | Promo | `POST /validate-promo` | cek kode + hitung diskon di server |
 | | `POST/GET/DELETE /admin/promo*` | CRUD promo |
 | Refund | `POST /request-refund` | pengajuan refund |

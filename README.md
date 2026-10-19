@@ -168,7 +168,7 @@ Layered monolith dengan client-server tiga lapis.
 | Lapis | Isi | Tanggung jawab |
 |---|---|---|
 | Klien | Flutter + Riverpod | Tampilan dan state. Bukan sumber kebenaran harga maupun stok |
-| Backend | Node.js + Express (`server.js`, 26 rute) | BFF: hitung ulang harga, transaksi stok, webhook, penerbitan tiket, pemindaian |
+| Backend | Node.js + Express (`server.js`, 23 rute) | BFF: hitung ulang harga, transaksi stok, webhook, penerbitan tiket, pemindaian |
 | Data | Firestore + Firebase Auth + Storage | Dokumen, identitas, poster konser |
 
 Prinsip yang dipegang:
@@ -183,7 +183,7 @@ Microservices tidak dipakai di sini. Bebannya satu kampus, satu tim, satu databa
 
 ### Endpoint backend
 
-Ada 26 rute di `server.js`. Tiga di antaranya sisa fitur denah kursi yang sudah dihapus dari aplikasi, jadi tidak pernah dipanggil lagi.
+Ada 23 rute di `server.js`. Rute yang diawali `/admin/` wajib membawa ID token Firebase milik akun ber-role admin, dan backend menolak permintaan tanpa token itu.
 
 | Kelompok | Rute | Guna |
 |---|---|---|
@@ -200,7 +200,6 @@ Ada 26 rute di `server.js`. Tiga di antaranya sisa fitur denah kursi yang sudah 
 | | `GET /admin/refunds`, `POST /admin/refund/approve`, `POST /admin/refund/reject` | Tinjauan refund dari sisi admin |
 | Promo | `GET /admin/promos`, `POST /admin/promo`, `DELETE /admin/promo/:id` | Kelola kode promo |
 | Gerbang | `POST /sync-offline-scans` | Unggah hasil pindai offline saat perangkat kembali online |
-| Warisan | `GET /seat-layout/:idKonser`, `POST /reserve-seats`, `DELETE /release-seats` | Sisa denah kursi, tidak dipakai |
 | Lain | `GET /` | Daftar rute dan status server |
 
 ---

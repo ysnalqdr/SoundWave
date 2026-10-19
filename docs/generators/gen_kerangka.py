@@ -80,7 +80,7 @@ komponen(COLS[0], ROW2, "C", "CLOUDFLARE TUNNEL", "gratis", [
     "START_SOUNDWAVE.bat",
 ])
 
-komponen(COLS[1], ROW2, "D", "BACKEND · NODE + EXPRESS", "26 rute", [
+komponen(COLS[1], ROW2, "D", "BACKEND · NODE + EXPRESS", "23 rute", [
     "/checkout-atomic   stok · qty",
     "/midtrans-webhook  SHA512",
     "/poll-payment · /sweep-expired",
@@ -161,7 +161,7 @@ notes = [
     ("dashboard admin", "4 KPI, grafik 7 hari, daftar perlu tindakan. Semua dari stream orders / tickets / events yang sudah ada."),
     ("istilah", "Midtrans adalah payment gateway, bukan API gateway. Pintu masuk sistem = Cloudflare Tunnel + Express."),
     ("sumber kebenaran", "harga, stok, status pesanan. HP hanya menampilkan dan mengirim niat, bukan keputusan."),
-    ("warisan", "tiga rute kursi di server.js (seat-layout, reserve-seats, release-seats) tidak dipanggil aplikasi lagi."),
+    ("penjaga admin", "rute /admin/* wajib ID token Firebase milik akun ber-role admin, diverifikasi auth_admin.js."),
 ]
 y = 1018
 for k, v in notes:
@@ -170,7 +170,7 @@ for k, v in notes:
     c.text(88 + c.tw(k, c.f(MONO_B, 11.5)) + 8, y, ": " + v, c.f(MONO, 11.5))
     y += 20
 
-c.text(72, 1138, "sumber: server.js (26 rute) · lib/services (6 berkas) · lib/providers/app_providers.dart · v2.4.7+31 · 319 test",
+c.text(72, 1138, "sumber: server.js (23 rute) · lib/services (6 berkas) · lib/providers/app_providers.dart · v2.4.7+31 · 319 test",
        c.f(MONO, 10.5))
 c.text(72, 1156, "Firestore dan Firebase API satu platform; dipisah di gambar karena perannya berbeda (database vs layanan API).",
        c.f(MONO, 10.5))
