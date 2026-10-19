@@ -6,7 +6,7 @@ Semua angka dan nama berkas diambil dari kode per 17 Oktober 2026.
 | Ukuran | Nilai |
 |---|---|
 | Kode Flutter | 56 berkas `.dart`, **24.202 baris** |
-| Kode backend | `server.js` **2.043 baris**, 23 rute (21 unik + 2 alias) |
+| Kode backend | `server.js` **2.068 baris**, 23 rute (21 unik + 2 alias) |
 | Test Flutter | **319 test** (unit + widget) |
 | Skrip uji backend | 6 berkas `test_*.js` (dijalankan manual, bukan jest) |
 | Koleksi Firestore | **10** (users, events, tickets, orders, favorites, reviews, notifications, promo_codes, claimed_promos, refunds) |
