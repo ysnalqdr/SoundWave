@@ -47,11 +47,12 @@ Architecturally this is a layered monolith: Flutter feature-first UI over servic
 
 ## Daftar Isi
 
-- [Ringkasan](#ringkasan) · [English Summary](#english-summary)
-- [Tangkapan Layar](#tangkapan-layar)
-- [Fitur](#fitur)
-- [Alur Pembelian Tiket](#alur-pembelian-tiket) · [Status pesanan](#status-pesanan)
-- [Arsitektur](#arsitektur) · [Endpoint backend](#endpoint-backend)
+- [Overview](#ringkasan)
+- [System Design](#system-design)
+- [Purchase Algorithm](#alur-pembelian-tiket)
+- [Order States](#status-pesanan)
+- [Features](#fitur)
+- [API Endpoints](#endpoint-backend)
 - [Teknologi](#teknologi)
 - [Struktur Proyek](#struktur-proyek)
 - [Menjalankan Proyek](#menjalankan-proyek)
@@ -63,23 +64,6 @@ Architecturally this is a layered monolith: Flutter feature-first UI over servic
 - [Lisensi](#lisensi)
 
 ---
-
-## Tangkapan Layar
-
-<div align="center">
-
-| | | |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/01-jelajah.png" width="220" alt="Jelajah konser"> | <img src="docs/screenshots/02-detail-konser.png" width="220" alt="Detail konser"> | <img src="docs/screenshots/03-pilih-tiket.png" width="220" alt="Pilih kategori tiket"> |
-| Jelajah konser | Detail konser | Pilih tiket |
-| <img src="docs/screenshots/04-checkout.png" width="220" alt="Checkout"> | <img src="docs/screenshots/05-tiket-qr.png" width="220" alt="Tiket ber-QR"> | <img src="docs/screenshots/06-admin-dashboard.png" width="220" alt="Dashboard admin"> |
-| Checkout | Tiket dan QR | Dashboard admin |
-| <img src="docs/screenshots/07-admin-kelola-konser.png" width="220" alt="Kelola konser"> | <img src="docs/screenshots/08-admin-refund.png" width="220" alt="Kelola refund"> | |
-| Kelola konser | Kelola refund | |
-
-</div>
-
-Gambar diambil dari aplikasi 2.4.7 dengan data uji. QR pada tiket contoh sengaja ditutup, dan nama pembeli pada layar refund disensor.
 
 ---
 
@@ -117,24 +101,112 @@ Gambar diambil dari aplikasi 2.4.7 dengan data uji. QR pada tiket contoh sengaja
 
 ---
 
+## System Design
+
+```
++----------------------------------------------------------+
+|                    CLIENT (Flutter)                      |
+|  Feature-first UI - Riverpod (16 providers)              |
+|  Facades: database - auth - midtrans - storage -         |
+|           ticket - notification                          |
+|                                                          |
+|  Dependency direction (strictly one-way):                |
+|    screens -> providers -> services -> models            |
++------------------------+---------------------------------+
+                         | HTTPS via Cloudflare Quick Tunnel
+                         v
++----------------------------------------------------------+
+|               BACKEND (Node.js / Express)                |
+|  server.js -- 23 routes                                  |
+|                                                          |
+|  Responsibilities:                                       |
+|    - Recompute prices from Firestore                     |
+|    - Run atomic stock transactions                       |
+|    - Verify Midtrans webhook SHA512 signatures           |
+|    - Issue Ed25519-signed tickets                        |
+|    - Gate scanner verification                           |
+|                                                          |
+|  Request middleware (in order):                          |
+|    1. Firebase ID token check  <- /admin/* only          |
+|    2. JSON body parse                                    |
+|    3. Route handler                                      |
+|    4. Centralised error handler                          |
++---------------+-----------------------+------------------+
+                |                       |
+                v                       v
++-------------------------+   +---------------------------+
+|  Firebase               |   |  Midtrans Sandbox         |
+|  - Firestore (data)     |   |  - Payment creation       |
+|  - Auth (identity)      |   |  - Webhook (SHA512)       |
+|  - Storage (posters)    |   |  - Status polling         |
++-------------------------+   +---------------------------+
+```
+
+Architecture: Layered monolith -- not microservices. One team, one database, campus-scale load.
+
+---
+
 ## Alur Pembelian Tiket
 
-<p align="center">
-  <img src="docs/workflow_beli_tiket.png" width="720" alt="Workflow pembelian tiket SoundWave">
-</p>
 
-Gambar ini dihasilkan `docs/generators/gen_workflow.py`. Kalau alurnya berubah, ubah skripnya lalu jalankan ulang, jangan menambal gambarnya.
+```
+USER              CLIENT                  BACKEND                 FIRESTORE
+ |                  |                        |                        |
+ |- pick category ->|                        |                        |
+ |   + promo code   |- POST /validate-promo >|                        |
+ |                  |<- discount amount -----|                        |
+ |- confirm & pay ->|                        |                        |
+ |                  |- POST /checkout-atomic>|                        |
+ |                  |                        |- BEGIN TRANSACTION --> |
+ |                  |                        |  1. read tiket doc     |
+ |                  |                        |  2. check revisionCounter
+ |                  |                        |  3. recompute price    |
+ |                  |                        |  4. assert quota > 0   |
+ |                  |                        |  5. write RESERVED     |
+ |                  |                        |  6. decrement quota    |
+ |                  |                        |  7. increment revision |
+ |                  |                        |<- COMMIT --------------|
+ |                  |<- orderId + expiry ----|                        |
+ |                  |- POST /create-va|gopay|qris ------------------>|
+ |                  |<- VA / QR / deeplink --------------------------|
+ |- pay ----------->|   (Midtrans Snap)                               |
+ |                  |                        |<- POST /midtrans-webhook
+ |                  |                        |   verify SHA512        |
+ |                  |                        |   order -> AKTIF       |
+ |                  |                        |   issue Ed25519 ticket |
+ |                  |<- ticket + QR ---------|                        |
+ |<- ticket shown --|                        |                        |
+```
 
-1. Penonton memilih kategori tiket, boleh menambahkan kode promo. Aplikasi meminta reservasi ke backend, bukan memotong stok sendiri.
-2. Backend menghitung ulang harga dari Firestore, memeriksa kuota, lalu menulis pesanan `RESERVED` di dalam transaksi dengan `revisionCounter`.
-3. Aplikasi membuka halaman pembayaran Midtrans Snap sesuai metode yang dipilih.
-4. Pembayaran dikonfirmasi lewat webhook yang signature SHA512-nya diverifikasi, dengan polling sebagai cadangan bila webhook terlambat.
-5. Setelah lunas, server menerbitkan tiket: kode booking dan tanda tangan Ed25519. Status pesanan menjadi `AKTIF`.
-6. Tiket tampil di aplikasi dan bisa dipindai di gerbang, online maupun offline.
+**Failure branches -- all handled explicitly:**
 
-Empat cabang gagal ditangani eksplisit: stok habis (ditolak di UI sebelum request dikirim), balapan stok (`409`, pengguna diminta ulang), reservasi kedaluwarsa (`EXPIRED`, pesan ulang), dan webhook tidak sah (`401`, status pesanan tidak berubah).
+| Failure | Where caught | Handling |
+|---|---|---|
+| Out of stock | Client pre-request | Block UI, show message |
+| Concurrent stock race | `/checkout-atomic` | `409` -- client prompts retry |
+| Reservation expired (>5 min) | `/sweep-expired` | Order -> `EXPIRED`, stock restored |
+| Invalid webhook signature | `/midtrans-webhook` | `401` -- order status unchanged |
+| Webhook delayed | Client timer | `GET /check-status/:orderId` every 3s |
+| Network retry | Client | Same `orderId` -- idempotent, no double charge |
 
 ### Status pesanan
+
+
+
+```
+[client]      PENDING --------------------------------------------> CANCELLED
+                 |
+                 v
+[/checkout-atomic]
+             RESERVED ------- 5 min server clock ----------------> EXPIRED
+                 |                                                (stock restored)
+                 v
+[webhook / poll]
+              AKTIF -------------------------------------------- > REFUND_REQUESTED
+                 |                                                       |
+                 v                                                       v
+[gate scanner] TERPAKAI                              REFUND_REQUIRED / REFUNDED
+```
 
 Satu pesanan berpindah status beberapa kali. Yang menulis status hanya server, kecuali `PENDING` dan `CANCELLED` yang dibuat aplikasi sebelum uang terlibat.
 
@@ -157,11 +229,6 @@ Satu pesanan berpindah status beberapa kali. Yang menulis status hanya server, k
 
 ## Arsitektur
 
-<p align="center">
-  <img src="docs/kerangka_sistem.png" width="820" alt="Kerangka sistem SoundWave">
-</p>
-
-Sumber gambar yang sama: `docs/generators/gen_kerangka.py`.
 
 Layered monolith dengan client-server tiga lapis.
 

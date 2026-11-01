@@ -71,25 +71,17 @@ abstract class _CheckoutBase extends ConsumerState<CheckoutScreen> {
   Widget _detectedBanner();
   Widget _sectionTitle(String text);
   void _bindClaimedPromos(String? uid);
-  Future<void> _markVoucherUsed();
   String _formatRupiah(double nominal);
-  String _metodeForOrder();
   void _goToStep(int step);
   void _nextFromStep1();
   void _nextFromStep2();
-  Future<PesananTiketModel?> _ensureOrderCreated(String currentUserId);
   Future<void> _generateVA(String currentUserId);
   Future<void> _generateGoPay(String currentUserId, {bool diam = false});
   Future<void> _generateQRIS(String currentUserId);
-  DateTime? _parseExpiresAt(dynamic raw);
-  int _secondsUntil(DateTime? expiresAt, int fallbackSeconds);
   void _onVaExpired();
   void _onQrExpired();
-  void _startVaTimer();
-  void _startQrTimer();
   String _formatVaCountdown(int s);
   String _formatQrCountdown(int s);
-  void _startPolling(String orderId);
   Future<void> _bayarSekarang(String currentUserId);
   void _keTiketSaya();
   void _showSuccessScreen();
@@ -98,18 +90,12 @@ abstract class _CheckoutBase extends ConsumerState<CheckoutScreen> {
   void _cobaTampilkanInstrumen(String uid);
   void _showCardPayInfo(PesananTiketModel order);
   void _showWaitingInfo();
-  Widget _sheetRow(String label, String value);
   InputDecoration _whiteInput(String label, {IconData? icon});
   Widget _buildStep1Methods();
-  Widget _buildMethodCard(PaymentMethod m);
-  Widget _buildConcertSummary();
   Widget _buildStep2Form(String currentUserId);
   Widget _buildStep3Confirm(String currentUserId);
-  Widget _confirmRow(String label, String value);
   Widget _buildBottomBar(String currentUserId);
-  Widget _buildBottomButton(String currentUserId);
   Widget _buildSuccessView();
-  Widget _successFallback();
 
   final _formKey = GlobalKey<FormState>();
 
