@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/claimed_promo_model.dart';
 import '../../providers/app_providers.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/badge_status.dart';
 
 /// Halaman "Diskon Saya" di bagian Akun.
 ///
@@ -69,7 +70,7 @@ class _DiskonSayaScreenState extends ConsumerState<DiskonSayaScreen> {
                     !snap.hasData) {
                   return const Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation(AppColors.warnaHarga),
+                      valueColor: const AlwaysStoppedAnimation(AppColors.aksi),
                     ),
                   );
                 }
@@ -86,70 +87,101 @@ class _DiskonSayaScreenState extends ConsumerState<DiskonSayaScreen> {
                     Icons.local_offer_outlined,
                   );
                 }
-                return ListView.separated(
+                // Dipisah dua bagian: yang masih bisa dipakai di atas,
+                // yang sudah lewat di bawah.
+                //
+                // Tanpa pemisahan ini, halaman Diskon Saya lama-lama penuh
+                // voucher hangus dan yang masih berguna tenggelam di
+                // antaranya. Voucher lewat tetap ditampilkan sebagai
+                // riwayat, bukan dihapus — pengguna perlu tahu ke mana
+                // vouchernya pergi.
+                final tersedia = list
+                    .where((c) => c.statusLabel == 'TERSEDIA')
+                    .toList(growable: false);
+                final lewat = list
+                    .where((c) => c.statusLabel != 'TERSEDIA')
+                    .toList(growable: false);
+
+                return ListView(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-                  itemCount: list.length + 1,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, i) {
-                    if (i == 0) return _header(list.length);
-                    return _voucherCard(list[i - 1]);
-                  },
+                  children: [
+                    if (tersedia.isNotEmpty) ...[
+                      _sectionHeader(
+                        'Voucher saya',
+                        '${tersedia.length} bisa dipakai saat pembayaran',
+                      ),
+                      for (final c in tersedia)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _voucherCard(c),
+                        ),
+                    ],
+                    if (lewat.isNotEmpty) ...[
+                      if (tersedia.isNotEmpty) const SizedBox(height: 10),
+                      _sectionHeader(
+                        'Sudah dipakai',
+                        '${lewat.length} voucher tidak bisa dipakai lagi',
+                      ),
+                      for (final c in lewat)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _voucherCard(c),
+                        ),
+                    ],
+                  ],
                 );
               },
             ),
     );
   }
 
-  Widget _header(int jumlah) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'VOUCHER SAYA',
-          style: GoogleFonts.rajdhani(
-            color: AppColors.warnaHarga,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.5,
+  Widget _sectionHeader(String judul, String keterangan) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            judul,
+            style: GoogleFonts.rajdhani(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '$jumlah voucher · pilih salah satu saat pembayaran',
-          style: GoogleFonts.spaceGrotesk(
-              color: AppColors.textMuted, fontSize: 11),
-        ),
-        const SizedBox(height: 8),
-      ],
+          const SizedBox(height: 2),
+          Text(
+            keterangan,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.spaceGrotesk(
+                color: AppColors.textMuted, fontSize: 11),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _voucherCard(ClaimedPromoModel c) {
     final status = c.statusLabel;
-    final Color statusColor;
-    final Color statusBg;
-    switch (status) {
-      case 'TERPAKAI':
-        statusColor = AppColors.textMuted;
-        statusBg = AppColors.surfaceLight;
-        break;
-      case 'KEDALUWARSA':
-        statusColor = AppColors.error;
-        statusBg = AppColors.error.withValues(alpha: 0.12);
-        break;
-      default:
-        statusColor = Colors.black;
-        statusBg = AppColors.warnaHarga;
-    }
+    // Voucher: TERSEDIA = masih bisa dipakai (final), TERPAKAI = sudah lewat,
+    // KEDALUWARSA = hangus (dicoret). Hijau tidak dipakai di sini — voucher
+    // bukan angka uang, jadi tidak berhak memakai warna harga.
+    final nadaVoucher = switch (status) {
+      'TERPAKAI' => BadgeNada.lewat,
+      'KEDALUWARSA' => BadgeNada.gagal,
+      _ => BadgeNada.final_,
+    };
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(
           color: status == 'TERSEDIA'
-              ? AppColors.warnaHarga.withValues(alpha: 0.35)
+              ? AppColors.badgeJalanBorder
               : AppColors.divider,
         ),
       ),
@@ -163,15 +195,15 @@ class _DiskonSayaScreenState extends ConsumerState<DiskonSayaScreen> {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: status == 'TERSEDIA'
-                      ? AppColors.warnaHarga
+                      ? AppColors.aksi
                       : AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadius.rSm,
                 ),
                 child: Text(
                   c.labelNilai,
                   style: GoogleFonts.spaceGrotesk(
                     color: status == 'TERSEDIA'
-                        ? Colors.black
+                        ? AppColors.onAksi
                         : AppColors.textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -192,22 +224,15 @@ class _DiskonSayaScreenState extends ConsumerState<DiskonSayaScreen> {
                   ),
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusBg,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  status,
-                  style: GoogleFonts.spaceGrotesk(
-                    color: statusColor,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                  ),
-                ),
+              BadgeStatus(
+                status,
+                nada: nadaVoucher,
+                ikon: status == 'TERSEDIA'
+                    ? BadgeIkon.centang
+                    : (status == 'TERPAKAI'
+                        ? BadgeIkon.centang
+                        : BadgeIkon.silang),
+                ukuran: 9,
               ),
             ],
           ),

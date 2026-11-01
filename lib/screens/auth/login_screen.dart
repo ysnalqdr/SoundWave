@@ -53,7 +53,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => AdminDashboard(user: user),
-            settings: const RouteSettings(name: '/admin'),
+            settings: const RouteSettings(name: '/admin')
           ),
         );
       } else {
@@ -61,7 +61,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => const UserMainScreen(),
-            settings: const RouteSettings(name: '/user'),
+            settings: const RouteSettings(name: '/user')
           ),
         );
       }
@@ -103,14 +103,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             Expanded(
               child: Text(
                 message,
-                style: GoogleFonts.spaceGrotesk(color: Colors.white),
+                style: GoogleFonts.spaceGrotesk(color: Colors.white)
               ),
             ),
-          ],
+          ]
         ),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.rMd)
       ),
     );
   }
@@ -131,11 +131,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primary.withValues(alpha: 0.2),
+                    // Putih, bukan hijau — disamakan dengan splash
+                    // (`AppColors.aksi` alpha 0.10) supaya kedua layar
+                    // terasa satu keluarga.
+                    AppColors.aksi.withValues(alpha: 0.10),
                     Colors.transparent,
-                  ],
+                  ]
                 ),
-              ),
+              )
             ),
           ),
           SafeArea(
@@ -154,13 +157,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             width: 72,
                             height: 72,
                             decoration: BoxDecoration(
-                              gradient: AppColors.primaryGradient,
-                              borderRadius: BorderRadius.circular(20),
+                              // Logo = IDENTITAS, jadi pakai garis tepi —
+                              // bukan isi penuh. Aturan tema: isi penuh
+                              // dipakai untuk AKSI (tombol). Kalau logo juga
+                              // berisi penuh, ia terlihat seperti tombol.
+                              color: AppColors.aksi.withValues(alpha: 0.045),
+                              borderRadius: AppRadius.rLg,
+                              border: Border.all(
+                                color: AppColors.badgeJalanBorder,
+                                width: 1.5,
+                              ),
                             ),
                             child: const Icon(
                               Icons.graphic_eq_rounded,
-                              color: Colors.white,
-                              size: 38,
+                              color: AppColors.textPrimary,
+                              size: 38
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -170,7 +181,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               fontSize: 32,
                               fontWeight: FontWeight.w800,
                               color: AppColors.textPrimary,
-                              letterSpacing: -1,
+                              letterSpacing: -1
                             ),
                           ),
                           Text(
@@ -178,10 +189,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             textAlign: TextAlign.center,
                             style: GoogleFonts.spaceGrotesk(
                               fontSize: 13,
-                              color: AppColors.textMuted,
+                              color: AppColors.textMuted
                             ),
                           ),
-                        ],
+                        ]
                       ),
                     ),
                     const SizedBox(height: 48),
@@ -190,7 +201,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: AppColors.textSecondary
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -198,14 +209,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       controller: _emailCtrl,
                       keyboardType: TextInputType.emailAddress,
                       style: GoogleFonts.spaceGrotesk(
-                        color: AppColors.textPrimary,
+                        color: AppColors.textPrimary
                       ),
                       decoration: const InputDecoration(
                         hintText: 'email@contoh.com',
                         prefixIcon: Icon(
                           Icons.email_outlined,
                           color: AppColors.textMuted,
-                          size: 20,
+                          size: 20
                         ),
                       ),
                       validator: (value) {
@@ -216,7 +227,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           return 'Format email tidak valid';
                         }
                         return null;
-                      },
+                      }
                     ),
                     const SizedBox(height: 20),
                     Text(
@@ -224,7 +235,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: AppColors.textSecondary
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -232,25 +243,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       controller: _passwordCtrl,
                       obscureText: _sembunyikan,
                       style: GoogleFonts.spaceGrotesk(
-                        color: AppColors.textPrimary,
+                        color: AppColors.textPrimary
                       ),
                       decoration: InputDecoration(
                         hintText: '••••••••',
                         prefixIcon: const Icon(
                           Icons.lock_outline,
                           color: AppColors.textMuted,
-                          size: 20,
+                          size: 20
                         ),
                         suffixIcon: IconButton(
+                          tooltip: 'Tampilkan kata sandi',
                           icon: Icon(
                             _sembunyikan
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
                             color: AppColors.textMuted,
-                            size: 20,
+                            size: 20
                           ),
                           onPressed: () =>
-                              setState(() => _sembunyikan = !_sembunyikan),
+                              setState(() => _sembunyikan = !_sembunyikan)
                         ),
                       ),
                       validator: (value) {
@@ -261,7 +273,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           return 'Password minimal 6 karakter';
                         }
                         return null;
-                      },
+                      }
                     ),
                     const SizedBox(height: 32),
                     SizedBox(
@@ -269,28 +281,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       height: 52,
                       child: ElevatedButton(
                         onPressed: _loading ? null : _login,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.warnaTombolBg,
-                          foregroundColor: AppColors.warnaTombolTeks,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
                         child: _loading
                             ? const SizedBox(
                                 width: 22,
                                 height: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
+                                  // Gelap, bukan putih: tombol "Masuk"
+                                  // berlatar putih, jadi spinner putih akan
+                                  // tak terlihat — pengguna tidak tahu
+                                  // sedang memproses.
+                                  color: AppColors.onAksi,
                                 ),
                               )
                             : Text(
                                 'Masuk',
                                 style: GoogleFonts.spaceGrotesk(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w700
                                 ),
-                              ),
+                              )
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -303,12 +313,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             'atau',
                             style: GoogleFonts.spaceGrotesk(
                               color: AppColors.textMuted,
-                              fontSize: 12,
+                              fontSize: 12
                             ),
-                          ),
+                          )
                         ),
                         const Expanded(child: Divider(color: AppColors.divider)),
-                      ],
+                      ]
                     ),
                     const SizedBox(height: 20),
                     SizedBox(
@@ -320,7 +330,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           foregroundColor: AppColors.textPrimary,
                           side: const BorderSide(color: AppColors.divider),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: AppRadius.rMd
                           ),
                         ),
                         icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
@@ -328,9 +338,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           'Masuk dengan Google',
                           style: GoogleFonts.spaceGrotesk(
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w600
                           ),
-                        ),
+                        )
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -341,7 +351,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           'Belum punya akun? ',
                           style: GoogleFonts.spaceGrotesk(
                             color: AppColors.textSecondary,
-                            fontSize: 14,
+                            fontSize: 14
                           ),
                         ),
                         GestureDetector(
@@ -349,20 +359,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const RegisterScreen(),
+                                builder: (_) => const RegisterScreen()
                               ),
                             );
                           },
                           child: Text(
                             'Daftar',
                             style: GoogleFonts.spaceGrotesk(
-                              color: AppColors.primary,
+                              // Putih + tebal, bukan hijau. Warna tidak
+                              // lagi dipakai untuk membedakan tautan, jadi
+                              // ketebalan yang mengambil alih peran itu.
+                              color: AppColors.aksi,
                               fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                             ),
-                          ),
+                          )
                         ),
-                      ],
+                      ]
                     ),
                     const SizedBox(height: 40),
                     Center(
@@ -370,16 +383,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         AppConstants.appVersionLabel,
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 12,
-                          color: AppColors.textMuted,
+                          color: AppColors.textMuted
                         ),
-                      ),
+                      )
                     ),
-                  ],
+                  ]
                 ),
-              ),
+              )
             ),
           ),
-        ],
+        ]
       ),
     );
   }
@@ -401,7 +414,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => AdminDashboard(user: user),
-            settings: const RouteSettings(name: '/admin'),
+            settings: const RouteSettings(name: '/admin')
           ),
         );
       } else {

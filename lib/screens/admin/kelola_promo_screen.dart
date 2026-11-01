@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/promo_model.dart';
 import '../../utils/app_theme.dart';
 import '../../models/user_model.dart';
+import '../../core/errors/pesan_galat.dart';
 
 /// Admin screen for managing promo codes: a form to create, and the list
 /// below it streamed from `promo_codes`.
@@ -24,10 +25,18 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
   final _minPembelianCtrl = TextEditingController();
   final _maxPakaiCtrl = TextEditingController(text: '100');
   final _deskripsiCtrl = TextEditingController();
+
+  /// Label kecil di kartu promo, mis. "EARLY BIRD" atau "SIGNATURE".
+  /// Kosong berarti memakai label bawaan tema.
+  final _labelCtrl = TextEditingController();
   final _mulaiCtrl = TextEditingController();
   final _akhirCtrl = TextEditingController();
 
   String _tipe = 'percentage';
+
+  /// Tema kartu promo. Kosong = bergilir otomatis menurut urutan tampil.
+  /// Admin tidak wajib mengisi; ini hanya untuk mengatur tampilan.
+  String _tema = '';
   DateTime? _berlakuMulai;
   DateTime? _berlakuAkhir;
   bool _saving = false;
@@ -39,6 +48,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
     _minPembelianCtrl.dispose();
     _maxPakaiCtrl.dispose();
     _deskripsiCtrl.dispose();
+    _labelCtrl.dispose();
     _mulaiCtrl.dispose();
     _akhirCtrl.dispose();
     super.dispose();
@@ -75,7 +85,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: Theme.of(context).colorScheme.copyWith(
-                primary: AppColors.primary,
+                primary: AppColors.aksi,
                 onPrimary: AppColors.warnaTombolTeks,
                 surface: AppColors.surfaceLight,
                 surfaceContainerHigh: AppColors.surfaceLight,
@@ -122,17 +132,39 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
       return;
     }
 
+    // Nilai dibaca dengan `tryParse`, bukan `parse`.
+    //
+    // Validator seharusnya sudah menahan input tidak sah, tapi satu jalur
+    // saja yang lolos (mis. tombol Simpan ditekan lewat keyboard saat kolom
+    // masih kosong) akan melempar FormatException di dalam `try` — dan
+    // pengguna hanya melihat tombol yang seolah tidak bereaksi.
+    final nilai = double.tryParse(_nilaiCtrl.text.trim());
+    final maxPakai = int.tryParse(_maxPakaiCtrl.text.trim());
+    final minTeks = _minPembelianCtrl.text.trim();
+    final minPembelian = minTeks.isEmpty ? 0.0 : double.tryParse(minTeks);
+
+    if (nilai == null || nilai <= 0) {
+      _toast('Nilai diskon belum diisi dengan benar', AppColors.warning);
+      return;
+    }
+    if (maxPakai == null || maxPakai <= 0) {
+      _toast('Maks. pakai harus angka lebih dari 0', AppColors.warning);
+      return;
+    }
+    if (minPembelian == null || minPembelian < 0) {
+      _toast('Minimum belanja tidak valid', AppColors.warning);
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       final promo = PromoCodeModel(
         id: '',
         kode: _kodeCtrl.text.trim().toUpperCase(),
         tipe: _tipe,
-        nilai: double.parse(_nilaiCtrl.text.trim()),
-        minPembelian: _minPembelianCtrl.text.trim().isEmpty
-            ? 0
-            : double.parse(_minPembelianCtrl.text.trim()),
-        maxPakai: int.parse(_maxPakaiCtrl.text.trim()),
+        nilai: nilai,
+        minPembelian: minPembelian,
+        maxPakai: maxPakai,
         berlakuMulai: DateTime(
             _berlakuMulai!.year, _berlakuMulai!.month, _berlakuMulai!.day),
         // Simpan akhir hari supaya promo tetap berlaku sampai hari terakhir.
@@ -141,16 +173,32 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
         deskripsi: _deskripsiCtrl.text.trim().isEmpty
             ? null
             : _deskripsiCtrl.text.trim(),
+        tema: _tema.isEmpty ? null : _tema,
+        label: _labelCtrl.text.trim().isEmpty
+            ? null
+            : _labelCtrl.text.trim().toUpperCase(),
       );
 
+      // ID dokumen = kode promo, BUKAN acak.
+      //
+      // Sebelumnya dipakai `.add()`, sehingga Firestore membuat ID acak.
+      // Backend mencari voucher dengan `.doc(kode)` — jadi setiap promo
+      // yang dibuat dari form ini TIDAK PERNAH ditemukan, dan kode yang
+      // diketik pengguna selalu ditolak dengan "Kode promo tidak ditemukan".
+      // Bug ini tidak terlihat di tes karena tes memakai model, bukan
+      // Firestore sungguhan.
+      //
+      // `.doc(kode).set()` juga membuat pembuatan promo idempoten: kode
+      // yang sama tidak bisa menghasilkan dua dokumen berbeda.
       await FirebaseFirestore.instance
           .collection('promo_codes')
-          .add(promo.toMap());
+          .doc(promo.kode)
+          .set(promo.toMap());
 
       _resetForm();
-      _toast('Promo berhasil dibuat', AppColors.success);
+      _toast('Promo berhasil dibuat', AppColors.aksi);
     } catch (e) {
-      _toast('Gagal membuat promo: $e', AppColors.error);
+      _toast(PesanGalat.untuk(e, awalan: 'Gagal membuat promo'), AppColors.error);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -163,10 +211,12 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
     _minPembelianCtrl.clear();
     _maxPakaiCtrl.text = '100';
     _deskripsiCtrl.clear();
+    _labelCtrl.clear();
     _mulaiCtrl.clear();
     _akhirCtrl.clear();
     setState(() {
       _tipe = 'percentage';
+      _tema = '';
       _berlakuMulai = null;
       _berlakuAkhir = null;
     });
@@ -212,7 +262,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
           .update({'aktif': false});
       _toast('Promo dinonaktifkan', AppColors.warning);
     } catch (e) {
-      _toast('Gagal menonaktifkan: $e', AppColors.error);
+      _toast(PesanGalat.untuk(e, awalan: 'Gagal menonaktifkan promo'), AppColors.error);
     }
   }
 
@@ -225,7 +275,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            RoundedRectangleBorder(borderRadius: AppRadius.rMd),
       ),
     );
   }
@@ -242,12 +292,12 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
       filled: true,
       fillColor: AppColors.surfaceLight,
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.rMd,
         borderSide: const BorderSide(color: AppColors.divider),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+        borderRadius: AppRadius.rMd,
+        borderSide: const BorderSide(color: AppColors.aksi, width: 1.2),
       ),
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -262,6 +312,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Buka menu',
           icon: Icon(widget.onBukaSidebar != null ? Icons.menu_rounded : Icons.arrow_back_ios_new, size: 20),
           onPressed: () {
             if (widget.onBukaSidebar != null) {
@@ -288,7 +339,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
             _buildFormCard(),
             const SizedBox(height: 24),
             Text(
-              'DAFTAR KODE PROMO',
+              'Daftar Promo',
               style: GoogleFonts.rajdhani(
                 color: AppColors.textPrimary,
                 fontSize: 16,
@@ -309,7 +360,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Form(
@@ -320,7 +371,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
             Row(
               children: [
                 const Icon(Icons.local_offer_rounded,
-                    color: AppColors.warnaHarga, size: 22),
+                    color: AppColors.aksi, size: 22),
                 const SizedBox(width: 10),
                 Text(
                   'Buat Promo Baru',
@@ -381,13 +432,77 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
                     style: GoogleFonts.spaceGrotesk(
                         color: AppColors.textPrimary, fontSize: 14),
                     validator: (v) {
-                      final n = double.tryParse(v ?? '');
+                      final n = double.tryParse((v ?? '').trim());
                       if (n == null || n <= 0) return 'Nilai tidak valid';
+                      // Diskon persentase di atas 100% tidak masuk akal dan
+                      // membuat potongan melebihi harga tiket.
+                      if (_tipe == 'percentage' && n > 100) {
+                        return 'Maksimal 100%';
+                      }
                       return null;
                     },
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 14),
+            // Label kartu. Dipisah dari tema supaya warna dan makna tidak
+            // dipaksa berpasangan: promo "Early Bird" cocok berwarna emas
+            // tetapi tidak cocok disebut "SIGNATURE".
+            TextFormField(
+              controller: _labelCtrl,
+              textCapitalization: TextCapitalization.characters,
+              maxLength: 18,
+              decoration: _input('Label Kartu',
+                  hint: 'Mis. EARLY BIRD').copyWith(counterText: ''),
+              style: GoogleFonts.spaceGrotesk(
+                  color: AppColors.textPrimary, fontSize: 14),
+              validator: (v) {
+                final t = (v ?? '').trim();
+                if (t.isEmpty) return null; // kosong = pakai label tema
+                if (t.length > 18) return 'Maksimal 18 karakter';
+                return null;
+              },
+            ),
+            const SizedBox(height: 14),
+            // Tema hanya mengatur warna kartu di halaman Jelajah. Kosongkan
+            // bila ingin warna bergilir otomatis — deretan kartu tetap
+            // beragam tanpa admin harus mengisi apa pun.
+            DropdownButtonFormField<String>(
+              key: ValueKey('tema-$_tema'),
+              initialValue: _tema,
+              isExpanded: true,
+              decoration: _input('Tema Kartu'),
+              dropdownColor: AppColors.surfaceLight,
+              style: GoogleFonts.spaceGrotesk(
+                  color: AppColors.textPrimary, fontSize: 14),
+              items: const [
+                DropdownMenuItem(
+                    value: '',
+                    child: Text('Otomatis (bergilir)',
+                        overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(
+                    value: 'gold',
+                    child: Text('Gold — Early Bird',
+                        overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(
+                    value: 'emerald',
+                    child: Text('Emerald — Member',
+                        overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(
+                    value: 'amethyst',
+                    child: Text('Amethyst — Eksklusif',
+                        overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(
+                    value: 'silver',
+                    child: Text('Silver — Platinum',
+                        overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(
+                    value: 'red',
+                    child: Text('Red — LiveVibes',
+                        overflow: TextOverflow.ellipsis)),
+              ],
+              onChanged: (v) => setState(() => _tema = v ?? ''),
             ),
             const SizedBox(height: 14),
             Row(
@@ -401,6 +516,17 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
                         _input('Min. Pembelian', prefix: 'Rp ', hint: '0'),
                     style: GoogleFonts.spaceGrotesk(
                         color: AppColors.textPrimary, fontSize: 14),
+                    // Tanpa validator, kolom kosong membuat `double.parse('')`
+                    // melempar FormatException saat menyimpan — tombol Simpan
+                    // tampak tidak bereaksi apa pun.
+                    validator: (v) {
+                      final teks = (v ?? '').trim();
+                      if (teks.isEmpty) return null; // kosong = tanpa minimum
+                      final n = double.tryParse(teks);
+                      if (n == null) return 'Masukkan angka yang valid';
+                      if (n < 0) return 'Minimum tidak boleh negatif';
+                      return null;
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -473,12 +599,10 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
                   style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.warnaTombolBg,
-                  foregroundColor: AppColors.warnaTombolTeks,
                   minimumSize: const Size.fromHeight(50),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: AppRadius.rMd),
                 ),
               ),
             ),
@@ -499,7 +623,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(20),
-              child: CircularProgressIndicator(color: AppColors.primary),
+              child: CircularProgressIndicator(color: AppColors.aksi),
             ),
           );
         }
@@ -531,8 +655,14 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
   }
 
   Widget _buildPromoCard(PromoCodeModel promo) {
+    // AKTIF = hijau (status berhasil), BERAKHIR = sunset (perlu tindakan),
+    // NONAKTIF = redup.
+    //
+    // Hijau di sini bukan "uang", melainkan "berhasil/berlaku" — dua makna
+    // yang sama-sama positif dan sudah disepakati memakai hijau. Navigasi
+    // tetap putih.
     final statusColor = promo.isValid
-        ? AppColors.success
+        ? AppColors.primary
         : (promo.aktif ? AppColors.warning : AppColors.textMuted);
     final statusLabel = promo.isValid
         ? 'AKTIF'
@@ -543,7 +673,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.rMd,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -568,7 +698,7 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadius.rSm,
                 ),
                 child: Text(
                   statusLabel,
@@ -586,8 +716,10 @@ class _KelolaPromoScreenState extends ConsumerState<KelolaPromoScreen> {
             children: [
               Text(
                 promo.labelNilai,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.spaceGrotesk(
-                  color: AppColors.warnaHarga,
+                  color: AppColors.aksi,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),

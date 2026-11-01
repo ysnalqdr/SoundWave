@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../constants/app_constants.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/badge_status.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../providers/app_providers.dart';
@@ -18,6 +19,7 @@ import 'kelola_promo_screen.dart';
 import 'laporan_revenue_screen.dart';
 import 'kelola_refund_screen.dart';
 import '../../widgets/tombol_dialog_sejajar.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class AdminDashboard extends ConsumerStatefulWidget {
   final UserModel user;
@@ -170,7 +172,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.rLg),
         title: Text(
           'Keluar Akun?',
           style: GoogleFonts.rajdhani(
@@ -205,7 +207,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Gagal keluar akun: $e'),
+                        content: Text(PesanGalat.untuk(e, awalan: 'Gagal keluar akun')),
                         backgroundColor: AppColors.error,
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -334,8 +336,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     height: 40,
                     decoration: BoxDecoration(
                       gradient: isSuperAdmin
-                          ? const LinearGradient(colors: [Colors.amber, Colors.deepOrange])
-                          : AppColors.primaryGradient,
+                          ? AppColors.panelGradient
+                          : AppColors.panelGradient,
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -352,13 +354,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
-                          gradient: isSuperAdmin
-                              ? const LinearGradient(colors: [Colors.amber, Colors.deepOrange])
-                              : AppColors.primaryGradient,
+                          gradient: AppColors.panelGradient,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: (isSuperAdmin ? AppColors.warning : AppColors.primary).withValues(alpha: 0.3),
+                              // Putih untuk semua peran. Dulu SUPER ADMIN
+                              // memakai `warning` (sunset) sehingga status
+                              // tertinggi terlihat seperti peringatan.
+                              color: AppColors.aksi.withValues(alpha: 0.3),
                               blurRadius: 14,
                               spreadRadius: 2,
                             ),
@@ -401,39 +404,19 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isSuperAdmin
-                          ? AppColors.warning.withValues(alpha: 0.15)
-                          : AppColors.warnaHarga.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isSuperAdmin
-                            ? AppColors.warning.withValues(alpha: 0.4)
-                            : AppColors.warnaHarga.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isSuperAdmin ? Icons.stars_rounded : Icons.shield_outlined,
-                          color: isSuperAdmin ? AppColors.warning : AppColors.warnaHarga,
-                          size: 13,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN OPERASIONAL',
-                          style: GoogleFonts.spaceGrotesk(
-                            color: isSuperAdmin ? AppColors.warning : AppColors.warnaHarga,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                      ],
-                    ),
+                  // Tanpa pembungkus.
+                  //
+                  // Dulu ada `Container` + `Row` di sekeliling badge, sisa
+                  // dari masa sebelum `BadgeStatus` dipusatkan (dahulu isinya
+                  // `Text` polos yang butuh kotak). `BadgeStatus` sudah punya
+                  // latar dan garis tepi sendiri, jadi pembungkus itu membuat
+                  // dua lapis latar semi-transparan bertumpuk — terlihat
+                  // seperti badge lain di baliknya.
+                  BadgeStatus(
+                    isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN',
+                    nada: isSuperAdmin ? BadgeNada.final_ : BadgeNada.jalan,
+                    ikon: BadgeIkon.kunci,
+                    ukuran: 10,
                   ),
                 ],
               ],
@@ -458,7 +441,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     child: Text(
-                      'MODE APLIKASI',
+                      'Mode aplikasi',
                       style: GoogleFonts.spaceGrotesk(
                         color: AppColors.textMuted,
                         fontSize: 10,
@@ -477,29 +460,29 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                           MaterialPageRoute(builder: (_) => const UserMainScreen()),
                         );
                       },
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.rMd,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                          color: AppColors.aksi.withValues(alpha: 0.08),
+                          borderRadius: AppRadius.rMd,
+                          border: Border.all(color: AppColors.aksi.withValues(alpha: 0.2)),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.headphones_rounded, color: AppColors.primary, size: 18),
+                            const Icon(Icons.headphones_rounded, color: AppColors.aksi, size: 18),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 'Mode Penonton (User)',
                                 style: GoogleFonts.spaceGrotesk(
-                                  color: AppColors.primary,
+                                  color: AppColors.aksi,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
-                            const Icon(Icons.open_in_new, color: AppColors.primary, size: 14),
+                            const Icon(Icons.open_in_new, color: AppColors.aksi, size: 14),
                           ],
                         ),
                       ),
@@ -519,16 +502,16 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                           MaterialPageRoute(builder: (_) => const UserMainScreen()),
                         );
                       },
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.rMd,
                       child: Container(
                         width: 40,
                         height: 40,
                         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppColors.aksi.withValues(alpha: 0.08),
+                          borderRadius: AppRadius.rMd,
                         ),
-                        child: const Icon(Icons.headphones_rounded, color: AppColors.primary, size: 18),
+                        child: const Icon(Icons.headphones_rounded, color: AppColors.aksi, size: 18),
                       ),
                     ),
                   ),
@@ -559,13 +542,13 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 padding: const EdgeInsets.all(14),
                 child: InkWell(
                   onTap: _logout,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.rMd,
                   child: Container(
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.rMd,
                     ),
                     child: const Icon(Icons.logout_rounded, color: AppColors.error, size: 18),
                   ),
@@ -577,12 +560,12 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               padding: const EdgeInsets.all(14),
               child: InkWell(
                 onTap: _logout,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.rMd,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: AppColors.error.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
                   ),
                   child: Row(
@@ -665,20 +648,20 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                 child: InkWell(
                   onTap: () => _gantiHalaman(globalIndex, isDesktop),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.rMd,
                   child: Container(
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: isAktif ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
+                      color: isAktif ? AppColors.aksi.withValues(alpha: 0.12) : Colors.transparent,
+                      borderRadius: AppRadius.rMd,
                       border: isAktif
-                          ? Border.all(color: AppColors.primary.withValues(alpha: 0.4))
+                          ? Border.all(color: AppColors.aksi.withValues(alpha: 0.4))
                           : null,
                     ),
                     child: Icon(
                       dest.icon,
-                      color: isAktif ? AppColors.primary : AppColors.textMuted,
+                      color: isAktif ? AppColors.aksi : AppColors.textMuted,
                       size: 20,
                     ),
                   ),
@@ -691,21 +674,21 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             child: InkWell(
               onTap: () => _gantiHalaman(globalIndex, isDesktop),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadius.rMd,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
                 decoration: BoxDecoration(
-                  color: isAktif ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  color: isAktif ? AppColors.aksi.withValues(alpha: 0.12) : Colors.transparent,
+                  borderRadius: AppRadius.rMd,
                   border: isAktif
-                      ? const Border(left: BorderSide(color: AppColors.primary, width: 3))
+                      ? const Border(left: BorderSide(color: AppColors.aksi, width: 3))
                       : null,
                 ),
                 child: Row(
                   children: [
                     Icon(
                       dest.icon,
-                      color: isAktif ? AppColors.primary : AppColors.textMuted,
+                      color: isAktif ? AppColors.aksi : AppColors.textMuted,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -713,7 +696,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       child: Text(
                         dest.label,
                         style: GoogleFonts.spaceGrotesk(
-                          color: isAktif ? AppColors.primary : AppColors.textSecondary,
+                          color: isAktif ? AppColors.aksi : AppColors.textSecondary,
                           fontSize: 13,
                           fontWeight: isAktif ? FontWeight.w600 : FontWeight.normal,
                         ),
@@ -723,13 +706,13 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
+                          color: AppColors.aksi.withValues(alpha: 0.15),
+                          borderRadius: AppRadius.rXs,
                         ),
                         child: Text(
                           'SUPER',
                           style: GoogleFonts.spaceGrotesk(
-                            color: AppColors.warning,
+                            color: AppColors.aksi,
                             fontSize: 8,
                             fontWeight: FontWeight.w700,
                           ),

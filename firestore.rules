@@ -57,14 +57,37 @@ service cloud.firestore {
     }
 
     // ===== EVENTS =====
+    //
+    // Katalog konser terbuka untuk siapa saja — pengunjung harus bisa melihat
+    // daftar konser dan harga **sebelum** login, sama seperti toko tiket mana
+    // pun. Dokumen `_backend_config` yang dulu menumpang di sini sudah
+    // dipindah ke `app_config/backend` (Okt 2026), jadi koleksi ini kini
+    // murni data bisnis.
+    //
+    // Kenapa TIDAK memakai syarat per-dokumen di sini: aturan seperti
+    //   allow read: if eventId != '_backend_config' || signedIn();
+    // membuat Firestore menolak **seluruh query koleksi** dengan
+    // `permission-denied`, karena engine aturan tidak bisa membuktikan
+    // syarat itu berlaku untuk setiap dokumen yang mungkin ikut terambil.
+    // Itulah yang dulu membuat layar Jelajah, Kelola Konser, dan Laporan
+    // gagal total padahal tulisannya berhasil.
     match /events/{eventId} {
-      // Dokumen _backend_config menyimpan alamat tunnel backend.
-      // Katalog event tetap terbuka, konfigurasi backend hanya untuk yang login.
-      allow read: if eventId != '_backend_config' || signedIn();
+      allow read: if true;
       allow create, update, delete: if isAdmin();
     }
 
     // ===== TICKETS =====
+    //
+    // CATATAN PENTING (audit Okt 2026): dokumen `tickets` adalah **katalog
+    // harga & stok**, bukan tiket milik orang. Isinya: idKonser, kategori,
+    // harga, stok, terjual. Tidak ada nama, email, atau kode booking di sini —
+    // data pribadi ada di `orders`. Karena itu `allow read: if true` di sini
+    // BUKAN kebocoran data pribadi: katalog harga memang harus bisa dilihat
+    // pengunjung sebelum login, dan itu praktik normal toko tiket.
+    //
+    // Yang perlu dijaga bukan bacanya, tapi **tulisnya**: stok hanya boleh
+    // berubah lewat Cloud Functions (Admin SDK, memakai transaksi). Klien
+    // tidak boleh menulis. Komentar lama di sini sudah benar soal itu.
     match /tickets/{ticketId} {
       allow read: if true;
       // Stock mutations after payment happen via Admin SDK (Cloud Functions)
@@ -112,8 +135,13 @@ service cloud.firestore {
     }
 
     // ===== REVIEWS =====
+    //
+    // Dulu `allow read: if true` — siapa pun, tanpa login, bisa mengunduh
+    // seluruh ulasan beserta userId penulisnya. Ulasan baru berguna di halaman
+    // detail konser, dan halaman itu hanya dibuka pembeli, jadi tidak ada
+    // alasan membukanya untuk publik.
     match /reviews/{reviewId} {
-      allow read: if true;
+      allow read: if signedIn();
 
       allow create: if signedIn()
         && request.resource.data.userId == request.auth.uid
@@ -132,7 +160,12 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // ===== APP CONFIG (Public read for dynamic backend URL) =====
+    // ===== APP CONFIG =====
+    //
+    // Berisi `backend/` — alamat tunnel backend yang dibaca aplikasi saat
+    // checkout. **Sengaja tetap publik**: yang tersimpan hanya alamat URL,
+    // bukan kredensial, dan aplikasi perlu membacanya sebelum sesi login
+    // sepenuhnya siap. Menulis hanya lewat Admin SDK.
     match /app_config/{configId} {
       allow read: if true;
       allow write: if false; // Admin SDK only
@@ -151,9 +184,28 @@ service cloud.firestore {
     }
 
     // ===== REFUNDS =====
+    //
+    // Ini **bukan** permintaan refund (tidak ada alur itu di aplikasi).
+    // Ini **audit trail keputusan admin**: ditulis saat admin menekan
+    // "Setujui" / "Tolak". Karena itu `create` hanya untuk admin.
+    //
+    // Sebelumnya `create` terbuka untuk pembeli mana pun, dan
+    // `request.resource.data` tidak divalidasi sama sekali. Artinya siapa pun
+    // yang login bisa membuat dokumen refund palsu dengan
+    // `status: 'APPROVED'` dan `refundAmount` berapa saja. Admin melihatnya
+    // di layar Kelola Refund dan mengira itu permintaan sungguhan.
     match /refunds/{refundId} {
       allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+
+      allow create: if isAdmin()
+        && request.resource.data.status in ['PENDING', 'APPROVED', 'REJECTED']
+        && request.resource.data.totalHarga is number
+        && request.resource.data.totalHarga >= 0
+        && request.resource.data.jumlahTiket is int
+        && request.resource.data.jumlahTiket > 0
+        && request.resource.data.orderId is string
+        && request.resource.data.orderId.size() > 0;
+
       allow update: if isAdmin();
       allow delete: if false;
     }
@@ -167,9 +219,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ===== PROMO BANNERS (public read, admin write) =====
+    // ===== PROMO BANNERS =====
+    //
+    // Banner promo hanya tampil di dalam aplikasi setelah login, jadi tidak
+    // perlu bisa diunduh publik.
     match /promo_banners/{bannerId} {
-      allow read: if true;
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
   }

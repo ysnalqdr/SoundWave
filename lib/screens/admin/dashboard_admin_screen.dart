@@ -6,9 +6,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/konser_model.dart';
 import '../../models/pesanan_tiket_model.dart';
 import '../../models/tiket_konser_model.dart';
+import '../../models/statistik_pesanan.dart';
 import '../../models/user_model.dart';
 import '../../providers/app_providers.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/badge_status.dart';
 import '../../utils/ringkasan_admin.dart';
 
 /// Halaman pertama yang dilihat operator setelah login.
@@ -57,7 +59,10 @@ class DashboardAdminScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final eventsAsync = ref.watch(eventsProvider);
     final tiketAsync = ref.watch(allTicketsProvider);
-    final pesananAsync = ref.watch(allOrdersProvider);
+    // KPI: agregasi server (tanpa unduh dokumen).
+    final statAsync = ref.watch(statistikPesananProvider);
+    // Grafik: hanya jendela 7 hari, bukan seluruh riwayat.
+    final pesananAsync = ref.watch(pesananTujuhHariProvider);
 
     final daftarKonser = eventsAsync.valueOrNull ?? const <KonserModel>[];
     final daftarTiket = tiketAsync.valueOrNull ?? const <TiketKonserModel>[];
@@ -69,8 +74,10 @@ class DashboardAdminScreen extends ConsumerWidget {
       tiket: daftarTiket,
     );
 
+    final statistik = statAsync.valueOrNull ?? StatistikPesanan.kosong;
     final memuat = eventsAsync.isLoading ||
         tiketAsync.isLoading ||
+        statAsync.isLoading ||
         pesananAsync.isLoading;
 
     return Scaffold(
@@ -81,12 +88,13 @@ class DashboardAdminScreen extends ConsumerWidget {
             _buildTopbar(),
             Expanded(
               child: RefreshIndicator(
-                color: AppColors.primary,
+                color: AppColors.aksi,
                 backgroundColor: AppColors.surfaceLight,
                 onRefresh: () async {
                   ref.invalidate(eventsProvider);
                   ref.invalidate(allTicketsProvider);
-                  ref.invalidate(allOrdersProvider);
+                  ref.invalidate(pesananTujuhHariProvider);
+                  ref.invalidate(statistikPesananProvider);
                   await Future<void>.delayed(
                     const Duration(milliseconds: 600),
                   );
@@ -96,21 +104,21 @@ class DashboardAdminScreen extends ConsumerWidget {
                   children: [
                     _buildSapaan(),
                     const SizedBox(height: 18),
-                    _buildKpi(ringkasan, memuat),
+                    _buildKpi(statistik, ringkasan, memuat),
                     const SizedBox(height: 22),
-                    _bagian('PENJUALAN 7 HARI TERAKHIR'),
+                    _bagian('Penjualan 7 hari terakhir'),
                     const SizedBox(height: 10),
                     _buildGrafik(ringkasan, memuat),
                     const SizedBox(height: 22),
-                    _bagian('PERLU TINDAKAN'),
+                    _bagian('Perlu tindakan'),
                     const SizedBox(height: 10),
                     _buildPerluTindakan(ringkasan, memuat),
                     const SizedBox(height: 22),
-                    _bagian('KONSER TERDEKAT'),
+                    _bagian('Konser terdekat'),
                     const SizedBox(height: 10),
                     _buildKonserTerdekat(daftarKonser, daftarTiket),
                     const SizedBox(height: 22),
-                    _bagian('JALAN PINTAS'),
+                    _bagian('Jalan pintas'),
                     const SizedBox(height: 10),
                     _buildJalanPintas(),
                   ],
@@ -137,7 +145,7 @@ class DashboardAdminScreen extends ConsumerWidget {
               height: 38,
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.rSm,
                 border: Border.all(color: AppColors.divider),
               ),
               child: const Icon(
@@ -163,24 +171,11 @@ class DashboardAdminScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Text(
-              'ADMIN',
-              style: GoogleFonts.spaceGrotesk(
-                color: AppColors.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
-              ),
-            ),
+          const BadgeStatus(
+            'ADMIN',
+            nada: BadgeNada.jalan,
+            ikon: BadgeIkon.kunci,
+            ukuran: 10,
           ),
         ],
       ),
@@ -228,25 +223,34 @@ class DashboardAdminScreen extends ConsumerWidget {
 
   // KPI
 
-  Widget _buildKpi(RingkasanAdmin r, bool memuat) {
+  /// KPI memakai angka dari **agregasi Firestore** ([StatistikPesanan]),
+  /// bukan dari daftar pesanan yang diunduh. Dua angka tetap diambil dari
+  /// [RingkasanAdmin] karena butuh data mentah: pesanan yang hampir
+  /// kedaluwarsa (butuh selisih waktu per pesanan) dan stok kritis (dari
+  /// koleksi tiket, bukan pesanan).
+  Widget _buildKpi(
+    StatistikPesanan s,
+    RingkasanAdmin r,
+    bool memuat,
+  ) {
     final kartu = [
       _KartuKpi(
         label: 'Pendapatan',
-        nilai: memuat ? '—' : _rupiah(r.pendapatan),
-        catatan: memuat ? null : '${r.tiketTerjual} tiket lunas',
+        nilai: memuat ? '—' : _rupiah(s.pendapatan),
+        catatan: memuat ? null : '${s.tiketTerjual} tiket lunas',
         ikon: Icons.account_balance_wallet_outlined,
-        aksen: AppColors.success,
-      ),
-      _KartuKpi(
-        label: 'Tiket terjual',
-        nilai: memuat ? '—' : '${r.tiketTerjual}',
-        catatan: memuat ? null : '${r.totalPesanan} total pesanan',
-        ikon: Icons.confirmation_number_outlined,
         aksen: AppColors.primary,
       ),
       _KartuKpi(
+        label: 'Tiket terjual',
+        nilai: memuat ? '—' : '${s.tiketTerjual}',
+        catatan: memuat ? null : '${s.totalPesanan} total pesanan',
+        ikon: Icons.confirmation_number_outlined,
+        aksen: AppColors.aksi,
+      ),
+      _KartuKpi(
         label: 'Menunggu bayar',
-        nilai: memuat ? '—' : '${r.menungguBayar}',
+        nilai: memuat ? '—' : '${s.menungguBayar}',
         catatan: memuat
             ? null
             : r.hampirKedaluwarsa > 0
@@ -257,7 +261,7 @@ class DashboardAdminScreen extends ConsumerWidget {
       ),
       _KartuKpi(
         label: 'Refund ditinjau',
-        nilai: memuat ? '—' : '${r.refundPerluTinjauan}',
+        nilai: memuat ? '—' : '${s.refundPerluTinjauan}',
         catatan: memuat ? null : 'stok kritis: ${r.stokKritis}',
         ikon: Icons.undo_rounded,
         aksen: AppColors.error,
@@ -288,7 +292,7 @@ class DashboardAdminScreen extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -457,7 +461,7 @@ class DashboardAdminScreen extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -494,7 +498,7 @@ class DashboardAdminScreen extends ConsumerWidget {
               height: 34,
               decoration: BoxDecoration(
                 color: warna.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: AppRadius.rSm,
               ),
               child: Icon(ikon, color: warna, size: 18),
             ),
@@ -572,7 +576,7 @@ class DashboardAdminScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -596,7 +600,8 @@ class DashboardAdminScreen extends ConsumerWidget {
               Text(
                 '${(persen * 100).round()}%',
                 style: GoogleFonts.spaceGrotesk(
-                  color: AppColors.success,
+                  // Persentase tiket terjual = uang. Hijau.
+                  color: AppColors.primary,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
@@ -615,13 +620,13 @@ class DashboardAdminScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: AppRadius.rXs,
             child: LinearProgressIndicator(
               value: persen,
               minHeight: 5,
               backgroundColor: AppColors.surfaceLight,
               valueColor: const AlwaysStoppedAnimation<Color>(
-                AppColors.success,
+                AppColors.aksi,
               ),
             ),
           ),
@@ -675,12 +680,12 @@ class DashboardAdminScreen extends ConsumerWidget {
   Widget _tombolPintas(IconData ikon, String label, String tujuan) {
     return InkWell(
       onTap: () => onBukaMenu(tujuan),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: AppRadius.rMd,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppRadius.rMd,
           border: Border.all(color: AppColors.divider),
         ),
         child: Column(
@@ -721,7 +726,7 @@ class DashboardAdminScreen extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Text(
@@ -775,7 +780,7 @@ class _KartuKpi extends StatelessWidget {
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(

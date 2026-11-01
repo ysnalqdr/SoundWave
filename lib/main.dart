@@ -10,12 +10,18 @@ import 'screens/auth/login_screen.dart';
 import 'constants/app_constants.dart';
 import 'services/notification_service.dart';
 import 'widgets/fcm_gateway.dart';
+import 'core/diagnostik/penangkap_galat.dart';
 
 /// Dipakai untuk membuka halaman dari notifikasi push (app di background).
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Pasang jaring pengaman SEBELUM apa pun yang bisa gagal. Kalau Firebase
+  // gagal init, galatnya tetap tercatat dan aplikasi tidak mati diam-diam.
+  PenangkapGalat.pasang();
+  ErrorWidget.builder = (details) => GalatWidget(pesan: details.exceptionAsString());
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -42,11 +48,14 @@ void main() async {
     ),
   );
 
-  runApp(
-    const ProviderScope(
-      child: SoundWaveApp(),
-    ),
-  );
+  // Dibungkus zona supaya galat async di luar framework ikut tercatat.
+  PenangkapGalat.jalankan(() {
+    runApp(
+      const ProviderScope(
+        child: SoundWaveApp(),
+      ),
+    );
+  });
 }
 
 class SoundWaveApp extends StatelessWidget {

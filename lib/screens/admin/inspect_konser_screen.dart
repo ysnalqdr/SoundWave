@@ -8,6 +8,7 @@ import '../../models/tiket_konser_model.dart';
 import '../../providers/app_providers.dart';
 import 'form_konser_screen.dart';
 import 'package:soundwave/widgets/gambar_widget.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class InspectKonserScreen extends ConsumerStatefulWidget {
   final KonserModel konser;
@@ -54,7 +55,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                   margin: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: AppRadius.rSm,
                   ),
                   child: const Icon(
                     Icons.arrow_back_ios_rounded,
@@ -84,7 +85,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                               color: Colors.white,
                             ),
                           ),
-                          backgroundColor: AppColors.success,
+                          backgroundColor: AppColors.aksi,
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
@@ -95,11 +96,11 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: AppRadius.rSm,
                     ),
                     child: const Icon(
                       Icons.edit_outlined,
-                      color: AppColors.primary,
+                      color: AppColors.aksi,
                       size: 18,
                     ),
                   ),
@@ -115,7 +116,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: AppRadius.rSm,
                     ),
                     child: const Icon(
                       Icons.delete_outline_rounded,
@@ -154,9 +155,9 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
               ),
               bottom: TabBar(
                 controller: _tabController,
-                indicatorColor: AppColors.primary,
+                indicatorColor: AppColors.aksi,
                 indicatorWeight: 2.5,
-                labelColor: AppColors.primary,
+                labelColor: AppColors.aksi,
                 unselectedLabelColor: AppColors.textMuted,
                 labelStyle: GoogleFonts.spaceGrotesk(
                   fontSize: 13,
@@ -207,33 +208,44 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                 ),
               ),
               const SizedBox(width: 8),
-              Wrap(
-                spacing: 8.0,
-                runSpacing: 4.0,
-                children: widget.konser.genre.map((genre) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.3),
+              // `Flexible` wajib ada di sini.
+              //
+              // Dulu `Wrap` berdiri langsung sebagai anak Row tanpa batas
+              // lebar, sehingga dengan 6 genre (K-Pop, Country, Indie, R&B,
+              // Electronic, Pop) total lebarnya melebihi layar dan memicu
+              // "RIGHT OVERFLOWED BY 46 PIXELS". `Flexible` memberi batas
+              // lebar yang tersisa setelah judul, sehingga `Wrap` bisa
+              // memindahkan chip ke baris berikutnya.
+              Flexible(
+                child: Wrap(
+                  spacing: 8.0,
+                  runSpacing: 4.0,
+                  alignment: WrapAlignment.end,
+                  children: widget.konser.genre.map((genre) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
                       ),
-                    ),
-                    child: Text(
-                      genre,
-                      style: GoogleFonts.spaceGrotesk(
-                        color: AppColors.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                      decoration: BoxDecoration(
+                        color: AppColors.aksi.withValues(alpha: 0.15),
+                        borderRadius: AppRadius.rLg,
+                        border: Border.all(
+                          color: AppColors.aksi.withValues(alpha: 0.3),
+                        ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              )
+                      child: Text(
+                        genre,
+                        style: GoogleFonts.spaceGrotesk(
+                          color: AppColors.aksi,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -300,7 +312,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: AppRadius.rLg,
                         border: Border.all(color: AppColors.divider),
                       ),
                       child: Text(
@@ -351,7 +363,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                         margin: const EdgeInsets.only(right: 10),
                         decoration: BoxDecoration(
                           color: AppColors.card,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: AppRadius.rMd,
                           border: Border.all(color: AppColors.divider),
                         ),
                         clipBehavior: Clip.hardEdge,
@@ -362,7 +374,10 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                               child: GambarWidget(
                                 url: k.gambarUrl,
                                 fit: BoxFit.cover,
-                                width: double.infinity,
+                                // Lebar tetap (bukan double.infinity) supaya
+                                // cache gambar tetap kecil: thumbnail 160px
+                                // tidak menyimpan gambar 2000px di memori.
+                                width: 160,
                                 ikonDefault: Icons.music_note_rounded,
                               ),
                             ),
@@ -384,7 +399,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                                   Text(
                                     k.formatHarga,
                                     style: GoogleFonts.spaceGrotesk(
-                                      color: AppColors.primary,
+                                      color: AppColors.aksi,
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -424,7 +439,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Belum ada tiket untuk konser ini di Firestore',
+                  'Belum ada tiket untuk konser ini',
                   style: GoogleFonts.spaceGrotesk(
                     color: AppColors.textSecondary,
                     fontSize: 14,
@@ -457,7 +472,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                   children: [
                     const Icon(
                       Icons.confirmation_number_outlined,
-                      color: AppColors.primary,
+                      color: AppColors.aksi,
                       size: 18,
                     ),
                     const SizedBox(width: 8),
@@ -490,12 +505,13 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                 ),
                 child: Column(
                   children: tiketKonser.map((tiket) {
-                    final Map<String, Color> colorMap = {
-                      'oke': AppColors.success,
-                      'hampir': AppColors.warning,
-                      'habis': AppColors.error,
+                    // Stok: satu-satunya yang berwarna. Normal = netral,
+                    // menipis = sunset (perlu tindakan), habis = merah.
+                    final warnaDot = switch (tiket.statusStok) {
+                      'hampir' => AppColors.warning,
+                      'habis' => AppColors.error,
+                      _ => AppColors.textMuted,
                     };
-                    final warnaDot = colorMap[tiket.statusStok] ?? AppColors.success;
 
                     return Container(
                       padding: const EdgeInsets.all(14),
@@ -546,7 +562,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                                   ),
                                   decoration: BoxDecoration(
                                     color: warnaDot.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(6),
+                                    borderRadius: AppRadius.rXs,
                                     border: Border.all(
                                       color: warnaDot.withValues(alpha: 0.3),
                                     ),
@@ -587,7 +603,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Text(
-            'Gagal memuat tiket: $e',
+            PesanGalat.untuk(e, awalan: 'Gagal memuat tiket'),
             style: GoogleFonts.spaceGrotesk(color: AppColors.error),
           ),
         ),
@@ -653,10 +669,10 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(9),
+            color: AppColors.aksi.withValues(alpha: 0.1),
+            borderRadius: AppRadius.rSm,
           ),
-          child: Icon(ikon, color: AppColors.primary, size: 16),
+          child: Icon(ikon, color: AppColors.aksi, size: 16),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -685,7 +701,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
       children: [
         Row(
           children: [
-            Icon(ikon, color: AppColors.primary, size: 18),
+            Icon(ikon, color: AppColors.aksi, size: 18),
             const SizedBox(width: 8),
             Text(
               judul,
@@ -711,7 +727,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                     height: 5,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.primary,
+                      color: AppColors.aksi,
                     ),
                   ),
                 ),
@@ -740,7 +756,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadius.rLg,
         ),
         title: Text(
           'Hapus Konser?',
@@ -751,7 +767,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
           ),
         ),
         content: Text(
-          '"${widget.konser.judul}" akan dihapus permanen dari Firestore.',
+          '"${widget.konser.judul}" akan dihapus permanen, termasuk semua tiketnya.',
           style: GoogleFonts.spaceGrotesk(
             color: AppColors.textSecondary,
           ),
@@ -779,7 +795,7 @@ class _InspectKonserScreenState extends ConsumerState<InspectKonserScreen>
                 if (!mounted) return;
                 messenger.showSnackBar(
                   SnackBar(
-                    content: Text('Gagal menghapus konser: $e'),
+                    content: Text(PesanGalat.untuk(e, awalan: 'Gagal menghapus konser')),
                     backgroundColor: AppColors.error,
                   ),
                 );

@@ -36,6 +36,13 @@ dependencies:
   crypto: ^3.0.3
   cryptography: ^2.9.0
   fl_chart: ^0.69.0
+  lottie: ^3.1.2
+  just_audio: ^0.9.42
+  audio_session: ^0.1.25
+  youtube_player_iframe: ^6.0.2
+  model_viewer_plus: ^1.10.0
+  webview_flutter: ^4.14.1
+  vector_math: ^2.4.3
 
 dev_dependencies:
   flutter_test:
@@ -47,4 +54,8 @@ flutter:
   assets:
     - assets/images/konser/
     - assets/images/logo/
+    - assets/lottie/
+    - assets/audio/
+    - assets/models/
+    - assets/images/panggung/
 

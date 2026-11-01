@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/constants/app_constants.dart';
 import 'package:soundwave/models/konser_model.dart';
 import 'package:soundwave/models/pesanan_tiket_model.dart';
+import 'package:soundwave/models/statistik_pesanan.dart';
 import 'package:soundwave/models/tiket_konser_model.dart';
 import 'package:soundwave/models/user_model.dart';
 import 'package:soundwave/providers/app_providers.dart';
@@ -121,8 +122,14 @@ Future<void> pumpDashboard(
             tiketUji('t2', 'VIP', stok: 80, terjual: 20),
           ]),
         ),
-        allOrdersProvider.overrideWith(
+        // Sejak Okt 2026 dashboard tidak lagi memakai allOrdersProvider
+        // (seluruh riwayat). Grafik memakai jendela 7 hari, KPI memakai
+        // agregasi server. Tes ini meniru keduanya dengan data palsu.
+        pesananTujuhHariProvider.overrideWith(
           (ref) => Stream<List<PesananTiketModel>>.value(pesanan),
+        ),
+        statistikPesananProvider.overrideWith(
+          (ref) async => statistikDari(pesanan),
         ),
       ],
       child: MaterialApp(
@@ -138,6 +145,47 @@ Future<void> pumpDashboard(
 
   // Biarkan stream mengirim snapshot pertama.
   await tester.pumpAndSettle();
+}
+
+/// Meniru agregasi Firestore (`count()` + `sum()`) atas data palsu.
+///
+/// Sengaja dihitung manual, bukan disalin dari implementasi: kalau rumus di
+/// server berubah, tes ini akan gagal dan memaksa kita memeriksa ulang.
+StatistikPesanan statistikDari(List<PesananTiketModel> pesanan) {
+  const lunas = {
+    AppConstants.orderStatusActive,
+    AppConstants.orderStatusUsed,
+  };
+  const menunggu = {
+    AppConstants.orderStatusPending,
+    AppConstants.orderStatusReserved,
+  };
+  const refund = {
+    AppConstants.orderStatusRefundRequested,
+    AppConstants.orderStatusRefundRequired,
+  };
+
+  var pendapatan = 0.0;
+  var lembar = 0;
+  var nMenunggu = 0;
+  var nRefund = 0;
+
+  for (final o in pesanan) {
+    if (lunas.contains(o.status)) {
+      pendapatan += o.totalHarga;
+      lembar += o.jumlahTiket;
+    }
+    if (menunggu.contains(o.status)) nMenunggu++;
+    if (refund.contains(o.status)) nRefund++;
+  }
+
+  return StatistikPesanan(
+    pendapatan: pendapatan,
+    tiketTerjual: lembar,
+    menungguBayar: nMenunggu,
+    refundPerluTinjauan: nRefund,
+    totalPesanan: pesanan.length,
+  );
 }
 
 void main() {
@@ -160,10 +208,10 @@ void main() {
   testWidgets('semua bagian dashboard ada saat layar tinggi', (tester) async {
     await pumpDashboard(tester, 393, tinggi: 1800);
 
-    expect(find.text('PENJUALAN 7 HARI TERAKHIR'), findsOneWidget);
-    expect(find.text('PERLU TINDAKAN'), findsOneWidget);
-    expect(find.text('KONSER TERDEKAT'), findsOneWidget);
-    expect(find.text('JALAN PINTAS'), findsOneWidget);
+    expect(find.text('Penjualan 7 hari terakhir'), findsOneWidget);
+    expect(find.text('Perlu tindakan'), findsOneWidget);
+    expect(find.text('Konser terdekat'), findsOneWidget);
+    expect(find.text('Jalan pintas'), findsOneWidget);
     expect(find.text('Scan Gate'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -196,8 +244,17 @@ void main() {
               tiketUji('t1', 'VVIP', stok: 2, terjual: 48),
             ]),
           ),
-          allOrdersProvider.overrideWith(
+          pesananTujuhHariProvider.overrideWith(
             (ref) => Stream<List<PesananTiketModel>>.value([
+              pesananUji(
+                'o1',
+                status: AppConstants.orderStatusRefundRequested,
+                refundStatus: AppConstants.orderStatusRefundRequested,
+              ),
+            ]),
+          ),
+          statistikPesananProvider.overrideWith(
+            (ref) async => statistikDari([
               pesananUji(
                 'o1',
                 status: AppConstants.orderStatusRefundRequested,

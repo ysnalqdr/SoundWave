@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,8 @@ import '../../models/pesanan_tiket_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/app_providers.dart';
 import '../../utils/app_theme.dart';
+import '../../services/audio_service.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class GateScannerScreen extends ConsumerStatefulWidget {
   final UserModel user;
@@ -99,11 +103,9 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
       final pesan = (hasil['message'] ?? '') as String;
       final tiket = hasil['order'] as PesananTiketModel?;
 
-      if (isSuccess) {
-        HapticFeedback.mediumImpact();
-      } else {
-        HapticFeedback.heavyImpact();
-      }
+      // Umpan balik multi-sensori: getar + nada berbeda untuk valid/invalid.
+      // Petugas di venue ramai bisa tahu hasilnya tanpa membaca layar.
+      unawaited(AudioService.instance.feedbackScan(valid: isSuccess));
 
       final isOffline = hasil['isOffline'] == true;
 
@@ -123,12 +125,12 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
       _showResultBottomSheet();
     } catch (e) {
       if (!mounted) return;
-      HapticFeedback.heavyImpact();
+      unawaited(AudioService.instance.feedbackScan(valid: false));
       setState(() {
         _validating = false;
         _hasilValidasi = {
           'sukses': false,
-          'pesan': 'Error validasi: $e',
+          'pesan': PesanGalat.untuk(e, awalan: 'Validasi tiket gagal'),
           'tiket': null,
           'kode': clean,
           'waktu': DateTime.now(),
@@ -177,7 +179,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
                   height: 4,
                   decoration: BoxDecoration(
                     color: AppColors.textMuted.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: AppRadius.rXs,
                   ),
                 ),
               ),
@@ -188,7 +190,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.blue.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppRadius.rSm,
                     border: Border.all(color: Colors.blue),
                   ),
                   child: Row(
@@ -270,11 +272,11 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
                     backgroundColor: color,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.rMd,
                     ),
                   ),
                   child: Text(
-                    'LANJUTKAN SCAN BERIKUTNYA',
+                    'Lanjutkan scan berikutnya',
                     style: GoogleFonts.rajdhani(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -325,7 +327,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-          'VALIDASI GATE (LIVE SCANNER)',
+          'Validasi gate',
           style: GoogleFonts.rajdhani(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -334,14 +336,15 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
         ),
         leading: widget.onBukaSidebar != null
             ? IconButton(
+              tooltip: 'Buka menu',
                 icon: const Icon(Icons.menu_rounded),
                 onPressed: widget.onBukaSidebar,
               )
             : null,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
+          indicatorColor: AppColors.aksi,
+          labelColor: AppColors.aksi,
           unselectedLabelColor: AppColors.textMuted,
           labelStyle: GoogleFonts.rajdhani(fontWeight: FontWeight.w700),
           tabs: const [
@@ -416,18 +419,23 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: AppRadius.rLg,
               border: Border.all(color: AppColors.divider),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Arahkan QR tiket ke kotak bidik',
-                  style: GoogleFonts.spaceGrotesk(
-                    color: AppColors.textPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                // `Expanded` supaya teks memendek sendiri bila layar sempit.
+                // Tanpa ini, dua IconButton di kanan bisa mendorong teks
+                // keluar layar pada perangkat kecil.
+                Expanded(
+                  child: Text(
+                    'Arahkan QR tiket ke kotak bidik',
+                    style: GoogleFonts.spaceGrotesk(
+                      color: AppColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 Row(
@@ -435,7 +443,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
                     IconButton(
                       icon: Icon(
                         _isTorchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
-                        color: _isTorchOn ? AppColors.warnaHarga : Colors.white,
+                        color: _isTorchOn ? AppColors.aksi : Colors.white,
                       ),
                       onPressed: () async {
                         await _scannerController.toggleTorch();
@@ -473,8 +481,8 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.primary),
+                    borderRadius: AppRadius.rLg,
+                    border: Border.all(color: AppColors.aksi),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -515,14 +523,14 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: AppColors.card,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: AppRadius.rLg,
               border: Border.all(color: AppColors.divider),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'INPUT MANUAL KODE BOOKING',
+                  'Input manual kode booking',
                   style: GoogleFonts.rajdhani(
                     color: AppColors.textPrimary,
                     fontSize: 16,
@@ -565,7 +573,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size(90, 50),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: AppRadius.rMd,
                         ),
                       ),
                       child: _validating
@@ -584,7 +592,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
           const SizedBox(height: 24),
 
           Text(
-            'DAFTAR TIKET TERKINI (FIRESTORE)',
+            'Daftar tiket terkini',
             style: GoogleFonts.rajdhani(
               color: AppColors.textPrimary,
               fontSize: 16,
@@ -614,7 +622,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.rMd,
                       border: Border.all(color: AppColors.divider),
                     ),
                     child: Row(
@@ -625,7 +633,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
                             color: p.isAktif
                                 ? AppColors.success.withValues(alpha: 0.15)
                                 : AppColors.error.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: AppRadius.rSm,
                           ),
                           child: Icon(
                             p.isAktif
@@ -703,7 +711,7 @@ class _GateScannerScreenState extends ConsumerState<GateScannerScreen>
               ),
             ),
             error: (e, _) => Text(
-              'Gagal memuat pesanan: $e',
+              PesanGalat.untuk(e, awalan: 'Gagal memuat daftar pesanan'),
               style: GoogleFonts.spaceGrotesk(color: AppColors.error),
             ),
           ),
@@ -740,7 +748,7 @@ class _ScannerOverlayPainter extends CustomPainter {
     canvas.drawPath(combinedPath, backgroundPaint);
 
     final cornerPaint = Paint()
-      ..color = AppColors.primary
+      ..color = AppColors.aksi
       ..strokeWidth = 4
       ..style = PaintingStyle.stroke;
 

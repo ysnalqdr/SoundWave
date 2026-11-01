@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../../services/database_service.dart';
 import '../../models/user_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/badge_status.dart';
 import '../../constants/app_constants.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class UserManagementScreen extends ConsumerStatefulWidget {
   final UserModel currentUser;
@@ -68,7 +70,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Gagal memuat daftar pengguna: $e';
+          _errorMessage = PesanGalat.untuk(e, awalan: 'Gagal memuat daftar pengguna');
         });
       }
     }
@@ -90,13 +92,13 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.rLg),
         title: Text(
           '$actionLabel?',
           style: GoogleFonts.rajdhani(
             color: AppColors.textPrimary,
             fontSize: 22,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w700
           ),
         ),
         content: Column(
@@ -105,51 +107,61 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
           children: [
             Text(
               'Anda akan mengubah role akun berikut:',
-              style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 13),
+              style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 13)
             ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.divider),
+                borderRadius: AppRadius.rMd,
+                border: Border.all(color: AppColors.divider)
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(targetUser.nama, style: GoogleFonts.spaceGrotesk(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
-                  Text(targetUser.email, style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 12)),
+                  Text(
+                    targetUser.email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.spaceGrotesk(
+                        color: AppColors.textMuted, fontSize: 12),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text('Role saat ini: ', style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 12)),
+                      Text('Role saat ini: ',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.spaceGrotesk(
+                              color: AppColors.textMuted, fontSize: 12)),
                       _roleBadge(targetUser.role),
-                    ],
+                    ]
                   ),
-                ],
+                ]
               ),
             ),
             const SizedBox(height: 12),
             Text(
               'Role baru: $newRole',
-              style: GoogleFonts.spaceGrotesk(color: AppColors.primary, fontWeight: FontWeight.w700),
+              style: GoogleFonts.spaceGrotesk(color: AppColors.aksi, fontWeight: FontWeight.w700)
             ),
-          ],
+          ]
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Batal', style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary)),
+            child: Text('Batal', style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary))
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: newRole == AppConstants.roleAdmin ? AppColors.warnaHarga : AppColors.primary,
+              backgroundColor: newRole == AppConstants.roleAdmin ? AppColors.aksi : AppColors.aksi
             ),
-            child: Text(actionLabel, style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+            child: Text(actionLabel, style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700))
           ),
-        ],
+        ]
       ),
     );
 
@@ -164,7 +176,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showSnackbar('Gagal mengubah role: $e', isError: true);
+        _showSnackbar(PesanGalat.untuk(e, awalan: 'Gagal mengubah role'), isError: true);
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -190,7 +202,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.rLg),
         title: Row(
           children: [
             const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 28),
@@ -200,55 +212,55 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
               style: GoogleFonts.rajdhani(
                 color: AppColors.textPrimary,
                 fontSize: 22,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w700
               ),
             ),
-          ],
+          ]
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Yakin ingin menghapus dokumen profil ${targetUser.nama} (${targetUser.email}) dari database Cloud Firestore?',
-              style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 13),
+              'Hapus profil ${targetUser.nama} (${targetUser.email})? Tindakan ini tidak bisa dibatalkan.',
+              style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 13)
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppColors.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                borderRadius: AppRadius.rMd,
+                border: Border.all(color: AppColors.error.withValues(alpha: 0.3))
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Catatan Semantik Spark:',
-                    style: GoogleFonts.spaceGrotesk(color: AppColors.error, fontWeight: FontWeight.w700, fontSize: 12),
+                    style: GoogleFonts.spaceGrotesk(color: AppColors.error, fontWeight: FontWeight.w700, fontSize: 12)
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Tindakan ini menghapus profil dari Cloud Firestore. Di lingkungan Firebase Spark (Free), kredensial login Firebase Authentication harus dihapus terpisah melalui Firebase Console oleh Administrator untuk mencabut akses akun secara permanen.',
-                    style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 11),
+                    'Profil pengguna akan dihapus dari aplikasi. Akun login-nya perlu dicabut terpisah lewat Firebase Console agar benar-benar tidak bisa masuk lagi.',
+                    style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 11)
                   ),
-                ],
+                ]
               ),
             ),
-          ],
+          ]
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Batal', style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary)),
+            child: Text('Batal', style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary))
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: Text('Hapus Profil Firestore', style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
+            child: Text('Hapus Profil Pengguna', style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700))
           ),
-        ],
+        ]
       ),
     );
 
@@ -258,12 +270,12 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
     try {
       await _db.deleteUser(targetUser.id);
       if (mounted) {
-        _showSnackbar('Profil ${targetUser.nama} berhasil dihapus dari Firestore');
+        _showSnackbar('Profil ${targetUser.nama} berhasil dihapus');
         _loadUsers();
       }
     } catch (e) {
       if (mounted) {
-        _showSnackbar('Gagal menghapus profil pengguna: $e', isError: true);
+        _showSnackbar(PesanGalat.untuk(e, awalan: 'Gagal menghapus profil pengguna'), isError: true);
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -274,8 +286,8 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, style: GoogleFonts.spaceGrotesk()),
-        backgroundColor: isError ? AppColors.error : AppColors.success,
-        behavior: SnackBarBehavior.floating,
+        backgroundColor: isError ? AppColors.error : AppColors.aksi,
+        behavior: SnackBarBehavior.floating
       ),
     );
   }
@@ -286,61 +298,21 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
   }
 
   Widget _roleBadge(String role) {
-    switch (role) {
-      case AppConstants.roleSuperAdmin:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.warning.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.stars_rounded, color: AppColors.warning, size: 12),
-              const SizedBox(width: 4),
-              Text(
-                'SUPER ADMIN',
-                style: GoogleFonts.spaceGrotesk(color: AppColors.warning, fontSize: 10, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-        );
-      case AppConstants.roleAdmin:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.warnaHarga.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.warnaHarga.withValues(alpha: 0.4)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.shield_outlined, color: AppColors.warnaHarga, size: 12),
-              const SizedBox(width: 4),
-              Text(
-                'ADMIN',
-                style: GoogleFonts.spaceGrotesk(color: AppColors.warnaHarga, fontSize: 10, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-        );
-      default:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-          ),
-          child: Text(
-            'MEMBER',
-            style: GoogleFonts.spaceGrotesk(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.w700),
-          ),
-        );
-    }
+    // Badge peran = hierarki IZIN, bukan status. Dibedakan lewat tingkat isi:
+    // SUPER ADMIN terisi penuh, ADMIN garis terang, MEMBER garis redup — jadi
+    // urutannya terbaca tanpa membaca teksnya.
+    final teks = role == AppConstants.roleSuperAdmin
+        ? 'SUPER ADMIN'
+        : (role == AppConstants.roleAdmin ? 'ADMIN' : 'MEMBER');
+    final ikon = role == AppConstants.roleSuperAdmin
+        ? BadgeIkon.kunci
+        : (role == AppConstants.roleAdmin ? BadgeIkon.centang : BadgeIkon.tidakAda);
+    return BadgeStatus(
+      teks,
+      nada: nadaUntukPeran(role),
+      ikon: ikon,
+      ukuran: 10,
+    );
   }
 
   @override
@@ -354,13 +326,14 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
           elevation: 0,
           leading: widget.onBukaSidebar != null
               ? IconButton(
+                tooltip: 'Buka menu',
                   icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
                   onPressed: widget.onBukaSidebar,
                 )
               : null,
           title: Text(
             'Kelola User',
-            style: GoogleFonts.rajdhani(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w700),
+            style: GoogleFonts.rajdhani(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w700)
           ),
         ),
         body: Center(
@@ -373,17 +346,17 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'Akses Ditolak',
-                  style: GoogleFonts.rajdhani(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.w700),
+                  style: GoogleFonts.rajdhani(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.w700)
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Modul Kelola User hanya diperuntukkan bagi Super Admin.\nAdmin operasional tidak memiliki wewenang mengelola role atau akun pengguna.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 14),
+                  style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 14)
                 ),
-              ],
+              ]
             ),
-          ),
+          )
         ),
       );
     }
@@ -419,26 +392,26 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
           children: [
             Text(
               'Kelola User',
-              style: GoogleFonts.rajdhani(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w700),
+              style: GoogleFonts.rajdhani(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w700)
             ),
             Text(
               'Manajemen hak akses & akun pengguna SoundWave',
-              style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 11),
+              style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 11)
             ),
-          ],
+          ]
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.textSecondary),
             onPressed: _isLoading || _isProcessing ? null : _loadUsers,
-            tooltip: 'Segarkan data',
+            tooltip: 'Segarkan data'
           ),
           const SizedBox(width: 8),
-        ],
+        ]
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(AppColors.primary)),
+              child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(AppColors.aksi)),
             )
           : _errorMessage != null
               ? Center(
@@ -452,22 +425,21 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                         Text(
                           _errorMessage!,
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.spaceGrotesk(color: AppColors.textPrimary, fontSize: 15),
+                          style: GoogleFonts.spaceGrotesk(color: AppColors.textPrimary, fontSize: 15)
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
                           onPressed: _loadUsers,
                           icon: const Icon(Icons.refresh_rounded),
-                          label: Text('Coba Lagi', style: GoogleFonts.spaceGrotesk()),
-                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                          label: Text('Coba Lagi', style: GoogleFonts.spaceGrotesk())
                         ),
-                      ],
+                      ]
                     ),
                   ),
                 )
               : RefreshIndicator(
                   onRefresh: _loadUsers,
-                  color: AppColors.primary,
+                  color: AppColors.aksi,
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
@@ -475,7 +447,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                         totalUsers: totalUsers,
                         superAdmins: totalSuperAdmins,
                         admins: totalAdmins,
-                        members: totalMembers,
+                        members: totalMembers
                       ),
                       const SizedBox(height: 16),
 
@@ -488,7 +460,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                         ...filteredUsers.map((user) => _buildUserCard(user)),
 
                       const SizedBox(height: 40),
-                    ],
+                    ]
                   ),
                 ),
     );
@@ -506,8 +478,8 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
         final items = [
           _statItem('Total Pengguna', '$totalUsers', Icons.people_outline_rounded, AppColors.textPrimary),
           _statItem('Super Admin', '$superAdmins', Icons.stars_rounded, AppColors.warning),
-          _statItem('Admin', '$admins', Icons.shield_outlined, AppColors.warnaHarga),
-          _statItem('Member', '$members', Icons.person_outline_rounded, AppColors.primary),
+          _statItem('Admin', '$admins', Icons.shield_outlined, AppColors.aksi),
+          _statItem('Member', '$members', Icons.person_outline_rounded, AppColors.aksi),
         ];
 
         if (isNarrow) {
@@ -537,8 +509,8 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: AppRadius.rMd,
+        border: Border.all(color: AppColors.divider)
       ),
       child: Row(
         children: [
@@ -546,9 +518,9 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppRadius.rSm
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 20)
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -561,7 +533,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                   style: GoogleFonts.rajdhani(
                     color: AppColors.textPrimary,
                     fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w700
                   ),
                 ),
                 Text(
@@ -570,13 +542,13 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.spaceGrotesk(
                     color: AppColors.textMuted,
-                    fontSize: 11,
+                    fontSize: 11
                   ),
                 ),
-              ],
+              ]
             ),
           ),
-        ],
+        ]
       ),
     );
   }
@@ -586,8 +558,8 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: AppRadius.rLg,
+        border: Border.all(color: AppColors.divider)
       ),
       child: Column(
         children: [
@@ -602,6 +574,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
               prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted, size: 20),
               suffixIcon: _searchCtrl.text.isNotEmpty
                   ? IconButton(
+                    tooltip: 'Hapus pencarian',
                       icon: const Icon(Icons.clear, color: AppColors.textMuted, size: 18),
                       onPressed: () {
                         _searchCtrl.clear();
@@ -610,7 +583,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                     )
                   : null,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              border: OutlineInputBorder(borderRadius: AppRadius.rMd, borderSide: BorderSide.none)
             ),
           ),
           const SizedBox(height: 10),
@@ -621,8 +594,8 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.divider),
+                    borderRadius: AppRadius.rMd,
+                    border: Border.all(color: AppColors.divider)
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -639,19 +612,19 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                       ],
                       onChanged: (val) {
                         if (val != null) setState(() => _selectedRoleFilter = val);
-                      },
+                      }
                     ),
-                  ),
+                  )
                 ),
               ),
               const SizedBox(width: 12),
               Text(
                 'Filter Role',
-                style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 12),
+                style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 12)
               ),
-            ],
+            ]
           ),
-        ],
+        ]
       ),
     );
   }
@@ -666,14 +639,14 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
           const SizedBox(height: 12),
           Text(
             'Tidak ada pengguna ditemukan',
-            style: GoogleFonts.rajdhani(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+            style: GoogleFonts.rajdhani(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)
           ),
           const SizedBox(height: 4),
           Text(
             'Coba ubah kata kunci pencarian atau filter role',
-            style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 13),
+            style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 13)
           ),
-        ],
+        ]
       ),
     );
   }
@@ -686,9 +659,9 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(
-          color: isSelf ? AppColors.primary.withValues(alpha: 0.4) : AppColors.divider,
+          color: isSelf ? AppColors.aksi.withValues(alpha: 0.4) : AppColors.divider
         ),
       ),
       child: Padding(
@@ -702,9 +675,9 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
               height: 46,
               decoration: BoxDecoration(
                 gradient: isSuperAdmin
-                    ? const LinearGradient(colors: [Colors.amber, Colors.deepOrange])
-                    : AppColors.primaryGradient,
-                shape: BoxShape.circle,
+                    ? AppColors.panelGradient
+                    : AppColors.panelGradient,
+                shape: BoxShape.circle
               ),
               child: Center(
                 child: Text(
@@ -712,9 +685,9 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                   style: GoogleFonts.spaceGrotesk(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                    fontSize: 15
                   ),
-                ),
+                )
               ),
             ),
             const SizedBox(width: 14),
@@ -734,29 +707,29 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                           style: GoogleFonts.spaceGrotesk(
                             color: AppColors.textPrimary,
                             fontSize: 15,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w600
                           ),
-                        ),
+                        )
                       ),
                       if (isSelf) ...[
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
+                            color: AppColors.aksi.withValues(alpha: 0.15),
+                            borderRadius: AppRadius.rXs
                           ),
                           child: Text(
-                            'AKUN ANDA',
+                            'Akun Anda',
                             style: GoogleFonts.spaceGrotesk(
-                              color: AppColors.primary,
+                              color: AppColors.aksi,
                               fontSize: 9,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w700
                             ),
-                          ),
+                          )
                         ),
                       ],
-                    ],
+                    ]
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -765,7 +738,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.spaceGrotesk(
                       color: AppColors.textSecondary,
-                      fontSize: 12,
+                      fontSize: 12
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -780,13 +753,13 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.spaceGrotesk(
                             color: AppColors.textMuted,
-                            fontSize: 11,
+                            fontSize: 11
                           ),
-                        ),
+                        )
                       ),
-                    ],
+                    ]
                   ),
-                ],
+                ]
               ),
             ),
 
@@ -796,7 +769,7 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                 message: 'Akun Anda sendiri terproteksi',
                 child: Padding(
                   padding: EdgeInsets.all(8.0),
-                  child: Icon(Icons.lock_rounded, color: AppColors.textMuted, size: 20),
+                  child: Icon(Icons.lock_rounded, color: AppColors.textMuted, size: 20)
                 ),
               )
             else if (isSuperAdmin)
@@ -804,14 +777,14 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                 message: 'Akun sesama Super Admin terproteksi',
                 child: Padding(
                   padding: EdgeInsets.all(8.0),
-                  child: Icon(Icons.verified_user_rounded, color: AppColors.warning, size: 20),
+                  child: Icon(Icons.verified_user_rounded, color: AppColors.warning, size: 20)
                 ),
               )
             else if (widget.currentUser.isSuperAdmin)
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert_rounded, color: AppColors.textSecondary),
                 color: AppColors.surface,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.rMd),
                 onSelected: (value) {
                   if (value == 'promote_to_admin') {
                     _changeRole(user, AppConstants.roleAdmin);
@@ -827,10 +800,10 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                       value: 'promote_to_admin',
                       child: Row(
                         children: [
-                          const Icon(Icons.shield_outlined, color: AppColors.warnaHarga, size: 18),
+                          const Icon(Icons.shield_outlined, color: AppColors.aksi, size: 18),
                           const SizedBox(width: 8),
-                          Text('Jadikan Admin', style: GoogleFonts.spaceGrotesk(color: AppColors.warnaHarga)),
-                        ],
+                          Text('Jadikan Admin', style: GoogleFonts.spaceGrotesk(color: AppColors.aksi)),
+                        ]
                       ),
                     )
                   else if (user.role == AppConstants.roleAdmin)
@@ -838,10 +811,10 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                       value: 'demote_to_user',
                       child: Row(
                         children: [
-                          const Icon(Icons.person_outline_rounded, color: AppColors.primary, size: 18),
+                          const Icon(Icons.person_outline_rounded, color: AppColors.aksi, size: 18),
                           const SizedBox(width: 8),
-                          Text('Turunkan ke Member', style: GoogleFonts.spaceGrotesk(color: AppColors.primary)),
-                        ],
+                          Text('Turunkan ke Member', style: GoogleFonts.spaceGrotesk(color: AppColors.aksi)),
+                        ]
                       ),
                     ),
                   const PopupMenuDivider(),
@@ -851,13 +824,13 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                       children: [
                         const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
                         const SizedBox(width: 8),
-                        Text('Hapus Profil Firestore', style: GoogleFonts.spaceGrotesk(color: AppColors.error)),
-                      ],
+                        Text('Hapus Profil Pengguna', style: GoogleFonts.spaceGrotesk(color: AppColors.error)),
+                      ]
                     ),
                   ),
-                ],
+                ]
               ),
-          ],
+          ]
         ),
       ),
     );

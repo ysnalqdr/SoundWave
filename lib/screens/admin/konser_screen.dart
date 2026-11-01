@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/badge_status.dart';
 import '../../constants/app_constants.dart';
 import '../../models/user_model.dart';
 import '../../models/konser_model.dart';
@@ -10,6 +11,7 @@ import '../../providers/app_providers.dart';
 import 'form_konser_screen.dart';
 import 'inspect_konser_screen.dart';
 import 'package:soundwave/widgets/gambar_widget.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class KonserScreen extends ConsumerStatefulWidget {
   final UserModel user;
@@ -54,7 +56,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadius.rLg,
         ),
         title: Text(
           'Hapus Konser?',
@@ -65,7 +67,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
           ),
         ),
         content: Text(
-          '"${konser.judul}" akan dihapus permanen dari Firestore.',
+          '"${konser.judul}" akan dihapus permanen, termasuk semua tiketnya.',
           style: GoogleFonts.spaceGrotesk(
             color: AppColors.textSecondary,
           ),
@@ -88,13 +90,13 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
                 if (!mounted) return;
                 _tampilSnackbar(
                   'Konser berhasil dihapus',
-                  AppColors.success,
+                  AppColors.aksi,
                   Icons.check_circle_outline,
                 );
               } catch (e) {
                 if (!mounted) return;
                 _tampilSnackbar(
-                  'Gagal menghapus konser: $e',
+                  PesanGalat.untuk(e, awalan: 'Gagal menghapus konser'),
                   AppColors.error,
                   Icons.error_outline,
                 );
@@ -132,7 +134,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
         backgroundColor: warna,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.rMd,
         ),
       ),
     );
@@ -166,7 +168,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
                         const Icon(Icons.error_outline, color: AppColors.error, size: 48),
                         const SizedBox(height: 12),
                         Text(
-                          'Gagal memuat konser dari Firestore: $e',
+                          PesanGalat.untuk(e, awalan: 'Gagal memuat daftar konser'),
                           textAlign: TextAlign.center,
                           style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary),
                         ),
@@ -195,7 +197,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
               height: 38,
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.rSm,
                 border: Border.all(color: AppColors.divider),
               ),
               child: const Icon(
@@ -215,23 +217,11 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
             ),
           ),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-              border:
-                  Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-            ),
-            child: Text(
-              'ADMIN',
-              style: GoogleFonts.spaceGrotesk(
-                color: AppColors.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
-              ),
-            ),
+          const BadgeStatus(
+            'ADMIN',
+            nada: BadgeNada.jalan,
+            ikon: BadgeIkon.kunci,
+            ukuran: 10,
           ),
         ],
       ),
@@ -245,7 +235,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
         height: 42,
         decoration: BoxDecoration(
           color: AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.rMd,
           border: Border.all(color: AppColors.divider),
         ),
         child: Row(
@@ -316,10 +306,10 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: aktif ? AppColors.primary : AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(20),
+                color: aktif ? AppColors.aksi : AppColors.surfaceLight,
+                borderRadius: AppRadius.rLg,
                 border: Border.all(
-                  color: aktif ? AppColors.primary : AppColors.divider,
+                  color: aktif ? AppColors.aksi : AppColors.divider,
                 ),
               ),
               child: Text(
@@ -349,7 +339,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
           margin: const EdgeInsets.only(bottom: 14),
           decoration: BoxDecoration(
             color: AppColors.card,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadius.rLg,
           ),
         ),
       ),
@@ -371,7 +361,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
             Text(
               _kataCari.isNotEmpty
                   ? 'Tidak ada hasil untuk "$_kataCari"'
-                  : 'Belum ada konser di Firestore',
+                  : 'Belum ada konser',
               style: GoogleFonts.spaceGrotesk(
                 color: AppColors.textMuted,
                 fontSize: 15,
@@ -394,7 +384,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -433,7 +423,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
                     children: [
                       _tombolAksi(
                         ikon: Icons.remove_red_eye_outlined,
-                        warna: AppColors.success,
+                        warna: AppColors.aksi,
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -444,7 +434,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
                       const SizedBox(width: 6),
                       _tombolAksi(
                         ikon: Icons.edit_outlined,
-                        warna: AppColors.primary,
+                        warna: AppColors.aksi,
                         onTap: () async {
                           final diperbarui = await Navigator.push<bool>(
                             context,
@@ -455,7 +445,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
                           if (diperbarui == true) {
                             _tampilSnackbar(
                               'Konser berhasil diperbarui',
-                              AppColors.success,
+                              AppColors.aksi,
                               Icons.check_circle_outline,
                             );
                           }
@@ -513,6 +503,8 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
                     const SizedBox(width: 4),
                     Text(
                       '${konser.tanggal.day}/${konser.tanggal.month}/${konser.tanggal.year}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.spaceGrotesk(
                           color: AppColors.textSecondary, fontSize: 12),
                     ),
@@ -521,13 +513,16 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
-                        borderRadius: BorderRadius.circular(8),
+                        gradient: AppColors.panelGradient,
+                        borderRadius: AppRadius.rSm,
                       ),
                       child: Text(
                         konser.formatHarga,
                         style: GoogleFonts.spaceGrotesk(
-                          color: Colors.white,
+                          // Hijau: ini angka uang. Sapu hijau sebelumnya
+                          // mengubahnya jadi putih — keliru, karena
+                          // `warnaHarga` justru penanda uang.
+                          color: AppColors.primary,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
@@ -555,7 +550,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
         height: 30,
         decoration: BoxDecoration(
           color: AppColors.background.withValues(alpha: 0.7),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppRadius.rSm,
         ),
         child: Icon(ikon, color: warna, size: 15),
       ),
@@ -572,7 +567,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
         if (ditambah == true) {
           _tampilSnackbar(
             'Konser berhasil ditambahkan',
-            AppColors.success,
+            AppColors.aksi,
             Icons.check_circle_outline,
           );
         }
@@ -580,7 +575,7 @@ class _KonserScreenState extends ConsumerState<KonserScreen> {
       backgroundColor: AppColors.surfaceLight,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.rMd,
         side: const BorderSide(color: AppColors.divider),
       ),
       icon: const Icon(Icons.add_rounded, color: Colors.white),

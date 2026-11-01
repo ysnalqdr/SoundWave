@@ -42,7 +42,7 @@ class TombolDialogSejajar extends StatelessWidget {
               side: const BorderSide(color: AppColors.divider),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.rMd,
               ),
             ),
             child: Text(
@@ -65,7 +65,7 @@ class TombolDialogSejajar extends StatelessWidget {
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.rMd,
               ),
             ),
             child: Text(

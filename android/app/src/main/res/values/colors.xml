@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#100F14</color>
+    <!-- Warna latar ikon adaptive. Sama dengan AppColors.background. -->
+    <color name="ic_launcher_background">#08080C</color>
+
+    <!-- Warna jendela saat aplikasi diluncurkan.
+         Sebelumnya jendela memakai `@android:color/white` (bawaan Flutter)
+         dan `?android:colorBackground` pada NormalTheme, yang di sebagian
+         skin Android bersifat transparan — sehingga wallpaper HP terlihat
+         menembus sebelum Flutter menggambar frame pertama. -->
+    <color name="latar_peluncur">#08080C</color>
 </resources>

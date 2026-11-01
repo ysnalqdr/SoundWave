@@ -42,31 +42,39 @@ void main() {
 
   test('badge "REFUND GAGAL" ada dan dipakai berdampingan dengan badge status',
       () {
-    expect(layar.contains("'REFUND GAGAL'"), isTrue,
-        reason: 'label badge merah refund gagal');
+    // Sejak Okt 2026 label badge dipusatkan di lib/widgets/badge_status.dart
+    // (fungsi nadaUntukStatusPesanan). Jadi labelnya dicari di sana, bukan di
+    // layar — layar hanya memanggil _buildBadgeStatus(status).
+    final badge = File('lib/widgets/badge_status.dart').readAsStringSync();
+    expect(badge.contains("'REFUND GAGAL'"), isTrue,
+        reason: 'label badge refund gagal harus ada di pemetaan terpusat');
     expect(layar.contains("_buildBadgeStatus('REFUND_REJECTED')"), isTrue);
-    expect(layar.contains('_buildBadgeGanda'), isTrue);
+    expect(layar.contains('_buildBadgeTiket'), isTrue);
 
-    final int idx = layar.indexOf('Widget _buildBadgeGanda(');
+    final int idx = layar.indexOf('Widget _buildBadgeTiket(');
     expect(idx, greaterThanOrEqualTo(0));
 
     final String badan = layar.substring(idx, idx + 1400);
-    expect(badan.contains("_buildBadgeStatus('REFUND_REJECTED')"), isTrue);
     expect(badan.contains("_buildBadgeStatus(item.isExpired ? 'EXPIRED' : item.status)"),
         isTrue,
-        reason: 'badge kedua harus status ASLI tiket (AKTIF/TERPAKAI), '
+        reason: 'badge harus memakai status ASLI tiket (AKTIF/TERPAKAI), '
             'jangan di-hardcode "AKTIF"');
+    expect(badan.contains("_buildBadgeStatus('REFUND_REJECTED')"), isFalse,
+        reason: 'di daftar hanya satu badge; REFUND GAGAL khusus di detail');
   });
 
-  test('badge ganda dipakai di kartu daftar DAN di detail tiket', () {
+  test('badge ganda dipakai di DETAIL, tidak di kartu daftar', () {
+    // Sejak revisi Okt 2026, badge "REFUND GAGAL" hanya tampil di halaman
+    // detail tiket. Di daftar, dua badge per kartu membuat daftar sulit
+    // dipindai — padahal saat memindai daftar yang dicari adalah "tiket ini
+    // masih bisa dipakai atau tidak", bukan riwayat refund.
     final int kartu = layar.indexOf('Widget _buildKartuTiket(');
     final int sheet = layar.indexOf('Widget _buildSheet(');
     expect(kartu, greaterThanOrEqualTo(0));
     expect(sheet, greaterThan(kartu));
 
     final String isiKartu = layar.substring(kartu, sheet);
-    expect(isiKartu.contains('_buildBadgeGanda(item'), isTrue,
-        reason: 'kartu daftar tiket harus memakai badge ganda');
+    expect(isiKartu.contains('_buildBadgeTiket(item'), isTrue);
 
     final String isiSheet = layar.substring(sheet);
     expect(isiSheet.contains("_buildBadgeStatus('REFUND_REJECTED')"), isTrue,
@@ -94,8 +102,8 @@ void main() {
 
     final String isiKartu = layar.substring(kartu, sheet);
     expect(isiKartu.contains('Wrap('), isTrue,
-        reason: 'dua badge + kategori bisa meluber di layar sempit; '
-            'pakai Wrap supaya badge turun baris, bukan overflow');
-    expect(isiKartu.contains('_buildBadgeGanda(item'), isTrue);
+        reason: 'kategori + badge + harga bisa meluber di layar sempit; '
+            'pakai Wrap supaya turun baris, bukan overflow');
+    expect(isiKartu.contains('_buildBadgeTiket(item'), isTrue);
   });
 }

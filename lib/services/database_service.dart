@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import '../constants/app_constants.dart';
 import '../models/konser_model.dart';
@@ -12,6 +13,7 @@ import '../models/review_model.dart';
 import '../models/promo_model.dart';
 import '../models/claimed_promo_model.dart';
 import '../models/notifikasi_model.dart';
+import '../models/statistik_pesanan.dart';
 import '../utils/urutan_tiket.dart';
 import 'offline_ticket_service.dart';
 import 'midtrans_service.dart';
@@ -22,14 +24,39 @@ class DatabaseService {
   String buatId() =>
       _firestore.collection('_').doc().id;
 
-  String buatKodeBooking() =>
-      'SW-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+  /// Membuat kode booking yang tidak bisa bertabrakan.
+  ///
+  /// **Versi lama:**
+  /// ```dart
+  /// 'SW-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}'
+  /// ```
+  /// Itu hanya memotong timestamp, jadi dua pesanan pada **milidetik yang
+  /// sama** menghasilkan kode identik — dan itu bukan kasus teoretis: pengguna
+  /// menekan "Pesan" dua kali, atau dua orang membeli tiket terakhir di detik
+  /// yang sama. Karena `kodeBooking` dipakai webhook Midtrans sebagai
+  /// `order_id`, tabrakan berarti dua pesanan bisa bertukar status pembayaran.
+  ///
+  /// **Versi baru:** timestamp (urutan waktu tetap terjaga saat diurutkan)
+  /// + 4 karakter acak dari `Random.secure()`. Ruang hasilnya 36^4 = 1,68 juta
+  /// per milidetik, jadi tabrakan praktis tidak mungkin. Tanpa `I`, `O`, `0`,
+  /// `1` supaya tidak salah dibaca saat petugas mengetik manual.
+  String buatKodeBooking() {
+    const abjad = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    final rnd = Random.secure();
+    final acak = List.generate(4, (_) => abjad[rnd.nextInt(abjad.length)]).join();
+    final waktu = DateTime.now().millisecondsSinceEpoch.toString();
+    return 'SW-$waktu-$acak';
+  }
 
 
   Stream<List<KonserModel>> getAllEvents() {
     return _firestore
         .collection(AppConstants.collectionEvents)
         .orderBy('tanggal', descending: false)
+        // Jaring pengaman: katalog konser wajar berisi puluhan, bukan ribuan.
+        // Tanpa batas, satu kesalahan input bisa membuat layar Jelajah
+        // mengunduh seluruh koleksi setiap kali dibuka.
+        .limit(batasMuatKatalog)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs
@@ -124,6 +151,7 @@ class DatabaseService {
     return _firestore
         .collection(AppConstants.collectionTickets)
         .orderBy('judulKonser')
+        .limit(batasMuatKatalog)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs
@@ -345,11 +373,19 @@ class DatabaseService {
   /// Claims a promo for the user. Idempotent: the doc ID is the promo ID.
   /// Throws when the promo was already claimed.
   Future<void> claimPromo(String userId, PromoCodeModel promo) async {
+    // Doc ID memakai KODE, bukan `promo.id`.
+    //
+    // Backend mencari voucher lewat kode (`.doc(kode)`), dan penandaan
+    // "terpakai" memakai kunci yang sama. Kalau di sini dipakai `promo.id`
+    // yang bisa berupa ID acak dari dokumen lama, voucher tersimpan dengan
+    // kunci berbeda dari yang dicari saat dipakai — sehingga statusnya tidak
+    // pernah berubah menjadi TERPAKAI.
+    final kunci = promo.kode.trim().toUpperCase();
     final ref = _firestore
         .collection(AppConstants.collectionUsers)
         .doc(userId)
         .collection('claimed_promos')
-        .doc(promo.id);
+        .doc(kunci);
 
     final existing = await ref.get();
     if (existing.exists) {
@@ -508,16 +544,103 @@ class DatabaseService {
     });
   }
 
+  /// Batas jumlah pesanan yang dimuat ke dashboard sekaligus.
+  ///
+  /// **Kenapa dibatasi:** versi lama memakai `.snapshots()` tanpa `limit`,
+  /// artinya seluruh riwayat pesanan diunduh ke HP admin **setiap kali**
+  /// dashboard dibuka, lalu dihitung di memori. Pada 5.000 pesanan itu berarti
+  /// ribuan pembacaan Firestore + perhitungan di UI thread — dashboard akan
+  /// terasa beku, dan kuota baca habis hanya untuk membuka satu layar.
+  ///
+  /// Dashboard sekarang memakai dua jalur:
+  ///   1. [getStatistikPesanan] — agregasi di server, **tanpa mengunduh
+  ///      dokumen** sama sekali. Dipakai untuk KPI.
+  ///   2. [getPesananSejak] — hanya jendela 7 hari, dipakai untuk grafik.
+  ///
+  /// Batas ini hanya jaring pengaman untuk jalur mana pun yang masih memakai
+  /// daftar penuh.
+  static const int batasMuatPesanan = 1000;
+
+  /// Batas jaring pengaman untuk katalog (konser & tiket).
+  static const int batasMuatKatalog = 500;
+
   Stream<List<PesananTiketModel>> getAllOrders() {
     return _firestore
         .collection(AppConstants.collectionOrders)
         .orderBy('tanggalBeli', descending: true)
+        .limit(batasMuatPesanan)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs
           .map((doc) => PesananTiketModel.fromMap(doc.data(), doc.id))
           .toList();
     });
+  }
+
+  /// Pesanan yang dibuat sejak [sejak] — dipakai grafik 7 hari dashboard.
+  ///
+  /// Jauh lebih murah daripada seluruh riwayat: yang diunduh hanya pesanan
+  /// dalam rentang itu, dan rentangnya tidak tumbuh seiring usia aplikasi.
+  Stream<List<PesananTiketModel>> getPesananSejak(DateTime sejak) {
+    return _firestore
+        .collection(AppConstants.collectionOrders)
+        .where('tanggalBeli', isGreaterThanOrEqualTo: Timestamp.fromDate(sejak))
+        .orderBy('tanggalBeli', descending: true)
+        .limit(batasMuatPesanan)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => PesananTiketModel.fromMap(doc.data(), doc.id))
+          .toList();
+    });
+  }
+
+  /// Angka ringkas dashboard, dihitung **di server**.
+  ///
+  /// Ini yang menggantikan pola lama "unduh semua pesanan lalu hitung di HP".
+  /// Agregasi Firestore tidak mengembalikan dokumen — hanya satu angka — jadi
+  /// biayanya tetap meski riwayat pesanan sudah puluhan ribu.
+  Future<StatistikPesanan> getStatistikPesanan() async {
+    final col = _firestore.collection(AppConstants.collectionOrders);
+
+    // 1. Pesanan lunas: pendapatan + lembar tiket terjual.
+    final lunas = col.where('status', whereIn: [
+      AppConstants.orderStatusActive,
+      AppConstants.orderStatusUsed,
+    ]);
+    final aggLunas = await lunas.aggregate(
+      sum('totalHarga'),
+      sum('jumlahTiket'),
+    ).get();
+
+    // 2. Menunggu bayar.
+    final menunggu = await col
+        .where('status', whereIn: [
+          AppConstants.orderStatusPending,
+          AppConstants.orderStatusReserved,
+        ])
+        .count()
+        .get();
+
+    // 3. Refund yang belum diputuskan.
+    final refund = await col
+        .where('status', whereIn: [
+          AppConstants.orderStatusRefundRequested,
+          AppConstants.orderStatusRefundRequired,
+        ])
+        .count()
+        .get();
+
+    // 4. Total pesanan apa pun statusnya.
+    final total = await col.count().get();
+
+    return StatistikPesanan(
+      pendapatan: aggLunas.getSum('totalHarga') ?? 0,
+      tiketTerjual: (aggLunas.getSum('jumlahTiket') ?? 0).round(),
+      menungguBayar: menunggu.count ?? 0,
+      refundPerluTinjauan: refund.count ?? 0,
+      totalPesanan: total.count ?? 0,
+    );
   }
 
   Future<PesananTiketModel?> getOrderById(String orderId) async {

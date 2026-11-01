@@ -52,6 +52,58 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
     return '${t.day.toString().padLeft(2, '0')}/${t.month.toString().padLeft(2, '0')}/${t.year} ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
+  /// Minta konfirmasi sebelum menyetujui refund.
+  ///
+  /// **Kenapa ini ada:** sebelumnya tombol "Approve" langsung memanggil
+  /// `_approveRefund` tanpa dialog. Satu ketukan tak sengaja di daftar
+  /// refund — misalnya saat menggulir dengan tangan basah di venue — bisa
+  /// mengubah status pesanan, memulihkan stok, dan membuat uang harus
+  /// dikembalikan manual. Tindakan yang mengeluarkan uang harus melewati
+  /// dua langkah.
+  Future<void> _konfirmasiSetujui(RefundModel refund) async {
+    final ya = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text(
+          'Setujui Refund?',
+          style: GoogleFonts.rajdhani(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          'Dana ${_formatRupiah(refund.refundAmount ?? refund.totalHarga)} '
+          'untuk ${refund.namaPembeli} akan dikembalikan manual, '
+          'dan status pesanan ${refund.kodeBooking} ikut berubah.'
+          '\n\n'
+          'Tindakan ini tidak bisa dibatalkan.',
+          style: GoogleFonts.spaceGrotesk(
+            color: AppColors.textSecondary,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Batal',
+                style: GoogleFonts.spaceGrotesk(
+                    color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Ya, Setujui',
+                style: GoogleFonts.spaceGrotesk(
+                    color: AppColors.aksi, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (ya == true) await _approveRefund(refund);
+  }
+
   /// Approves a refund through the backend.
   ///
   /// The backend sets refunds.status and orders.status and restores ticket
@@ -83,7 +135,7 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
       final stokNote =
           body['stokDipulihkan'] == true ? ' · stok tiket dikembalikan' : '';
       _toast('Refund disetujui$stokNote — dana dikembalikan manual',
-          AppColors.success);
+          AppColors.aksi);
     } catch (e) {
       _toast(
         'Gagal menyetujui refund: ${e.toString().replaceFirst('Exception: ', '')}',
@@ -130,11 +182,11 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
                 filled: true,
                 fillColor: AppColors.surfaceLight,
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.rMd,
                   borderSide: const BorderSide(color: AppColors.divider),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.rMd,
                   borderSide: const BorderSide(color: AppColors.error),
                 ),
               ),
@@ -208,7 +260,7 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            RoundedRectangleBorder(borderRadius: AppRadius.rMd),
       ),
     );
   }
@@ -221,6 +273,7 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Buka menu',
           icon: Icon(widget.onBukaSidebar != null ? Icons.menu_rounded : Icons.arrow_back_ios_new, size: 20),
           onPressed: () {
             if (widget.onBukaSidebar != null) {
@@ -231,7 +284,7 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
           },
         ),
         title: Text(
-          'KELOLA REFUND',
+          'Kelola refund',
           style: GoogleFonts.rajdhani(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -267,7 +320,7 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
                     color: active
                         ? AppColors.warnaTombolBg
                         : AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: AppRadius.rLg,
                     border: Border.all(
                         color: active
                             ? AppColors.warnaTombolBg
@@ -301,7 +354,7 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary));
+              child: CircularProgressIndicator(color: AppColors.aksi));
         }
         if (snapshot.hasError) {
           return Center(
@@ -339,18 +392,18 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
   }
 
   Widget _buildRefundCard(RefundModel refund) {
+    // Pending = sunset (perlu tindakan), disetujui = HIJAU (status
+    // berhasil), ditolak = merah.
     final statusColor = refund.isPending
         ? AppColors.warning
-        : (refund.isApproved
-            ? AppColors.success
-            : AppColors.error);
+        : (refund.isApproved ? AppColors.primary : AppColors.error);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.rMd,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -375,7 +428,7 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
                     horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadius.rSm,
                 ),
                 child: Text(
                   refund.status,
@@ -410,7 +463,7 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppRadius.rSm,
               border: Border.all(color: AppColors.divider),
             ),
             child: Text(
@@ -434,18 +487,17 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed:
-                        _processing ? null : () => _approveRefund(refund),
+                        _processing ? null : () => _konfirmasiSetujui(refund),
                     icon: const Icon(Icons.check_rounded, size: 18),
                     label: Text('Approve',
                         style: GoogleFonts.spaceGrotesk(
                             fontWeight: FontWeight.w700, fontSize: 13)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.success,
-                      foregroundColor: AppColors.warnaTombolTeks,
+                      backgroundColor: AppColors.aksi,
                       minimumSize: const Size.fromHeight(44),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                          borderRadius: AppRadius.rSm),
                     ),
                   ),
                 ),
@@ -460,11 +512,10 @@ class _KelolaRefundScreenState extends ConsumerState<KelolaRefundScreen> {
                             fontWeight: FontWeight.w700, fontSize: 13)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.error,
-                      foregroundColor: AppColors.warnaTombolTeks,
                       minimumSize: const Size.fromHeight(44),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                          borderRadius: AppRadius.rSm),
                     ),
                   ),
                 ),

@@ -7,6 +7,7 @@ import '../../models/tiket_konser_model.dart';
 import '../../models/konser_model.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/gambar_widget.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class FormTiketScreen extends ConsumerStatefulWidget {
   final TiketKonserModel? tiket;
@@ -110,7 +111,7 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
       setState(() => _sedangSimpan = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal menyimpan tiket: $e'),
+          content: Text(PesanGalat.untuk(e, awalan: 'Gagal menyimpan tiket')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -150,11 +151,11 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppRadius.rMd,
                         border: Border.all(color: AppColors.divider),
                       ),
                       child: Text(
-                        'Belum ada event di Firestore. Buat event terlebih dahulu.',
+                        'Belum ada konser. Buat konser terlebih dahulu.',
                         style: GoogleFonts.spaceGrotesk(color: AppColors.warning),
                       ),
                     );
@@ -180,7 +181,7 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.rMd,
                       border: Border.all(color: AppColors.divider),
                     ),
                     child: DropdownButtonHideUnderline(
@@ -199,7 +200,7 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                                 child: Row(
                                   children: [
                                     ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: AppRadius.rXs,
                                       child: GambarWidget(
                                         url: k.gambarUrl,
                                         width: 36,
@@ -233,7 +234,7 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                   child: Center(child: CircularProgressIndicator()),
                 ),
                 error: (e, _) => Text(
-                  'Gagal memuat event: $e',
+                  PesanGalat.untuk(e, awalan: 'Gagal memuat daftar event'),
                   style: GoogleFonts.spaceGrotesk(color: AppColors.error),
                 ),
               ),
@@ -246,7 +247,7 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.rMd,
                   border: Border.all(color: AppColors.divider),
                 ),
                 child: DropdownButtonHideUnderline(
@@ -273,7 +274,7 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                                   Text(
                                     '(Front Row + Lounge)',
                                     style: GoogleFonts.spaceGrotesk(
-                                      color: AppColors.warnaHarga,
+                                      color: AppColors.textMuted,
                                       fontSize: 11,
                                     ),
                                   ),
@@ -282,7 +283,7 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                                   Text(
                                     '(Center Stage + Seating)',
                                     style: GoogleFonts.spaceGrotesk(
-                                      color: const Color(0xFFFF9100),
+                                      color: AppColors.tierVip,
                                       fontSize: 11,
                                     ),
                                   ),
@@ -319,17 +320,17 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                   filled: true,
                   fillColor: AppColors.surfaceLight,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     borderSide: const BorderSide(color: AppColors.divider),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     borderSide: const BorderSide(color: AppColors.divider),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     borderSide: const BorderSide(
-                      color: AppColors.primary,
+                      color: AppColors.aksi,
                       width: 1.5,
                     ),
                   ),
@@ -339,8 +340,16 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                   if (val == null || val.trim().isEmpty) {
                     return 'Harga wajib diisi';
                   }
-                  if (double.tryParse(val.trim()) == null) {
+                  final n = double.tryParse(val.trim());
+                  if (n == null) {
                     return 'Harga harus berupa angka';
+                  }
+                  // Tanpa batas bawah, "-50000" lolos dan tersimpan sebagai
+                  // harga negatif. Akibatnya total di checkout ikut negatif
+                  // dan Midtrans menolak transaksi — atau lebih buruk, ada
+                  // jalur yang menganggapnya gratis.
+                  if (n <= 0) {
+                    return 'Harga harus lebih dari 0';
                   }
                   return null;
                 },
@@ -364,17 +373,17 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                   filled: true,
                   fillColor: AppColors.surfaceLight,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     borderSide: const BorderSide(color: AppColors.divider),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     borderSide: const BorderSide(color: AppColors.divider),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     borderSide: const BorderSide(
-                      color: AppColors.primary,
+                      color: AppColors.aksi,
                       width: 1.5,
                     ),
                   ),
@@ -384,8 +393,12 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                   if (val == null || val.trim().isEmpty) {
                     return 'Stok wajib diisi';
                   }
-                  if (int.tryParse(val.trim()) == null) {
+                  final n = int.tryParse(val.trim());
+                  if (n == null) {
                     return 'Stok harus berupa bilangan bulat';
+                  }
+                  if (n < 0) {
+                    return 'Stok tidak boleh negatif';
                   }
                   return null;
                 },
@@ -405,17 +418,17 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                   filled: true,
                   fillColor: AppColors.surfaceLight,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     borderSide: const BorderSide(color: AppColors.divider),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     borderSide: const BorderSide(color: AppColors.divider),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     borderSide: const BorderSide(
-                      color: AppColors.primary,
+                      color: AppColors.aksi,
                       width: 1.5,
                     ),
                   ),
@@ -434,8 +447,8 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                     backgroundColor: AppColors.surfaceLight,
                     shadowColor: Colors.transparent,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: const BorderSide(color: AppColors.warnaHarga, width: 1.5),
+                      borderRadius: AppRadius.rMd,
+                      side: const BorderSide(color: AppColors.aksi, width: 1.5),
                     ),
                   ),
                   icon: _sedangSimpan
@@ -443,13 +456,13 @@ class _FormTiketScreenState extends ConsumerState<FormTiketScreen> {
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                            color: AppColors.warnaHarga,
+                            color: AppColors.aksi,
                             strokeWidth: 2,
                           ),
                         )
                       : const Icon(
                           Icons.save_rounded,
-                          color: AppColors.warnaHarga,
+                          color: AppColors.aksi,
                         ),
                   label: Text(
                     _modeEdit ? 'Perbarui Tiket' : 'Simpan Tiket',

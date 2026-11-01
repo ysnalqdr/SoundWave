@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../constants/app_constants.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/badge_status.dart';
 import '../../models/user_model.dart';
 import '../../providers/app_providers.dart';
 import '../auth/login_screen.dart';
 import '../../widgets/gambar_widget.dart';
 import '../../widgets/tombol_dialog_sejajar.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class ProfilScreen extends ConsumerStatefulWidget {
   final UserModel user;
@@ -66,10 +68,10 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
               ),
             ],
           ),
-          backgroundColor: AppColors.success,
+          backgroundColor: AppColors.aksi,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadius.rMd,
           ),
         ),
       );
@@ -78,7 +80,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       setState(() => _sedangSimpan = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal menyimpan profil: $e'),
+          content: Text(PesanGalat.untuk(e, awalan: 'Gagal menyimpan profil')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -91,7 +93,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadius.rLg,
         ),
         title: Text(
           'Keluar?',
@@ -131,7 +133,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Gagal keluar akun: $e'),
+                        content: Text(PesanGalat.untuk(e, awalan: 'Gagal keluar akun')),
                         backgroundColor: AppColors.error,
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -165,7 +167,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
                 margin: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppRadius.rSm,
                   border: Border.all(color: AppColors.divider),
                 ),
                 child: const Icon(
@@ -196,7 +198,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
                     color: _sedangEdit
                         ? AppColors.error.withValues(alpha: 0.2)
                         : AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: AppRadius.rSm,
                     border: Border.all(
                       color: _sedangEdit ? AppColors.error : AppColors.divider,
                     ),
@@ -248,26 +250,16 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: admin.isSuperAdmin
-                            ? AppColors.warning
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        admin.isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN',
-                        style: GoogleFonts.spaceGrotesk(
-                          color: Colors.black,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                        ),
-                      ),
+                    // Sama seperti drawer: `BadgeStatus` sudah punya padding
+                    // sendiri, jadi pembungkus transparan ini hanya membuat
+                    // badge di halaman profil lebih lebar dari seharusnya.
+                    BadgeStatus(
+                      admin.isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN',
+                      nada: admin.isSuperAdmin
+                          ? BadgeNada.final_
+                          : BadgeNada.jalan,
+                      ikon: BadgeIkon.kunci,
+                      ukuran: 10,
                     ),
                   ],
                 ),
@@ -297,7 +289,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
                     height: 52,
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: AppRadius.rMd,
                       border: Border.all(
                         color: AppColors.error.withValues(alpha: 0.25),
                       ),
@@ -386,7 +378,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -397,7 +389,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
             Icons.shield_outlined,
             'Role',
             admin.isSuperAdmin ? 'SUPER ADMIN' : 'ADMIN',
-            warnaValue: AppColors.primary,
+            warnaValue: AppColors.aksi,
           ),
           if (admin.createdAt != null)
             _barisInfo(
@@ -444,7 +436,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       ),
       child: Row(
         children: [
-          Icon(ikon, color: AppColors.primary, size: 18),
+          Icon(ikon, color: AppColors.aksi, size: 18),
           const SizedBox(width: 12),
           Text(
             label,
@@ -475,9 +467,9 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.3),
+          color: AppColors.aksi.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -526,7 +518,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -577,7 +569,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.rLg),
         title: Text(
           'Status Lingkungan & Sistem',
           style: GoogleFonts.rajdhani(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w700),
@@ -586,11 +578,11 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _envItem('Payment Gateway', 'Midtrans Sandbox', Icons.payment_rounded, AppColors.success),
+            _envItem('Payment Gateway', 'Midtrans Sandbox', Icons.payment_rounded, AppColors.aksi),
             const SizedBox(height: 10),
-            _envItem('Database & Auth', 'Firebase Spark (Free Plan)', Icons.cloud_done_rounded, AppColors.warnaHarga),
+            _envItem('Database & Auth', 'Firebase Spark (Free Plan)', Icons.cloud_done_rounded, AppColors.aksi),
             const SizedBox(height: 10),
-            _envItem('Gate Scanner Offline', 'Ed25519 Cryptographic Proof', Icons.security_rounded, AppColors.primary),
+            _envItem('Gate Scanner Offline', 'Ed25519 Cryptographic Proof', Icons.security_rounded, AppColors.aksi),
           ],
         ),
         actions: [
@@ -608,7 +600,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.rMd,
         border: Border.all(color: AppColors.divider),
       ),
       child: Row(
@@ -619,8 +611,24 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 11)),
-                Text(value, style: GoogleFonts.spaceGrotesk(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.spaceGrotesk(
+                      color: AppColors.textMuted, fontSize: 11),
+                ),
+                // `value` berisi nama, email, dan UID — bisa panjang dan tidak
+                // boleh memecah tata letak di layar sempit.
+                Text(
+                  value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.spaceGrotesk(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600),
+                ),
               ],
             ),
           ),
@@ -634,7 +642,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.rLg),
         title: Row(
           children: [
             const Icon(Icons.stars_rounded, color: AppColors.warning, size: 24),
@@ -665,7 +673,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Mengerti', style: GoogleFonts.spaceGrotesk(color: AppColors.primary)),
+            child: Text('Mengerti', style: GoogleFonts.spaceGrotesk(color: AppColors.aksi)),
           ),
         ],
       ),
@@ -680,7 +688,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: AppRadius.rLg,
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -695,7 +703,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
         ),
         child: Row(
           children: [
-            Icon(ikon, color: AppColors.primary, size: 18),
+            Icon(ikon, color: AppColors.aksi, size: 18),
             const SizedBox(width: 12),
             Text(
               label,
@@ -723,8 +731,8 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
           width: 3,
           height: 16,
           decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(2),
+            color: AppColors.aksi,
+            borderRadius: AppRadius.rXs,
           ),
         ),
         const SizedBox(width: 8),

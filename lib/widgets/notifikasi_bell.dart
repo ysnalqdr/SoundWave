@@ -50,7 +50,7 @@ class NotifikasiBell extends ConsumerWidget {
                 constraints: const BoxConstraints(minWidth: 18),
                 decoration: BoxDecoration(
                   color: AppColors.error,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppRadius.rSm,
                   border: Border.all(color: AppColors.background, width: 1.5),
                 ),
                 child: Text(
@@ -121,7 +121,7 @@ class NotifikasiSheet extends ConsumerWidget {
                         const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: AppRadius.rLg,
                       border: Border.all(
                         color: AppColors.error.withValues(alpha: 0.5),
                       ),
@@ -144,7 +144,9 @@ class NotifikasiSheet extends ConsumerWidget {
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      // JANGAN shrinkWrap: area sentuh "Tandai semua" akan
+                      // menyusut jadi ~20px, terlalu kecil untuk ditekan saat
+                      // tangan sedang memegang HP. Default Flutter = 48x48.
                     ),
                     child: Text(
                       'Tandai semua',
@@ -156,6 +158,7 @@ class NotifikasiSheet extends ConsumerWidget {
                     ),
                   ),
                 IconButton(
+                  tooltip: 'Tutup notifikasi',
                   icon: const Icon(Icons.close,
                       color: AppColors.textMuted, size: 20),
                   onPressed: () => Navigator.pop(context),
@@ -253,13 +256,13 @@ class KartuNotifikasi extends ConsumerWidget {
     final belumDibaca = notif.belumDibaca;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadius.rMd,
       onTap: () => _tandaiDibaca(ref),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: belumDibaca ? AppColors.surfaceLight : AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.rMd,
           border: Border.all(
             color: belumDibaca ? warna.withValues(alpha: 0.45) : AppColors.divider,
           ),
@@ -271,7 +274,7 @@ class KartuNotifikasi extends ConsumerWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: warna.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.rSm,
               ),
               child: Icon(ikon, color: warna, size: 18),
             ),
@@ -320,7 +323,7 @@ class KartuNotifikasi extends ConsumerWidget {
                             horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(
                           color: warna.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: AppRadius.rXs,
                         ),
                         child: Text(
                           notif.jenisLabel,

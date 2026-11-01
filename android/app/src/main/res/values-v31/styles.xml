@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ WAJIB menampilkan splash sistem lebih dulu (Splash Screen
+     API): ikon di tengah, latar warna tema, tanpa teks. Tanpa berkas ini,
+     sistem memakai default sehingga muncul dua splash yang berbeda warna
+     (ikon saja -> lalu splash Flutter).
+
+     Dengan berkas ini, splash sistem memakai latar #08080C dan ikon yang
+     sama, sehingga terasa sebagai SATU animasi yang mengalir ke splash
+     Flutter yang berisi teks "SoundWave" dan tagline. -->
+<resources>
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowSplashScreenBackground">@color/latar_peluncur</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@color/latar_peluncur</item>
+    </style>
+</resources>

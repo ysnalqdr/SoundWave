@@ -55,7 +55,7 @@ class ShareKonserScreen extends StatelessWidget {
             style: GoogleFonts.spaceGrotesk(color: AppColors.textPrimary)),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.rMd),
       ),
     );
   }
@@ -68,6 +68,7 @@ class ShareKonserScreen extends StatelessWidget {
         backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Kembali',
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -98,7 +99,7 @@ class ShareKonserScreen extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -148,7 +149,7 @@ class ShareKonserScreen extends StatelessWidget {
                 const Divider(color: AppColors.divider, height: 1),
                 const SizedBox(height: 14),
                 Text(
-                  'DEEP LINK',
+                  'Tautan langsung',
                   style: GoogleFonts.spaceGrotesk(
                     color: AppColors.textMuted,
                     fontSize: 10,
@@ -198,7 +199,7 @@ class ShareKonserScreen extends StatelessWidget {
           context: context,
           icon: Icons.chat_rounded,
           label: 'Bagikan ke WhatsApp',
-          color: const Color(0xFF25D366),
+          color: AppColors.brandWhatsapp,
           onTap: () => _share(context),
         ),
         const SizedBox(height: 12),
@@ -206,7 +207,7 @@ class ShareKonserScreen extends StatelessWidget {
           context: context,
           icon: Icons.camera_alt_rounded,
           label: 'Bagikan ke Instagram',
-          color: const Color(0xFFE1306C),
+          color: AppColors.brandInstagram,
           onTap: () => _share(context),
         ),
         const SizedBox(height: 12),
@@ -247,11 +248,11 @@ class ShareKonserScreen extends StatelessWidget {
           elevation: 0,
           shape: outlined
               ? RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.rMd,
                   side: BorderSide(color: color, width: 1.2),
                 )
               : RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                  borderRadius: AppRadius.rMd),
         ),
       ),
     );

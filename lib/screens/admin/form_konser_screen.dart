@@ -6,6 +6,11 @@ import '../../constants/app_constants.dart';
 import '../../models/konser_model.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/gambar_widget.dart';
+import '../../widgets/media/audio_picker_field.dart';
+import '../../widgets/media/video_picker_field.dart';
+import '../../widgets/media/venue_model_picker_field.dart';
+import '../../models/event_media_model.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class FormKonserScreen extends ConsumerStatefulWidget {
   final KonserModel? konser;
@@ -29,6 +34,7 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
   late String _selectedKota;
   List<String> _genreTerpilih = [];
   bool _sedangSimpan = false;
+  EventMedia _media = EventMedia.empty;
 
   bool get _modeEdit => widget.konser != null;
 
@@ -84,6 +90,8 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
     _deskripsiCtrl = TextEditingController(text: k?.deskripsi ?? '');
     _penyelenggaraCtrl = TextEditingController(text: k?.penyelenggara ?? '');
 
+    _media = k?.media ?? EventMedia.empty;
+
     if (k != null && k.genre.isNotEmpty) {
       _genreTerpilih = List.from(k.genre);
     } else {
@@ -118,7 +126,7 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
       builder: (ctx, child) => Theme(
         data: ThemeData.dark().copyWith(
           colorScheme: const ColorScheme.dark(
-            primary: AppColors.primary,
+            primary: AppColors.aksi,
             surface: AppColors.surface,
           ),
         ),
@@ -163,6 +171,7 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
             'gambarUrl': _gambarCtrl.text.trim(),
             'deskripsi': _deskripsiCtrl.text.trim(),
             'penyelenggara': _penyelenggaraCtrl.text.trim(),
+            'media': _media.toMap(),
           },
         );
       } else {
@@ -176,6 +185,7 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
           gambarUrl: _gambarCtrl.text.trim(),
           deskripsi: _deskripsiCtrl.text.trim(),
           penyelenggara: _penyelenggaraCtrl.text.trim(),
+          media: _media,
         );
         await db.createEvent(konserBaru);
       }
@@ -187,7 +197,7 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
       setState(() => _sedangSimpan = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal menyimpan konser: $e'),
+          content: Text(PesanGalat.untuk(e, awalan: 'Gagal menyimpan konser')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -301,7 +311,7 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     border: Border.all(color: AppColors.divider),
                   ),
                   child: Row(
@@ -311,6 +321,8 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
                       const SizedBox(width: 12),
                       Text(
                         '${_tanggalPilihan.day}/${_tanggalPilihan.month}/${_tanggalPilihan.year}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.spaceGrotesk(
                           color: AppColors.textPrimary,
                           fontSize: 14,
@@ -335,7 +347,13 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
                 ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Harga wajib diisi';
-                  if (double.tryParse(v) == null) return 'Masukkan angka yang valid';
+                  final n = double.tryParse(v.trim());
+                  if (n == null) return 'Masukkan angka yang valid';
+                  // Tanpa batas bawah, harga negatif atau nol lolos dan
+                  // tersimpan apa adanya. Harga nol membuat tiket gratis
+                  // tanpa disengaja; harga negatif membuat total di checkout
+                  // ikut negatif dan Midtrans menolak transaksi.
+                  if (n <= 0) return 'Harga harus lebih dari 0';
                   return null;
                 },
               ),
@@ -370,14 +388,14 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
                     final isSelected = _gambarCtrl.text.trim() == preset['url'];
                     return ActionChip(
                       label: Text(preset['label']!),
-                      backgroundColor: isSelected ? AppColors.warnaHarga : AppColors.surfaceLight,
+                      backgroundColor: isSelected ? AppColors.aksi : AppColors.surfaceLight,
                       labelStyle: GoogleFonts.spaceGrotesk(
                         color: isSelected ? Colors.black : AppColors.textSecondary,
                         fontSize: 11,
                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                       ),
                       side: BorderSide(
-                        color: isSelected ? AppColors.warnaHarga : AppColors.divider,
+                        color: isSelected ? AppColors.aksi : AppColors.divider,
                       ),
                       onPressed: () {
                         setState(() {
@@ -403,7 +421,7 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
               if (_gambarCtrl.text.trim().isNotEmpty) ...[
                 const SizedBox(height: 10),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppRadius.rSm,
                   child: SizedBox(
                     height: 140,
                     width: double.infinity,
@@ -414,6 +432,30 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
                   ),
                 ),
               ],
+              const SizedBox(height: 16),
+
+              _labelField('Audio Pratinjau'),
+              const SizedBox(height: 6),
+              AudioPickerField(
+                media: _media,
+                onChanged: (m) => setState(() => _media = m),
+              ),
+              const SizedBox(height: 16),
+
+              _labelField('Trailer Video'),
+              const SizedBox(height: 6),
+              VideoPickerField(
+                media: _media,
+                onChanged: (m) => setState(() => _media = m),
+              ),
+              const SizedBox(height: 16),
+
+              _labelField('Panggung 3D'),
+              const SizedBox(height: 6),
+              VenueModelPickerField(
+                media: _media,
+                onChanged: (m) => setState(() => _media = m),
+              ),
               const SizedBox(height: 16),
 
               _labelField('Deskripsi Acara'),
@@ -441,7 +483,7 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
                   return FilterChip(
                     label: Text(g),
                     selected: dipilih,
-                    selectedColor: AppColors.primary,
+                    selectedColor: AppColors.aksi,
                     checkmarkColor: Colors.black,
                     labelStyle: GoogleFonts.spaceGrotesk(
                       color: dipilih ? Colors.black : AppColors.textSecondary,
@@ -449,9 +491,9 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
                     ),
                     backgroundColor: AppColors.surface,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: AppRadius.rSm,
                       side: BorderSide(
-                        color: dipilih ? AppColors.primary : AppColors.divider,
+                        color: dipilih ? AppColors.aksi : AppColors.divider,
                       ),
                     ),
                     onSelected: (aktif) {
@@ -476,7 +518,7 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
                     backgroundColor: AppColors.surfaceLight,
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.rMd,
                       side: const BorderSide(color: AppColors.divider),
                     ),
                   ),
@@ -485,7 +527,7 @@ class _FormKonserScreenState extends ConsumerState<FormKonserScreen> {
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                            color: Colors.white,
+                            color: AppColors.onAksi,
                             strokeWidth: 2,
                           ),
                         )

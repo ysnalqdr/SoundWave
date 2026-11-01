@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/pesanan_tiket_model.dart';
 import '../../utils/app_theme.dart';
 import '../../models/user_model.dart';
+import '../../core/errors/pesan_galat.dart';
 
 /// Dashboard analitik pendapatan.
 ///
@@ -40,11 +41,11 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
   int _totalPaid = 0;
 
   static const _palette = <Color>[
-    AppColors.warnaHarga,
-    Color(0xFF42A5F5),
-    Color(0xFFAB47BC),
-    Color(0xFFFFB347),
-    Color(0xFFEF5350),
+    AppColors.aksi,
+    AppColors.chartBlue,
+    AppColors.chartPurple,
+    AppColors.warning,
+    AppColors.chartRed,
   ];
 
   @override
@@ -168,7 +169,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '$e';
+          _error = PesanGalat.untuk(e, awalan: 'Gagal memuat laporan');
           _loading = false;
         });
       }
@@ -183,6 +184,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Buka menu',
           icon: Icon(widget.onBukaSidebar != null ? Icons.menu_rounded : Icons.arrow_back_ios_new, size: 20),
           onPressed: () {
             if (widget.onBukaSidebar != null) {
@@ -194,6 +196,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: 'Muat ulang laporan',
             icon: const Icon(Icons.refresh_rounded, size: 20),
             onPressed: () {
               setState(() => _loading = true);
@@ -211,7 +214,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(child: CircularProgressIndicator(color: AppColors.aksi))
           : _error != null
               ? Center(
                   child: Text('Gagal memuat data: $_error',
@@ -286,7 +289,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.rMd,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -316,7 +319,10 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
             child: Text(
               value,
               style: GoogleFonts.rajdhani(
-                color: AppColors.textPrimary,
+                // Angka rupiah -> hijau. Warna tema kartu hanya dipakai
+                // untuk ikon kecil, jadi tanpa ini angka uang terbaca
+                // seperti teks biasa.
+                color: AppColors.primary,
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
               ),
@@ -333,7 +339,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
       padding: const EdgeInsets.fromLTRB(12, 16, 16, 12),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.rMd,
         border: Border.all(color: AppColors.divider),
       ),
       child: SizedBox(height: height, child: child),
@@ -407,11 +413,14 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
               isCurved: true,
               isStrokeCapRound: true,
               barWidth: 3,
-              color: _palette[0],
+              // Grafik Penjualan 7 Hari Terakhir memakai hijau: ini uang.
+              // Palet lain (TOP 5 KONSER, funnel) sengaja dibiarkan
+              // beragam supaya legenda tetap berguna.
+              color: AppColors.primary,
               dotData: const FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: _palette[0].withValues(alpha: 0.12),
+                color: AppColors.primary.withValues(alpha: 0.12),
               ),
             ),
           ],
@@ -562,6 +571,11 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
               children: _metodeEntries.take(6).toList().asMap().entries.map((entry) {
                 final i = entry.key;
                 final e = entry.value;
+                // Persentase ditampilkan, bukan jumlah mentah. Dulu hanya
+                // angka jumlah ("3"), sehingga mata harus menghitung sendiri
+                // porsinya terhadap total — dan itu tidak mungkin dilakukan
+                // saat membaca cepat.
+                final pct = total == 0 ? 0.0 : (e.value / total * 100);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
@@ -571,7 +585,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
                         height: 10,
                         decoration: BoxDecoration(
                           color: _palette[i % _palette.length],
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: AppRadius.rXs,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -584,12 +598,27 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
                               color: AppColors.textSecondary, fontSize: 10),
                         ),
                       ),
-                      Text(
-                        '${e.value}',
-                        style: GoogleFonts.spaceGrotesk(
-                            color: AppColors.textPrimary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700),
+                      // Persentase + jumlah, rata kanan supaya kolomnya rapi.
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${pct.toStringAsFixed(1)}%',
+                            style: GoogleFonts.spaceGrotesk(
+                                color: AppColors.textPrimary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures()
+                                ]),
+                          ),
+                          Text(
+                            '${e.value}',
+                            style: GoogleFonts.spaceGrotesk(
+                                color: AppColors.textMuted, fontSize: 9),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -614,7 +643,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.rMd,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -633,7 +662,7 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('KONVERSI KESELURUHAN',
+              Text('Konversi keseluruhan',
                   style: GoogleFonts.spaceGrotesk(
                       color: AppColors.textMuted,
                       fontSize: 11,
@@ -656,35 +685,67 @@ class _LaporanRevenueScreenState extends ConsumerState<LaporanRevenueScreen> {
 
   Widget _funnelStep(
       String label, String value, Color warna, double fraction) {
-    final widthFraction = (fraction.clamp(0.15, 1.0)) * 100;
-    return Row(
-      children: [
-        Container(
-          width: 6 + widthFraction * 1.6,
-          height: 40,
-          decoration: BoxDecoration(
-            color: warna,
-            borderRadius: BorderRadius.circular(8),
+    // Lebar bar lama: `6 + widthFraction * 1.6`. Dengan fraction 1.0 hasilnya
+    // hanya 166px, sehingga bar terpanjang pun tidak sampai setengah layar —
+    // perbandingan antar tahap jadi sulit dibaca. Sekarang bar memakai
+    // `Expanded` dengan `flex` sebanding porsinya, jadi panjangnya benar-benar
+    // mencerminkan perbandingan.
+    final porsi = fraction.clamp(0.0, 1.0);
+    // Dinaikkan ke minimal 1 supaya tahap dengan nilai 0 tetap punya jejak
+    // visual, bukan hilang sama sekali.
+    final flex = (porsi * 100).round().clamp(1, 100);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  flex: flex,
+                  child: Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: warna,
+                      borderRadius: AppRadius.rSm,
+                    ),
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.only(left: 10),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.spaceGrotesk(
+                          color: AppColors.warnaTombolTeks,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                // Sisa ruang dibiarkan kosong supaya panjang bar terlihat
+                // sebagai perbandingan, bukan sebagai latar penuh.
+                Expanded(flex: 100 - flex, child: const SizedBox()),
+              ],
+            ),
           ),
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.only(left: 10),
-          child: Text(
-            label,
-            style: GoogleFonts.spaceGrotesk(
-                color: AppColors.warnaTombolTeks,
-                fontSize: 12,
-                fontWeight: FontWeight.w700),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 48,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.rajdhani(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: const [FontFeature.tabularFigures()]),
+            ),
           ),
-        ),
-        const Spacer(),
-        Text(
-          value,
-          style: GoogleFonts.rajdhani(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w800),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

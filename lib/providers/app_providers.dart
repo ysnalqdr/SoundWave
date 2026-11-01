@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/konser_model.dart';
 import '../models/pesanan_tiket_model.dart';
+import '../models/statistik_pesanan.dart';
 import '../models/tiket_konser_model.dart';
 import '../models/notifikasi_model.dart';
 import '../models/user_model.dart';
@@ -60,6 +61,25 @@ final userOrdersProvider =
 
 final allOrdersProvider = StreamProvider<List<PesananTiketModel>>((ref) {
   return ref.watch(databaseServiceProvider).getAllOrders();
+});
+
+/// Jendela 7 hari untuk grafik dashboard.
+///
+/// Dashboard dulu memakai [allOrdersProvider] (seluruh riwayat) untuk
+/// menghitung grafik. Itu berarti mengunduh semua pesanan yang pernah ada
+/// hanya untuk menampilkan 7 batang. Sekarang grafik memakai jendela tetap,
+/// jadi biayanya tidak tumbuh seiring usia aplikasi.
+final pesananTujuhHariProvider =
+    StreamProvider<List<PesananTiketModel>>((ref) {
+  final sejak = DateTime.now().subtract(const Duration(days: 7));
+  return ref.watch(databaseServiceProvider).getPesananSejak(sejak);
+});
+
+/// KPI dashboard, dihitung di server lewat agregasi Firestore.
+///
+/// Tidak mengunduh dokumen sama sekali — hanya `count()` dan `sum()`.
+final statistikPesananProvider = FutureProvider<StatistikPesanan>((ref) {
+  return ref.watch(databaseServiceProvider).getStatistikPesanan();
 });
 
 /// Notifikasi in-app milik user, terbaru dulu. Ditulis backend, bukan app.

@@ -7,6 +7,8 @@ import '../../utils/app_theme.dart';
 import '../../providers/app_providers.dart';
 import '../../models/user_model.dart';
 import '../../widgets/gambar_widget.dart';
+import '../../widgets/badge_status.dart';
+import '../../widgets/navbar_kaca.dart';
 import '../admin/admin_dashboard.dart';
 import '../auth/login_screen.dart';
 import 'user_explore_screen.dart';
@@ -14,6 +16,8 @@ import 'user_tiket_screen.dart';
 import 'user_favorit_screen.dart';
 import 'diskon_saya_screen.dart';
 import '../../widgets/tombol_dialog_sejajar.dart';
+import '../../widgets/gate/gate_result_watcher.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class UserMainScreen extends ConsumerStatefulWidget {
   const UserMainScreen({super.key});
@@ -51,51 +55,48 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.divider)),
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: _pindahKeTab,
-          backgroundColor: AppColors.surface,
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: AppColors.textMuted,
-          type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: GoogleFonts.rajdhani(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1,
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: screens,
           ),
-          unselectedLabelStyle: GoogleFonts.spaceGrotesk(fontSize: 11),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.explore_outlined),
-              activeIcon: Icon(Icons.explore),
-              label: 'Jelajah',
+          // Pengawas gate: tidak menggambar apa pun, hanya menunggu tiket
+          // berubah jadi TERPAKAI lalu menumpuk animasi satu layar penuh.
+          GateResultWatcher(
+            onSelesai: () => _pindahKeTab(1),
+          ),
+          // Navbar kaca mengambang. HARUS anak terakhir supaya tidak tertutup
+          // konten — dan HARUS di bawah GateResultWatcher supaya animasi Lottie
+          // gate tetap bisa menutupi satu layar penuh.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: NavbarKaca(
+              indeks: _currentIndex,
+              onPilih: _pindahKeTab,
+              item: const [
+                NavbarKacaItem(
+                  ikon: Icons.explore_outlined,
+                  label: 'Jelajah',
+                ),
+                NavbarKacaItem(
+                  ikon: Icons.confirmation_number_outlined,
+                  label: 'Tiket Saya',
+                ),
+                NavbarKacaItem(
+                  ikon: Icons.favorite_border,
+                  label: 'Favorit',
+                ),
+                NavbarKacaItem(
+                  ikon: Icons.person_outline,
+                  label: 'Akun',
+                ),
+              ],
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.confirmation_number_outlined),
-              activeIcon: Icon(Icons.confirmation_number),
-              label: 'Tiket Saya',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.favorite_border),
-              activeIcon: Icon(Icons.favorite),
-              label: 'Wishlist',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Akun',
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -131,10 +132,10 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFF1A1A2E),
-                    Color(0xFF0D0D14),
+                    AppColors.surfaceLight,
+                    AppColors.surface,
                     AppColors.background,
-                  ],
+                  ]
                 ),
               ),
               child: SafeArea(
@@ -151,7 +152,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                           color: AppColors.textPrimary,
                           fontSize: 24,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: -0.5,
+                          letterSpacing: -0.5
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -159,28 +160,17 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                         displayEmail,
                         style: GoogleFonts.spaceGrotesk(
                           color: AppColors.textMuted,
-                          fontSize: 13,
+                          fontSize: 13
                         ),
                       ),
                       const SizedBox(height: 12),
                       if (user != null)
                         _buildRoleBadge(user)
                       else if (isAuthenticated)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            isProfileMissing ? 'MEMBER (PERLU SINKRONISASI)' : 'MEMBER',
-                            style: GoogleFonts.spaceGrotesk(
-                              color: AppColors.textSecondary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
+                        BadgeStatus(
+                          isProfileMissing ? 'MEMBER · PERLU SINKRON' : 'MEMBER',
+                          nada: BadgeNada.lewat,
+                          ukuran: 10,
                         ),
                       if (user != null && user.createdAt != null) ...[
                         const SizedBox(height: 10),
@@ -190,24 +180,24 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                             Icon(
                               Icons.calendar_today_outlined,
                               size: 12,
-                              color: AppColors.textMuted.withValues(alpha: 0.7),
+                              color: AppColors.textMuted.withValues(alpha: 0.7)
                             ),
                             const SizedBox(width: 6),
                             Text(
                               'Member sejak ${_formatDate(user.createdAt!)}',
                               style: GoogleFonts.spaceGrotesk(
                                 color: AppColors.textMuted.withValues(alpha: 0.7),
-                                fontSize: 11,
+                                fontSize: 11
                               ),
                             ),
-                          ],
+                          ]
                         ),
                       ],
-                    ],
+                    ]
                   ),
-                ),
+                )
               ),
-            ),
+            )
           ),
 
           if (hasProfileError)
@@ -218,8 +208,8 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: AppColors.error.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                    borderRadius: AppRadius.rMd,
+                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3))
                   ),
                   child: Row(
                     children: [
@@ -227,17 +217,18 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Koneksi Firestore gagal memuat profil. Identitas akun tetap aktif.',
-                          style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 12),
+                          'Profil gagal dimuat. Akunmu tetap aktif dan bisa dipakai.',
+                          style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 12)
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.refresh, color: AppColors.primary, size: 20),
-                        onPressed: () => ref.invalidate(currentUserStreamProvider),
+                        tooltip: 'Muat ulang profil',
+                        icon: const Icon(Icons.refresh, color: AppColors.aksi, size: 20),
+                        onPressed: () => ref.invalidate(currentUserStreamProvider)
                       ),
-                    ],
+                    ]
                   ),
-                ),
+                )
               ),
             ),
 
@@ -249,8 +240,8 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: AppColors.warning.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                    borderRadius: AppRadius.rMd,
+                    border: Border.all(color: AppColors.warning.withValues(alpha: 0.3))
                   ),
                   child: Row(
                     children: [
@@ -259,7 +250,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                       Expanded(
                         child: Text(
                           'Dokumen profil belum sinkron di database.',
-                          style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 12),
+                          style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontSize: 12)
                         ),
                       ),
                       TextButton(
@@ -267,11 +258,11 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                           await ref.read(authServiceProvider).ensureProfile(authUser);
                           ref.invalidate(currentUserStreamProvider);
                         },
-                        child: Text('Sinkronkan', style: GoogleFonts.spaceGrotesk(color: AppColors.warning, fontWeight: FontWeight.bold)),
+                        child: Text('Sinkronkan', style: GoogleFonts.spaceGrotesk(color: AppColors.warning, fontWeight: FontWeight.bold))
                       ),
-                    ],
+                    ]
                   ),
-                ),
+                )
               ),
             ),
 
@@ -279,7 +270,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                child: _buildStatsRow(user),
+                child: _buildStatsRow(user)
               ),
             ),
 
@@ -295,7 +286,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                       Icons.edit_outlined,
                       'Edit Profil',
                       'Ubah nama dan foto profil',
-                      onTap: () => _showEditProfileSheet(user),
+                      onTap: () => _showEditProfileSheet(user)
                     ),
                   if (user != null && user.isAdmin)
                     _menuItem(
@@ -307,10 +298,10 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => AdminDashboard(user: user),
+                            builder: (_) => AdminDashboard(user: user)
                           ),
                         );
-                      },
+                      }
                     ),
                 ]),
 
@@ -323,13 +314,13 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                     Icons.confirmation_number_outlined,
                     'E-Tiket Saya',
                     'Lihat semua tiket aktif',
-                    onTap: () => _pindahKeTab(1),
+                    onTap: () => _pindahKeTab(1)
                   ),
                   _menuItem(
                     Icons.favorite_outline,
                     'Konser Favorit',
                     'Daftar konser yang disimpan',
-                    onTap: () => _pindahKeTab(2),
+                    onTap: () => _pindahKeTab(2)
                   ),
                   _menuItem(
                     Icons.local_offer_outlined,
@@ -338,9 +329,9 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const DiskonSayaScreen(),
+                        builder: (_) => const DiskonSayaScreen()
                       ),
-                    ),
+                    )
                   ),
                 ]),
 
@@ -357,7 +348,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                       context: context,
                       applicationName: 'SoundWave',
                       applicationVersion: 'V${AppConstants.appVersion}',
-                      applicationLegalese: '© 2026 SoundWave',
+                      applicationLegalese: '© 2026 SoundWave'
                     ),
                   ),
                 ]),
@@ -365,64 +356,77 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                 const SizedBox(height: 20),
 
                 if (isAuthenticated)
-                  GestureDetector(
-                    onTap: _confirmLogout,
-                    child: Container(
-                      height: 52,
+                  Material(
+                    color: Colors.transparent,
+                    child: Ink(
                       decoration: BoxDecoration(
                         color: AppColors.error.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: AppRadius.rMd,
                         border: Border.all(
-                          color: AppColors.error.withValues(alpha: 0.2),
+                          color: AppColors.error.withValues(alpha: 0.2)
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.logout_rounded,
-                              color: AppColors.error, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Keluar dari Akun',
-                            style: GoogleFonts.spaceGrotesk(
-                              color: AppColors.error,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
+                      child: InkWell(
+                        onTap: _confirmLogout,
+                        borderRadius: AppRadius.rMd,
+                        child: SizedBox(
+                          height: 52,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.logout_rounded,
+                                  color: AppColors.error, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Keluar dari Akun',
+                                style: GoogleFonts.spaceGrotesk(
+                                  color: AppColors.error,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600
+                                ),
+                              ),
+                            ]
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   )
                 else
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      );
-                    },
-                    child: Container(
-                      height: 52,
+                  Material(
+                    color: Colors.transparent,
+                    child: Ink(
                       decoration: BoxDecoration(
                         gradient: AppColors.primaryGradient,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: AppRadius.rMd
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.login_rounded,
-                              color: Colors.white, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Masuk atau Daftar',
-                            style: GoogleFonts.spaceGrotesk(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const LoginScreen()),
+                          );
+                        },
+                        borderRadius: AppRadius.rMd,
+                        child: SizedBox(
+                          height: 52,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.login_rounded,
+                                  color: Colors.white, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Masuk atau Daftar',
+                                style: GoogleFonts.spaceGrotesk(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600
+                                ),
+                              ),
+                            ]
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -433,15 +437,20 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                     AppConstants.appVersionLabel,
                     style: GoogleFonts.spaceGrotesk(
                       color: AppColors.textMuted,
-                      fontSize: 11,
+                      fontSize: 11
                     ),
-                  ),
+                  )
                 ),
                 const SizedBox(height: 30),
-              ]),
+              ])
             ),
           ),
-        ],
+          // Navbar kaca mengambang menutupi bagian bawah layar, jadi beri
+          // ruang gulir supaya kartu terakhir tidak tertutup.
+          const SliverToBoxAdapter(
+            child: SizedBox(height: AppSpacing.ruangNavbar),
+          ),
+        ]
       ),
     );
   }
@@ -460,22 +469,22 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            width: 2.5,
+            color: AppColors.aksi.withValues(alpha: 0.28),
+            width: 2.5
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.08),
+              color: AppColors.aksi.withValues(alpha: 0.08),
               blurRadius: 20,
-              spreadRadius: 2,
+              spreadRadius: 2
             ),
-          ],
+          ]
         ),
         child: ClipOval(
           child: GambarWidget(
             url: photoUrl,
             width: size,
-            height: size,
+            height: size
           ),
         ),
       );
@@ -500,12 +509,12 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2A2A3E), Color(0xFF1A1A2E)],
+          colors: [AppColors.lineStrong, AppColors.surfaceLight]
         ),
         shape: BoxShape.circle,
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.2),
-          width: 2.5,
+          color: AppColors.aksi.withValues(alpha: 0.22),
+          width: 2.5
         ),
       ),
       child: Center(
@@ -515,13 +524,13 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                 style: GoogleFonts.rajdhani(
                   color: AppColors.primary,
                   fontSize: 32,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w700
                 ),
               )
             : const Icon(
                 Icons.person_outline,
                 color: AppColors.textMuted,
-                size: 36,
+                size: 36
               ),
       ),
     );
@@ -529,41 +538,18 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
 
   // Badge role
   Widget _buildRoleBadge(UserModel user) {
-    final isSuperAdmin = user.isSuperAdmin;
-    final isAdmin = user.isAdmin;
-
-    Color badgeColor;
-    String label;
-
-    if (isSuperAdmin) {
-      badgeColor = AppColors.warning;
-      label = 'SUPER ADMIN';
-    } else if (isAdmin) {
-      badgeColor = AppColors.success;
-      label = 'ADMIN';
-    } else {
-      badgeColor = AppColors.primary.withValues(alpha: 0.15);
-      label = 'MEMBER';
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: isAdmin ? badgeColor.withValues(alpha: 0.15) : badgeColor,
-        borderRadius: BorderRadius.circular(20),
-        border: isAdmin
-            ? Border.all(color: badgeColor.withValues(alpha: 0.4))
-            : null,
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.spaceGrotesk(
-          color: isAdmin ? badgeColor : AppColors.textSecondary,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.2,
-        ),
-      ),
+    // Hierarki izin lewat tingkat isi: SUPER ADMIN penuh, ADMIN garis terang,
+    // MEMBER redup. Dulu super admin kuning, admin hijau, member hijau pudar —
+    // tiga warna untuk satu konsep (peran), sementara hijau seharusnya hanya
+    // berarti uang.
+    final peran = user.isSuperAdmin
+        ? 'SUPER ADMIN'
+        : (user.isAdmin ? 'ADMIN' : 'MEMBER');
+    return BadgeStatus(
+      peran,
+      nada: nadaUntukPeran(peran),
+      ikon: user.isAdmin ? BadgeIkon.kunci : BadgeIkon.tidakAda,
+      ukuran: 10,
     );
   }
 
@@ -594,8 +580,8 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.divider),
+          borderRadius: AppRadius.rMd,
+          border: Border.all(color: AppColors.divider)
         ),
         child: Column(
           children: [
@@ -606,7 +592,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
               style: GoogleFonts.rajdhani(
                 color: AppColors.textPrimary,
                 fontSize: 20,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w700
               ),
             ),
             Text(
@@ -614,10 +600,10 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
               style: GoogleFonts.spaceGrotesk(
                 color: AppColors.textMuted,
                 fontSize: 10,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w500
               ),
             ),
-          ],
+          ]
         ),
       ),
     );
@@ -631,8 +617,8 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
           width: 3,
           height: 14,
           decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(2),
+            color: AppColors.aksi,
+            borderRadius: AppRadius.rXs
           ),
         ),
         const SizedBox(width: 8),
@@ -642,7 +628,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
             color: AppColors.textSecondary,
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            letterSpacing: 1,
+            letterSpacing: 1
           ),
         ),
       ],
@@ -656,8 +642,8 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: AppRadius.rMd,
+        border: Border.all(color: AppColors.divider)
       ),
       child: Column(children: items),
     );
@@ -687,7 +673,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
       context: context,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
       ),
       isScrollControlled: true,
       builder: (ctx) {
@@ -698,7 +684,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
             return Padding(
               padding: EdgeInsets.fromLTRB(
                 24, 20, 24,
-                MediaQuery.of(ctx).viewInsets.bottom + 24,
+                MediaQuery.of(ctx).viewInsets.bottom + 24
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -710,9 +696,9 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                       height: 4,
                       decoration: BoxDecoration(
                         color: AppColors.divider,
-                        borderRadius: BorderRadius.circular(2),
+                        borderRadius: AppRadius.rXs
                       ),
-                    ),
+                    )
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -720,7 +706,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                     style: GoogleFonts.rajdhani(
                       color: AppColors.textPrimary,
                       fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w700
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -733,7 +719,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                           height: 80,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.primary, width: 2),
+                            border: Border.all(color: AppColors.aksi, width: 2)
                           ),
                           child: ClipOval(
                             child: user.fotoUrl != null && user.fotoUrl!.isNotEmpty
@@ -744,11 +730,11 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                                       style: GoogleFonts.rajdhani(
                                         color: AppColors.primary,
                                         fontSize: 28,
-                                        fontWeight: FontWeight.w700,
+                                        fontWeight: FontWeight.w700
                                       ),
-                                    ),
+                                    )
                                   ),
-                          ),
+                          )
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -757,10 +743,10 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                               : 'Inisial profil (foto kustom dinonaktifkan)',
                           style: GoogleFonts.spaceGrotesk(
                             color: AppColors.textMuted,
-                            fontSize: 10,
+                            fontSize: 10
                           ),
                         ),
-                      ],
+                      ]
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -769,19 +755,19 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                     style: GoogleFonts.spaceGrotesk(
                       color: AppColors.textSecondary,
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w600
                     ),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: nameCtrl,
                     style: GoogleFonts.spaceGrotesk(
-                      color: AppColors.textPrimary,
+                      color: AppColors.textPrimary
                     ),
                     decoration: const InputDecoration(
                       hintText: 'Masukkan nama lengkap',
                       prefixIcon: Icon(Icons.person_outline,
-                          color: AppColors.textMuted, size: 20),
+                          color: AppColors.textMuted, size: 20)
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -807,7 +793,7 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                                       content: Text('Profil berhasil diperbarui',
                                           style: GoogleFonts.spaceGrotesk()),
                                       backgroundColor: AppColors.success,
-                                      behavior: SnackBarBehavior.floating,
+                                      behavior: SnackBarBehavior.floating
                                     ),
                                   );
                                 }
@@ -816,20 +802,13 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Gagal memperbarui profil: $e'),
-                                      backgroundColor: AppColors.error,
+                                      content: Text(PesanGalat.untuk(e, awalan: 'Gagal memperbarui profil')),
+                                      backgroundColor: AppColors.error
                                     ),
                                   );
                                 }
                               }
                             },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.warnaTombolBg,
-                        foregroundColor: AppColors.warnaTombolTeks,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
                       child: saving
                           ? const SizedBox(
                               width: 20, height: 20,
@@ -838,10 +817,10 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
                           : Text('Simpan',
                               style: GoogleFonts.spaceGrotesk(
                                 fontWeight: FontWeight.w600,
-                              )),
+                              ))
                     ),
                   ),
-                ],
+                ]
               ),
             );
           },
@@ -864,14 +843,14 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadius.rLg
         ),
         title: Text(
           'Keluar Akun?',
           style: GoogleFonts.rajdhani(
             color: AppColors.textPrimary,
             fontSize: 22,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w700
           ),
         ),
         content: Column(
@@ -881,15 +860,15 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
             Text(
               'Yakin ingin keluar dari akun SoundWave kamu?',
               style: GoogleFonts.spaceGrotesk(
-                color: AppColors.textSecondary,
+                color: AppColors.textSecondary
               ),
             ),
             const SizedBox(height: 24),
             TombolDialogSejajar(
               onBatal: () => Navigator.pop(ctx, false),
-              onKonfirmasi: () => Navigator.pop(ctx, true),
+              onKonfirmasi: () => Navigator.pop(ctx, true)
             ),
-          ],
+          ]
         ),
       ),
     );
@@ -908,9 +887,9 @@ class _UserMainScreenState extends ConsumerState<UserMainScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Gagal keluar akun: $e'),
+              content: Text(PesanGalat.untuk(e, awalan: 'Gagal keluar akun')),
               backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
+              behavior: SnackBarBehavior.floating
             ),
           );
         }
@@ -938,7 +917,7 @@ class _MenuItemWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: AppRadius.rMd,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
@@ -948,10 +927,10 @@ class _MenuItemWidget extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 color: (iconColor ?? AppColors.textMuted).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.rSm
               ),
               child: Icon(icon,
-                  color: iconColor ?? AppColors.textSecondary, size: 18),
+                  color: iconColor ?? AppColors.textSecondary, size: 18)
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -963,22 +942,22 @@ class _MenuItemWidget extends StatelessWidget {
                     style: GoogleFonts.spaceGrotesk(
                       color: AppColors.textPrimary,
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w600
                     ),
                   ),
                   Text(
                     subtitle,
                     style: GoogleFonts.spaceGrotesk(
                       color: AppColors.textMuted,
-                      fontSize: 11,
+                      fontSize: 11
                     ),
                   ),
-                ],
+                ]
               ),
             ),
             const Icon(Icons.chevron_right_rounded,
                 color: AppColors.textMuted, size: 18),
-          ],
+          ]
         ),
       ),
     );

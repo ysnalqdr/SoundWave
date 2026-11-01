@@ -16,6 +16,27 @@ class PromoCodeModel {
   final bool aktif;
   final String? deskripsi;
 
+  /// Tema warna kartu: 'gold' | 'emerald' | 'amethyst'.
+  ///
+  /// Kosong berarti kartu memilih tema bergilir menurut indeks, supaya
+  /// deretan kartu tetap hidup tanpa admin harus mengisi apa pun.
+  final String? tema;
+
+  /// URL poster untuk latar kartu. Kosong berarti kartu memakai latar
+  /// gradien tema saja.
+  final String? gambarUrl;
+
+  /// Label kecil di kartu promo, mis. "EARLY BIRD" atau "SIGNATURE".
+  ///
+  /// Dipisahkan dari [tema] supaya warna dan makna tidak dipaksa
+  /// berpasangan. Promo "Early Bird 50%" cocok berwarna emas tetapi TIDAK
+  /// cocok disebut "SIGNATURE" — ia justru penawaran paling awal dan paling
+  /// murah. Dengan label terpisah, admin menentukan sendiri nama yang jujur
+  /// untuk promonya, sementara tema hanya mengatur warna.
+  ///
+  /// Kosong berarti memakai label bawaan tema.
+  final String? label;
+
   PromoCodeModel({
     required this.id,
     required this.kode,
@@ -29,6 +50,9 @@ class PromoCodeModel {
     required this.berlakuAkhir,
     this.aktif = true,
     this.deskripsi,
+    this.tema,
+    this.gambarUrl,
+    this.label,
   });
 
   factory PromoCodeModel.fromMap(Map<String, dynamic> map, String id) {
@@ -46,6 +70,9 @@ class PromoCodeModel {
           DateTime.now().add(const Duration(days: 30)),
       aktif: map['aktif'] ?? true,
       deskripsi: map['deskripsi'],
+      tema: map['tema'],
+      gambarUrl: map['gambarUrl'],
+      label: map['label'],
     );
   }
 
@@ -81,6 +108,9 @@ class PromoCodeModel {
       'berlakuAkhir': Timestamp.fromDate(berlakuAkhir),
       'aktif': aktif,
       'deskripsi': deskripsi,
+      'tema': tema,
+      'gambarUrl': gambarUrl,
+      'label': label,
     };
   }
 

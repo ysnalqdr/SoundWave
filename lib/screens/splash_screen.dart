@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,10 +17,26 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
-    with SingleTickerProviderStateMixin {
+    // `TickerProviderStateMixin`, BUKAN `SingleTickerProviderStateMixin`.
+    //
+    // Layar ini punya DUA AnimationController: `_controller` untuk fade +
+    // scale masuk, dan `_eqController` untuk equalizer yang berulang. Mixin
+    // "Single" hanya boleh melayani satu ticker; controller kedua langsung
+    // melempar error saat `initState` — dan karena splash adalah layar
+    // pertama, aplikasi gagal total begitu dibuka.
+    with TickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnim;
   late Animation<double> _scaleAnim;
+
+  /// Controller khusus batang equalizer.
+  ///
+  /// Dipisah dari `_controller` karena masa hidupnya berbeda: `_controller`
+  /// selesai sekali (fade + scale masuk), sedangkan equalizer perlu
+  /// berulang. Memakai satu controller untuk keduanya akan mengulang
+  /// animasi fade setiap putaran.
+  late AnimationController _eqController;
+
   bool _navigated = false;
 
   @override
@@ -36,6 +53,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
     );
     _controller.forward();
+
+    // Equalizer bergerak: satu putaran 900 ms, berulang sampai layar
+    // berganti. Durasinya tetap di dalam 2.200 ms splash, jadi tidak
+    // menambah waktu tunggu pengguna.
+    _eqController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+
     _routeAfterSplash();
   }
 
@@ -81,6 +107,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   void dispose() {
+    _eqController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -101,7 +128,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primary.withValues(alpha: 0.25),
+                    // Dulu hijau 25% — hijau kini hanya untuk harga.
+                    AppColors.aksi.withValues(alpha: 0.10),
                     Colors.transparent,
                   ],
                 ),
@@ -140,34 +168,32 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
-                            gradient: AppColors.primaryGradient,
-                            borderRadius: BorderRadius.circular(28),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.5),
-                                blurRadius: 40,
-                                spreadRadius: 8,
-                              ),
-                            ],
+                            // Garis tepi = identitas. Lihat login_screen.dart.
+                            color: AppColors.aksi.withValues(alpha: 0.045),
+                            borderRadius: AppRadius.rXl,
+                            border: Border.all(
+                              color: AppColors.badgeJalanBorder,
+                              width: 1.6,
+                            ),
                           ),
                           child: const Icon(
                             Icons.graphic_eq_rounded,
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             size: 56,
                           ),
                         ),
                         const SizedBox(height: 24),
-                        ShaderMask(
-                          shaderCallback: (bounds) =>
-                              AppColors.primaryGradient.createShader(bounds),
-                          child: Text(
-                            AppConstants.appName,
-                            style: GoogleFonts.rajdhani(
-                              fontSize: 52,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: -2,
-                            ),
+                        // Dulu ini ShaderMask dengan primaryGradient — yang
+                        // isinya #1B1B23→#101016, hampir hitam. Hasilnya teks
+                        // "SoundWave" jadi HITAM di atas latar hitam dan
+                        // praktis tidak terlihat. Sekarang teks putih polos.
+                        Text(
+                          AppConstants.appName,
+                          style: GoogleFonts.rajdhani(
+                            fontSize: 52,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -2,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -180,23 +206,43 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           ),
                         ),
                         const SizedBox(height: 60),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: List.generate(5, (index) {
-                            final tinggi =
-                                [20.0, 35.0, 50.0, 35.0, 20.0][index];
-                            return Container(
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 3),
-                              width: 5,
-                              height: tinggi * _controller.value,
-                              decoration: BoxDecoration(
-                                gradient: AppColors.primaryGradient,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
+                        // Lima batang naik-turun dengan FASE berbeda.
+                        //
+                        // Fase tiap batang digeser (index * 0.15) supaya
+                        // tidak bergerak serempak — gerakan serempak terlihat
+                        // seperti satu blok yang membesar, bukan waveform.
+                        // Nilainya `sin` sehingga tiap batang punya siklus
+                        // naik-turun penuh dalam satu putaran 900 ms.
+                        AnimatedBuilder(
+                          animation: _eqController,
+                          builder: (context, _) {
+                            final tinggiDasar = [20.0, 35.0, 50.0, 35.0, 20.0];
+                            return Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: List.generate(5, (index) {
+                                final fase = _eqController.value + index * 0.15;
+                                // 0,55–1,0 dari tinggi dasar: cukup terlihat
+                                // bergerak, tidak sampai membuat batang
+                                // menghilang.
+                                final skala =
+                                    0.775 + 0.225 * math.sin(fase * 2 * math.pi);
+                                final tinggi = tinggiDasar[index] * skala;
+                                return Container(
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 3),
+                                  width: 5,
+                                  height: tinggi,
+                                  decoration: BoxDecoration(
+                                    // Dulu primaryGradient (hampir hitam) —
+                                    // batang equalizer jadi tak terlihat.
+                                    color: AppColors.aksi,
+                                    borderRadius: AppRadius.rXs,
+                                  ),
+                                );
+                              }),
                             );
-                          }),
+                          },
                         ),
                       ],
                     ),

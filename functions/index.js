@@ -3,6 +3,26 @@ const admin = require('firebase-admin');
 const crypto = require('crypto');
 const midtransClient = require('midtrans-client');
 
+/**
+ * Membandingkan dua string dalam waktu yang tetap (constant-time).
+ *
+ * Kenapa: `a === b` berhenti di karakter pertama yang berbeda, sehingga
+ * lama eksekusinya membocorkan berapa karakter awal yang sudah benar. Untuk
+ * signature, itu celah yang bisa dipakai menebak sedikit demi sedikit.
+ *
+ * `crypto.timingSafeEqual` mewajibkan panjang buffer sama, jadi panjangnya
+ * diperiksa lebih dulu. Panjang signature SHA512 selalu 128 karakter hex,
+ * jadi perbedaan panjang berarti pasti tidak sah.
+ */
+function signatureSama(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+
 admin.initializeApp();
 const db = admin.firestore();
 
@@ -217,13 +237,27 @@ exports.paymentWebhook = functions.https.onRequest(async (req, res) => {
 
   // 1. Signature Verification
   // signature_key = SHA512(order_id + status_code + gross_amount + ServerKey)
+  //
+  // CATATAN (audit Okt 2026): IP allowlist SENGAJA tidak dipakai di sini.
+  // Dokumentasi Midtrans menyatakan IP mereka berubah tanpa pemberitahuan
+  // ("Our IP addresses change frequently and without notice") dan menulis:
+  // "we don't quite recommend relying on IP whitelisting to ensure
+  // notification authenticity. Instead, we strongly recommend you to verify
+  // the authenticity" — yaitu signature di bawah ini. Allowlist IP justru
+  // akan memutus webhook saat Midtrans melakukan scaling.
+  //
+  // Yang diperkuat di sini ada dua hal yang sebelumnya tidak ada:
+  //   a) perbandingan constant-time, supaya signature tidak bisa ditebak
+  //      lewat serangan timing;
+  //   b) pencocokan gross_amount dengan total pesanan, supaya notifikasi sah
+  //      untuk nominal lain tidak bisa dipakai menandai pesanan mahal lunas.
   const rawSignature = `${orderIdOrBookingCode}${statusCode}${grossAmount}${serverKey}`;
   const calculatedSignature = crypto
     .createHash('sha512')
     .update(rawSignature)
     .digest('hex');
 
-  if (signatureKey !== calculatedSignature) {
+  if (!signatureSama(signatureKey, calculatedSignature)) {
     console.warn(`[SECURITY ALERT] Invalid webhook signature for order ${orderIdOrBookingCode}`);
     return res.status(403).json({ error: 'Invalid signature key' });
   }
@@ -248,6 +282,24 @@ exports.paymentWebhook = functions.https.onRequest(async (req, res) => {
   }
 
   const currentOrder = orderDoc.data();
+
+  // 2b. Nominal harus cocok dengan pesanan.
+  //
+  // Tanpa ini, notifikasi yang SAH (signature benar) untuk nominal lain bisa
+  // dipakai menandai pesanan mahal sebagai lunas — misalnya notifikasi untuk
+  // pesanan Rp 1.000 dikirim dengan order_id pesanan Rp 5.000.000.
+  //
+  // Midtrans mengirim gross_amount sebagai string desimal ("5000000.00"),
+  // jadi dibandingkan sebagai angka bulat.
+  const grossAngka = Math.round(Number.parseFloat(grossAmount));
+  const totalPesanan = Math.round(Number(currentOrder.totalHarga) || 0);
+  if (!Number.isFinite(grossAngka) || grossAngka !== totalPesanan) {
+    console.warn(
+      `[SECURITY ALERT] Nominal webhook tidak cocok untuk order ` +
+      `${orderIdOrBookingCode}: webhook=${grossAmount}, pesanan=${totalPesanan}`,
+    );
+    return res.status(409).json({ error: 'Nominal tidak cocok dengan pesanan' });
+  }
 
   // 3. Map Midtrans transaction status to SoundWave lifecycle
   let targetStatus = 'PENDING';

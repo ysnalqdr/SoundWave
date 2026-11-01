@@ -14,6 +14,8 @@ import '../../widgets/kotak_pending_tiket.dart';
 import 'invoice_screen.dart';
 import 'checkout_screen.dart';
 import 'user_konser_detail_screen.dart';
+import '../../core/errors/pesan_galat.dart';
+import '../../widgets/badge_status.dart';
 
 class UserTiketScreen extends ConsumerStatefulWidget {
   const UserTiketScreen({super.key});
@@ -147,7 +149,7 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
             child: ordersAsync.when(
               loading: () => const Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                  valueColor: AlwaysStoppedAnimation(AppColors.aksi),
                 ),
               ),
               error: (err, _) => Center(
@@ -226,7 +228,10 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  // 24 -> ruangNavbar: navbar kaca mengambang menutupi bagian bawah,
+                  // jadi item terakhir harus bisa digulir melewatinya.
+                  padding: const EdgeInsets.fromLTRB(
+                      16, 8, 16, AppSpacing.ruangNavbar),
                   itemCount: filteredList.length,
                   itemBuilder: (ctx, i) {
                     final item = filteredList[i];
@@ -249,10 +254,12 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : AppColors.surface,
-            borderRadius: BorderRadius.circular(10),
+            // Chip terpilih = putih penuh, seperti tombol. Hijau tidak dipakai
+            // di chrome; ia hanya untuk harga.
+            color: isSelected ? AppColors.aksi : AppColors.surface,
+            borderRadius: AppRadius.rSm,
             border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.divider,
+              color: isSelected ? AppColors.aksi : AppColors.divider,
             ),
           ),
           child: Center(
@@ -279,7 +286,7 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppRadius.rLg,
           border: Border.all(
             color: item.isAktif
                 ? AppColors.warnaHarga.withValues(alpha: 0.4)
@@ -302,7 +309,7 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
               child: Row(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     child: SizedBox(
                       width: 64,
                       height: 64,
@@ -330,13 +337,14 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
                               Text(
                                 item.kategoriTiket.toUpperCase(),
                                 style: GoogleFonts.spaceGrotesk(
-                                  color: AppColors.warnaHarga,
+                                  // Tipe tiket bukan uang -> putih.
+                                  color: AppColors.aksi,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 1.2,
                                 ),
                               ),
-                              _buildBadgeGanda(item,
+                              _buildBadgeTiket(item,
                                   onHabis: _sapuReservasiKedaluwarsa),
                             ],
                           ),
@@ -459,7 +467,7 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'KODE BOOKING',
+                        'Kode booking',
                         style: GoogleFonts.spaceGrotesk(
                           color: AppColors.textMuted,
                           fontSize: 10,
@@ -469,11 +477,16 @@ class _UserTiketScreenState extends ConsumerState<UserTiketScreen> {
                       const SizedBox(height: 2),
                       Text(
                         item.kodeBooking,
+                        // Kode booking kini berformat SW-<13 digit>-<4 acak>
+                        // (21 karakter) supaya tidak bisa bertabrakan.
+                        // Dibatasi supaya tidak mendorong tata letak.
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.rajdhani(
                           color: AppColors.textPrimary,
-                          fontSize: 15,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 1,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ],
@@ -599,7 +612,7 @@ class _DialogDetailTiket extends ConsumerWidget {
         nav.pop();
         dialogTerbuka = false;
       }
-      pesan('Gagal membuka pembayaran: $e');
+      pesan(PesanGalat.untuk(e, awalan: 'Gagal membuka pembayaran'));
     }
   }
 
@@ -645,7 +658,7 @@ class _DialogDetailTiket extends ConsumerWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Gagal membuka halaman konser: $e',
+            PesanGalat.untuk(e, awalan: 'Gagal membuka halaman konser'),
             style: GoogleFonts.spaceGrotesk(color: Colors.white),
           ),
           backgroundColor: AppColors.error,
@@ -673,7 +686,7 @@ class _DialogDetailTiket extends ConsumerWidget {
               height: 4,
               decoration: BoxDecoration(
                 color: AppColors.divider,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: AppRadius.rXs,
               ),
             ),
             const SizedBox(height: 20),
@@ -690,6 +703,8 @@ class _DialogDetailTiket extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(
               tiket.judulKonser,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.spaceGrotesk(
                 color: AppColors.warnaHarga,
                 fontSize: 14,
@@ -717,7 +732,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: AppColors.error.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: AppRadius.rMd,
                   border: Border.all(color: AppColors.error),
                 ),
                 child: Row(
@@ -768,7 +783,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: AppColors.success.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     border: Border.all(color: AppColors.success),
                   ),
                   child: Row(
@@ -814,7 +829,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: AppRadius.rLg,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.3),
@@ -848,7 +863,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                             horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
                           color: AppColors.error.withValues(alpha: 0.92),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppRadius.rSm,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
                         child: Text(
@@ -881,7 +896,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.deepOrange.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppRadius.rLg,
                   border: Border.all(color: Colors.deepOrange),
                 ),
                 child: Column(
@@ -914,7 +929,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.deepOrange.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppRadius.rLg,
                   border: Border.all(color: Colors.deepOrange),
                 ),
                 child: Column(
@@ -947,7 +962,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: AppColors.warnaHarga.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppRadius.rLg,
                   border: Border.all(color: AppColors.warnaHarga),
                 ),
                 child: Column(
@@ -989,7 +1004,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppRadius.rLg,
                   border: Border.all(color: AppColors.divider),
                 ),
                 child: Column(
@@ -1029,23 +1044,28 @@ class _DialogDetailTiket extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadius.rSm,
                 border: Border.all(color: AppColors.divider),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    tiket.kodeBooking,
-                    style: GoogleFonts.rajdhani(
-                      color: AppColors.textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2,
+                  Flexible(
+                    child: Text(
+                      tiket.kodeBooking,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.rajdhani(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   IconButton(
+                    tooltip: 'Salin kode booking',
                     icon: const Icon(Icons.copy, size: 16, color: AppColors.textMuted),
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: tiket.kodeBooking));
@@ -1231,7 +1251,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                           minimumSize: const Size.fromHeight(46),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                            borderRadius: AppRadius.rSm),
                         ),
                         child: Text('Batal',
                           style: GoogleFonts.spaceGrotesk(
@@ -1250,7 +1270,7 @@ class _DialogDetailTiket extends ConsumerWidget {
                           minimumSize: const Size.fromHeight(46),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                            borderRadius: AppRadius.rSm),
                         ),
                         child: Text('Kirim',
                           style: GoogleFonts.spaceGrotesk(
@@ -1311,7 +1331,13 @@ String _formatTanggalWaktu(DateTime t) {
 
 /// One status badge. When the last refund was rejected, a red REFUND GAGAL
 /// badge sits to its left.
-Widget _buildBadgeGanda(PesananTiketModel item, {VoidCallback? onHabis}) {
+/// Badge status satu tiket untuk kartu daftar.
+///
+/// Dulu fungsi ini mengembalikan DUA badge (REFUND GAGAL + status) saat
+/// refund ditolak. Sejak revisi Okt 2026 hanya satu badge: di daftar yang
+/// dicari adalah status tiket, bukan riwayat refund — riwayatnya tetap
+/// tampil di halaman detail.
+Widget _buildBadgeTiket(PesananTiketModel item, {VoidCallback? onHabis}) {
   // Masih punya waktu bayar → satu pill dengan hitungan waktu yang berdetak,
   // supaya sisa waktunya kelihatan langsung dari daftar tiket.
   if (item.isPending && !item.isExpired && item.reservedUntil != null) {
@@ -1319,15 +1345,14 @@ Widget _buildBadgeGanda(PesananTiketModel item, {VoidCallback? onHabis}) {
   }
   final badgeStatus =
       _buildBadgeStatus(item.isExpired ? 'EXPIRED' : item.status);
-  if (!item.refundDitolak) return badgeStatus;
-  return Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      _buildBadgeStatus('REFUND_REJECTED'),
-      const SizedBox(width: 6),
-      badgeStatus,
-    ],
-  );
+
+  // Di DAFTAR tiket, badge "REFUND GAGAL" tidak ditampilkan.
+  //
+  // Alasannya bukan menyembunyikan informasi: saat memindai daftar, yang
+  // dicari pengguna adalah "tiket ini masih bisa dipakai atau tidak". Dua
+  // badge per kartu membuat daftar sulit dipindai. Riwayat penolakan refund
+  // tetap tampil lengkap di halaman detail tiket.
+  return badgeStatus;
 }
 
 /// "MENUNGGU · 02:47" pill whose number ticks every second.
@@ -1336,7 +1361,7 @@ Widget _buildBadgeMenunggu(PesananTiketModel item, {VoidCallback? onHabis}) {
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
       color: Colors.amber.withValues(alpha: 0.15),
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: AppRadius.rXs,
       border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
     ),
     child: Row(
@@ -1370,62 +1395,10 @@ Widget _buildBadgeMenunggu(PesananTiketModel item, {VoidCallback? onHabis}) {
 }
 
 Widget _buildBadgeStatus(String status) {
-  Color bg;
-  Color fg;
-  String text;
-
-  if (status == 'AKTIF' || status == 'PAID') {
-    bg = AppColors.warnaHarga.withValues(alpha: 0.15);
-    fg = AppColors.warnaHarga;
-    text = 'AKTIF';
-  } else if (status == 'PENDING') {
-    bg = Colors.amber.withValues(alpha: 0.15);
-    fg = Colors.amber;
-    text = 'PENDING';
-  } else if (status == 'CANCELLED') {
-    bg = AppColors.error.withValues(alpha: 0.15);
-    fg = AppColors.error;
-    text = 'DIBATALKAN';
-  } else if (status == 'EXPIRED') {
-    bg = AppColors.error.withValues(alpha: 0.15);
-    fg = AppColors.error;
-    text = 'KEDALUWARSA';
-  } else if (status == 'REFUND_REQUIRED' || status == 'REFUND_REQUESTED') {
-    bg = Colors.deepOrange.withValues(alpha: 0.15);
-    fg = Colors.deepOrange;
-    text = 'REFUND DIPROSES';
-  } else if (status == 'REFUND_REJECTED') {
-    bg = AppColors.error.withValues(alpha: 0.15);
-    fg = AppColors.error;
-    text = 'REFUND GAGAL';
-  } else if (status == 'REFUNDED') {
-    bg = Colors.teal.withValues(alpha: 0.15);
-    fg = Colors.teal;
-    text = 'DI-REFUND';
-  } else if (status == 'TERPAKAI') {
-    bg = AppColors.textMuted.withValues(alpha: 0.15);
-    fg = AppColors.textMuted;
-    text = 'TERPAKAI';
-  } else {
-    bg = AppColors.textMuted.withValues(alpha: 0.15);
-    fg = AppColors.textMuted;
-    text = status;
-  }
-
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-      color: bg,
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Text(
-      text,
-      style: GoogleFonts.spaceGrotesk(
-        color: fg,
-        fontSize: 10,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.8,
-      ),
-    ),
-  );
+  // Satu sumber kebenaran: pemetaan status → nada + ikon ada di
+  // lib/widgets/badge_status.dart, bukan di sini. Dulu fungsi ini punya enam
+  // warna berbeda (hijau, amber, merah, teal, deepOrange, abu) sehingga hijau
+  // dipakai untuk 7 makna sekaligus dan tidak lagi berarti apa-apa.
+  final g = nadaUntukStatusPesanan(status);
+  return BadgeStatus(g.teks, nada: g.nada, ikon: g.ikon, ukuran: 10);
 }

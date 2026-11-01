@@ -74,7 +74,7 @@ class _KotakPendingTiketState extends State<KotakPendingTiket> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.amber.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: Colors.amber),
       ),
       child: Column(
@@ -125,11 +125,12 @@ class _KotakPendingTiketState extends State<KotakPendingTiket> {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.warnaHarga,
-                foregroundColor: Colors.black,
+                // Tombol aksi = isi penuh putih.
+                backgroundColor: AppColors.aksi,
+                foregroundColor: AppColors.onAksi,
                 minimumSize: const Size(double.infinity, 46),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.rMd,
                 ),
               ),
             ),
@@ -145,7 +146,7 @@ class _KotakPendingTiketState extends State<KotakPendingTiket> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.error.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.error),
       ),
       child: Column(
@@ -189,7 +190,7 @@ class _KotakPendingTiketState extends State<KotakPendingTiket> {
                 foregroundColor: Colors.black,
                 minimumSize: const Size(double.infinity, 46),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.rMd,
                 ),
               ),
             ),

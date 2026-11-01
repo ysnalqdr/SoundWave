@@ -12,6 +12,8 @@
 
 import 'dart:io';
 
+import '../support/checkout_source.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -30,7 +32,7 @@ void main() {
   setUpAll(() {
     layar = File(berkasLayar).readAsStringSync();
     kotak = File('lib/widgets/kotak_pending_tiket.dart').readAsStringSync();
-    checkout = File(berkasCheckout).readAsStringSync();
+    checkout = bacaLibrary(berkasCheckout);
     midtrans = File(berkasMidtrans).readAsStringSync();
     server = File(berkasServer).existsSync()
         ? File(berkasServer).readAsStringSync()

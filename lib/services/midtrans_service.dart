@@ -38,6 +38,19 @@ class MidtransService {
   /// Resolves the backend URL from Firestore. No fallback address is baked
   /// in, so a missing value fails with a clear message instead of calling
   /// a tunnel that is already dead.
+  ///
+  /// **Lokasi dokumen (Okt 2026):** pindah dari `events/_backend_config` ke
+  /// `app_config/backend`. Konfigurasi sistem tidak seharusnya menumpang di
+  /// koleksi data bisnis — `events` dibaca dengan `orderBy('tanggal')`, jadi
+  /// dokumen tanpa field itu memang tidak akan ikut terambil, tapi tetap
+  /// rapuh: satu perubahan query di masa depan bisa memunculkannya sebagai
+  /// "konser" palsu di daftar pengguna.
+  ///
+  /// **Kenapa ada cadangan ke lokasi lama:** memindahkan dokumen di Firestore
+  /// butuh akses konsol yang tidak selalu tersedia. Kalau `app_config/backend`
+  /// belum ada, kode ini tetap membaca lokasi lama, jadi aplikasi tidak mati
+  /// hanya karena dokumennya belum dipindah. Cadangan ini bisa dihapus setelah
+  /// dokumen benar-benar pindah.
   static Future<String> getBackendUrl({bool paksa = false}) async {
     if (!paksa &&
         _cachedBackendUrl != null &&
@@ -45,18 +58,29 @@ class MidtransService {
         DateTime.now().difference(_lastFetch!) < _umurCache) {
       return _cachedBackendUrl!;
     }
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('events')
-          .doc('_backend_config')
-          .get();
-      final u = (doc.data()?['url'] as String?)?.trim();
-      if (u != null && u.isNotEmpty) {
-        _cachedBackendUrl = u;
-        _lastFetch = DateTime.now();
-        return u;
+
+    // Urutan percobaan: lokasi baru dulu, lalu lokasi lama.
+    const lokasi = <List<String>>[
+      ['app_config', 'backend'],
+      ['events', '_backend_config'],
+    ];
+
+    for (final l in lokasi) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection(l[0])
+            .doc(l[1])
+            .get();
+        final u = (doc.data()?['url'] as String?)?.trim();
+        if (u != null && u.isNotEmpty) {
+          _cachedBackendUrl = u;
+          _lastFetch = DateTime.now();
+          return u;
+        }
+      } catch (_) {
+        // Coba lokasi berikutnya.
       }
-    } catch (_) {}
+    }
     // Firestore tidak terjangkau: alamat lama masih lebih baik daripada tidak.
     if (_cachedBackendUrl != null) return _cachedBackendUrl!;
     throw const ServerTidakTerhubungException(pesanServerBelumSiap);
@@ -448,6 +472,9 @@ class MidtransService {
         'discountAmount': data['discountAmount'],
         'deskripsi': data['deskripsi'],
         'message': data['message'],
+        // Objek promo lengkap, dipakai untuk menyimpan voucher ke akun
+        // pengguna saat kode diketik manual (auto-claim).
+        'promo': data['promo'],
       };
     } catch (e) {
       return {'valid': false, 'message': _pesanGalat(e, 'Gagal validasi promo')};

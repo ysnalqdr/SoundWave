@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../support/checkout_source.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:soundwave/services/midtrans_service.dart';
@@ -16,7 +18,7 @@ import 'package:soundwave/services/midtrans_service.dart';
 ///   4. pesan ke user ramah, bukan teks exception mentah
 void main() {
   final berkas = File('lib/services/midtrans_service.dart');
-  final checkout = File('lib/screens/user/checkout_screen.dart');
+  const checkout = berkasCheckoutUtama;
 
   group('midtrans_service.dart — sumber', () {
     late String isi;
@@ -74,7 +76,7 @@ void main() {
 
   group('checkout_screen.dart — pesan ramah', () {
     test('layar memakai MidtransService.pesanRamah', () {
-      final isi = checkout.readAsStringSync();
+      final isi = bacaLibrary(checkout);
       expect(isi, contains('MidtransService.pesanRamah'));
       expect(RegExp(r"'Gagal[^']*: \$e'").hasMatch(isi), isFalse);
     });

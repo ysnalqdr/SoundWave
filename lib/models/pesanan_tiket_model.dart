@@ -35,6 +35,34 @@ class PesananTiketModel {
   final String? refundStatus;
   final String? refundRejectReason;
 
+  // ---------------------------------------------------------- rincian harga
+  //
+  // Sebelum Okt 2026, pesanan hanya menyimpan `totalHarga`. Akibatnya:
+  //   * voucher yang dipakai pembeli tidak punya jejak — refund menghitung
+  //     ulang dari total penuh, padahal pembeli sudah dapat potongan;
+  //   * pajak dan biaya layanan tidak terlihat di struk;
+  //   * backend tidak bisa memverifikasi bahwa potongan memang sah.
+  //
+  // Semua nilai di bawah ini ditulis backend saat pesanan dibuat, memakai
+  // rumus yang sama dengan `lib/utils/rincian_harga.dart`.
+  /// Harga tiket sebelum potongan & biaya: `hargaSatuan x jumlahTiket`.
+  final double subtotal;
+
+  /// Kode voucher yang dipakai, mis. `EARLYBIRD50`. Null bila tanpa voucher.
+  final String? kodePromo;
+
+  /// Potongan voucher dalam rupiah (sudah dibatasi subtotal).
+  final double diskon;
+
+  /// Pajak hiburan (PBJT) 10% dari dasar setelah potongan.
+  final double pajak;
+
+  /// Biaya layanan 5% dari dasar setelah potongan.
+  final double biayaLayananPersen;
+
+  /// Biaya layanan tetap per transaksi.
+  final double biayaLayananTetap;
+
   PesananTiketModel({
     required this.id,
     required this.kodeBooking,
@@ -62,6 +90,12 @@ class PesananTiketModel {
     this.paymentDetails,
     this.refundStatus,
     this.refundRejectReason,
+    this.subtotal = 0,
+    this.kodePromo,
+    this.diskon = 0,
+    this.pajak = 0,
+    this.biayaLayananPersen = 0,
+    this.biayaLayananTetap = 0,
   });
 
   factory PesananTiketModel.fromMap(Map<String, dynamic> map, String id) {
@@ -96,6 +130,14 @@ class PesananTiketModel {
           : null,
       refundStatus: map['refundStatus'],
       refundRejectReason: map['refundRejectReason'],
+      subtotal: (map['subtotal'] as num?)?.toDouble() ?? 0,
+      kodePromo: map['kodePromo'],
+      diskon: (map['diskon'] as num?)?.toDouble() ?? 0,
+      pajak: (map['pajak'] as num?)?.toDouble() ?? 0,
+      biayaLayananPersen:
+          (map['biayaLayananPersen'] as num?)?.toDouble() ?? 0,
+      biayaLayananTetap:
+          (map['biayaLayananTetap'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -131,6 +173,13 @@ class PesananTiketModel {
       // Diisi backend (approve/reject refund); ditulis apa adanya.
       'refundStatus': refundStatus,
       'refundRejectReason': refundRejectReason,
+      // Rincian harga: ditulis backend, dibaca aplikasi untuk struk.
+      'subtotal': subtotal,
+      'kodePromo': kodePromo,
+      'diskon': diskon,
+      'pajak': pajak,
+      'biayaLayananPersen': biayaLayananPersen,
+      'biayaLayananTetap': biayaLayananTetap,
     };
   }
 
@@ -215,6 +264,15 @@ class PesananTiketModel {
       paymentDetails: paymentDetails ?? this.paymentDetails,
       refundStatus: refundStatus ?? this.refundStatus,
       refundRejectReason: refundRejectReason ?? this.refundRejectReason,
+      // Rincian harga ikut disalin apa adanya. `copyWith` tidak menerima
+      // parameter untuk field ini karena nilainya ditetapkan backend saat
+      // pesanan dibuat dan tidak boleh berubah setelahnya.
+      subtotal: subtotal,
+      kodePromo: kodePromo,
+      diskon: diskon,
+      pajak: pajak,
+      biayaLayananPersen: biayaLayananPersen,
+      biayaLayananTetap: biayaLayananTetap,
     );
   }
 }

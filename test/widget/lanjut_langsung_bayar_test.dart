@@ -10,6 +10,8 @@
 
 import 'dart:io';
 
+import '../support/checkout_source.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -17,7 +19,7 @@ void main() {
   const String berkasServer = '../soundwave-backend/server.js';
 
   late String kode;
-  setUpAll(() => kode = File(berkas).readAsStringSync());
+  setUpAll(() => kode = bacaLibrary(berkas));
 
   test('mode lanjut mulai di langkah Bayar', () {
     final int metode = kode.indexOf('_metodeDariLabel(lanjut.metodePembayaran)');

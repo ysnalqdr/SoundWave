@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants/app_constants.dart';
+import 'event_media_model.dart';
 
 class KonserModel {
   final String id;
@@ -14,6 +15,10 @@ class KonserModel {
   String status;
   int views;
 
+  /// Media tambahan (audio pratinjau, trailer video, venue 3D).
+  /// Bernilai [EventMedia.empty] bila event belum punya media.
+  EventMedia media;
+
   KonserModel({
     required this.id,
     required this.judul,
@@ -26,6 +31,7 @@ class KonserModel {
     this.penyelenggara,
     this.status = AppConstants.eventStatusUpcoming,
     this.views = 0,
+    this.media = EventMedia.empty,
   });
 
   factory KonserModel.fromMap(Map<String, dynamic> map, String id) {
@@ -41,6 +47,7 @@ class KonserModel {
       penyelenggara: map['penyelenggara'],
       status: map['status'] ?? AppConstants.eventStatusUpcoming,
       views: (map['views'] as num?)?.toInt() ?? 0,
+      media: EventMedia.fromMap(map['media']),
     );
   }
 
@@ -56,6 +63,7 @@ class KonserModel {
       'penyelenggara': penyelenggara,
       'status': status,
       'views': views,
+      'media': media.toMap(),
     };
   }
 
@@ -81,6 +89,7 @@ class KonserModel {
     String? penyelenggara,
     String? status,
     int? views,
+    EventMedia? media,
   }) {
     return KonserModel(
       id: id,
@@ -94,6 +103,7 @@ class KonserModel {
       penyelenggara: penyelenggara ?? this.penyelenggara,
       status: status ?? this.status,
       views: views ?? this.views,
+      media: media ?? this.media,
     );
   }
 }

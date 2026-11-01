@@ -5,12 +5,16 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/konser_model.dart';
 import '../../models/promo_model.dart';
 import '../../models/claimed_promo_model.dart';
+import '../../widgets/promo/promo_card.dart';
+import '../../widgets/promo/promo_lembar.dart';
 import '../../providers/app_providers.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/feedback/app_state_views.dart';
 import '../../constants/app_constants.dart';
 import '../../widgets/gambar_widget.dart';
 import '../../widgets/notifikasi_bell.dart';
 import 'user_konser_detail_screen.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class UserExploreScreen extends ConsumerStatefulWidget {
   const UserExploreScreen({super.key});
@@ -26,8 +30,8 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
   String _selectedDatePreset = 'Semua Tanggal';
   String _selectedPriceSort = 'Semua'; // 'Semua', 'Termurah', 'Termahal' // 'Semua Tanggal', '7 Hari Ke Depan', '30 Hari Ke Depan', 'Bulan Ini', 'Custom Rentang'
   DateTimeRange? _customDateRange;
-  double? _minPrice;
-  double? _maxPrice;
+  // `_minPrice` / `_maxPrice` dihapus: keduanya tidak pernah diberi nilai,
+  // sehingga blok filter yang memakainya adalah kode mati.
 
   @override
   void dispose() {
@@ -119,16 +123,15 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
           .toList();
     }
 
-    // Rentang harga
-    if (_minPrice != null && _minPrice! > 0) {
-      list = list.where((k) => k.harga >= _minPrice!).toList();
+    // Urutan akhir.
+    //
+    // Dulu baris ini SELALU mengurutkan berdasarkan tanggal, sehingga
+    // pilihan "Termurah"/"Termahal" ditimpa dan tidak berefek apa pun —
+    // filter harga terasa "tidak bisa dipakai". Sekarang urutan tanggal
+    // hanya dipakai kalau pengguna tidak memilih sortir harga.
+    if (_selectedPriceSort == 'Semua') {
+      list.sort((a, b) => a.tanggal.compareTo(b.tanggal));
     }
-    if (_maxPrice != null && _maxPrice! > 0) {
-      list = list.where((k) => k.harga <= _maxPrice!).toList();
-    }
-
-    // Urutan tetap: konser terdekat dulu.
-    list.sort((a, b) => a.tanggal.compareTo(b.tanggal));
 
     return list;
   }
@@ -163,7 +166,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal memperbarui favorit: $e'),
+          content: Text(PesanGalat.untuk(e, awalan: 'Gagal memperbarui favorit')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -204,7 +207,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                         Text(
                           'Feel the Pulse of Live Music',
                           style: GoogleFonts.spaceGrotesk(
-                            color: AppColors.warnaHarga,
+                            color: AppColors.textPrimary,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -231,6 +234,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                     prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
                     suffixIcon: _searchCtrl.text.isNotEmpty
                         ? IconButton(
+                          tooltip: 'Hapus pencarian',
                             icon: const Icon(Icons.clear, size: 18),
                             onPressed: () {
                               _searchCtrl.clear();
@@ -293,49 +297,20 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
             ...eventsAsync.when(
               loading: () => [
                 const SliverFillRemaining(
+                  hasScrollBody: false,
                   child: Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation(AppColors.primary),
-                    ),
+                    child: AppLoading(label: 'Menyiapkan daftar konser'),
                   ),
                 ),
               ],
               error: (err, stack) => [
                 SliverFillRemaining(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.cloud_off_rounded, size: 56, color: AppColors.error),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Gagal Memuat Konser',
-                            style: GoogleFonts.rajdhani(
-                              color: AppColors.textPrimary,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            err.toString(),
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted, fontSize: 13),
-                          ),
-                          const SizedBox(height: 20),
-                          ElevatedButton.icon(
-                            onPressed: () => ref.refresh(eventsProvider),
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Coba Lagi'),
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: const Size(140, 44),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  hasScrollBody: false,
+                  child: AppErrorState(
+                    title: 'Gagal memuat konser',
+                    message: err.toString(),
+                    onRetry: () => ref.refresh(eventsProvider),
+                    retryLabel: 'Coba lagi',
                   ),
                 ),
               ],
@@ -356,9 +331,9 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'KONSER SPESIAL',
+                              'Konser spesial',
                               style: GoogleFonts.rajdhani(
-                                color: AppColors.warnaHarga,
+                                color: AppColors.textPrimary,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.5,
@@ -379,13 +354,13 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                                       child: Container(
                                         width: 260,
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(18),
+                                  borderRadius: AppRadius.rLg,
                                   border: Border.all(
-                                    color: AppColors.primary.withValues(alpha: 0.2),
+                                    color: AppColors.badgeJalanBorder,
                                   ),
                                 ),
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(18),
+                                  borderRadius: AppRadius.rLg,
                                   child: Stack(
                                     fit: StackFit.expand,
                                     children: [
@@ -414,6 +389,8 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
                                               konser.judul,
                                               style: GoogleFonts.rajdhani(
                                                 color: Colors.white,
@@ -476,7 +453,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'JADWAL KONSER TERDEKAT',
+                            'Jadwal konser terdekat',
                             style: GoogleFonts.rajdhani(
                               color: AppColors.textPrimary,
                               fontSize: 18,
@@ -548,12 +525,12 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                                   margin: const EdgeInsets.only(bottom: 16),
                                   decoration: BoxDecoration(
                                     color: AppColors.card,
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: AppRadius.rLg,
                                     border: Border.all(color: AppColors.divider),
                                   ),
                                   child: InkWell(
                                     onTap: () => _bukaDetail(k),
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: AppRadius.rLg,
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
@@ -612,7 +589,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                                                       color: Colors.black
                                                           .withValues(alpha: 0.7),
                                                       borderRadius:
-                                                          BorderRadius.circular(6),
+                                                          AppRadius.rXs,
                                                     ),
                                                     child: Text(
                                                       g,
@@ -642,6 +619,8 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                                                   Expanded(
                                                     child: Text(
                                                       k.judul,
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow.ellipsis,
                                                       style: GoogleFonts.rajdhani(
                                                         color: AppColors.textPrimary,
                                                         fontSize: 20,
@@ -692,6 +671,8 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                                                   const SizedBox(width: 4),
                                                   Text(
                                                     '${k.tanggal.day}/${k.tanggal.month}/${k.tanggal.year}',
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
                                                     style: GoogleFonts.spaceGrotesk(
                                                       color: AppColors.textMuted,
                                                       fontSize: 12,
@@ -712,8 +693,10 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
                           ),
                         ),
 
+                  // 30 -> ruangNavbar: navbar kaca mengambang menutupi bagian
+                  // bawah layar, jadi kartu terakhir harus bisa digulir naik.
                   const SliverToBoxAdapter(
-                    child: SizedBox(height: 30),
+                    child: SizedBox(height: AppSpacing.ruangNavbar),
                   ),
                 ];
               },
@@ -736,7 +719,7 @@ class _UserExploreScreenState extends ConsumerState<UserExploreScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppRadius.rSm,
         border: Border.all(color: AppColors.divider),
       ),
       child: DropdownButtonHideUnderline(
@@ -789,7 +772,8 @@ class _PromoBannerRow extends ConsumerStatefulWidget {
 class _PromoBannerRowState extends ConsumerState<_PromoBannerRow> {
   late Stream<List<PromoCodeModel>> _promoStream;
   late Stream<List<ClaimedPromoModel>> _claimStream;
-  final Set<String> _claiming = <String>{};
+  // `_claiming` dihapus: status memproses klaim kini hidup di dalam
+  // `PromoLembar`, karena tombol klaim sudah pindah ke sana.
 
   @override
   void initState() {
@@ -817,11 +801,6 @@ class _PromoBannerRowState extends ConsumerState<_PromoBannerRow> {
         : ref.read(databaseServiceProvider).streamClaimedPromos(uid);
   }
 
-  String _rp(double v) {
-    final s = v.toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
-    return 'Rp $s';
-  }
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
@@ -835,22 +814,35 @@ class _PromoBannerRowState extends ConsumerState<_PromoBannerRow> {
     );
   }
 
-  Future<void> _claim(PromoCodeModel promo) async {
-    final uid = widget.currentUserId;
-    if (uid == null) {
-      _snack('Masuk ke akun dulu untuk mengklaim promo', error: true);
-      return;
-    }
-    setState(() => _claiming.add(promo.id));
-    try {
-      await ref.read(databaseServiceProvider).claimPromo(uid, promo);
-      _snack('Promo ${promo.kode} tersimpan di "Diskon Saya"');
-    } catch (e) {
-      _snack(e.toString().replaceFirst('Exception: ', ''), error: true);
-    } finally {
-      if (mounted) setState(() => _claiming.remove(promo.id));
+  /// Buka lembaran ketentuan. Klaim dilakukan DI DALAM lembaran.
+  Future<void> _bukaKetentuan(
+    PromoCodeModel promo,
+    TemaPromo tema,
+    bool sudah,
+  ) async {
+    final tersimpan = await PromoLembar.tampilkan(
+      context,
+      promo: promo,
+      tema: tema,
+      sudahDiklaim: sudah,
+      onKlaim: () async {
+        final uid = widget.currentUserId;
+        if (uid == null) {
+          return 'Masuk ke akun dulu untuk mengklaim voucher.';
+        }
+        try {
+          await ref.read(databaseServiceProvider).claimPromo(uid, promo);
+          return null;
+        } catch (e) {
+          return e.toString().replaceFirst('Exception: ', '');
+        }
+      },
+    );
+    if (tersimpan == true && mounted) {
+      _snack('Voucher ${promo.kode} tersimpan di "Diskon Saya"');
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -876,9 +868,9 @@ class _PromoBannerRowState extends ConsumerState<_PromoBannerRow> {
                   child: Row(
                     children: [
                       Text(
-                        'PROMO & DISKON',
+                        'Promo & diskon',
                         style: GoogleFonts.rajdhani(
-                          color: AppColors.warnaHarga,
+                          color: AppColors.textPrimary,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.5,
@@ -896,15 +888,35 @@ class _PromoBannerRowState extends ConsumerState<_PromoBannerRow> {
                   ),
                 ),
                 SizedBox(
-                  height: 172,
+                  // 172px tidak cukup: isi PromoCard butuh ±195px, dan
+                  // Flutter melaporkan "BOTTOM OVERFLOWED BY 13 PIXELS".
+                  //
+                  // 200px masih menyisakan overflow 1px pada kartu tertentu
+                  // (label panjang / nominal besar), jadi diberi ruang aman
+                  // 8px. Angka ini harus sedikit lebih besar dari kebutuhan
+                  // isi, bukan pas — selisih 1px pun terlihat sebagai garis
+                  // kuning-hitam di layar.
+                  height: 208,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: promos.length,
-                    itemBuilder: (context, i) => _card(
-                      promos[i],
-                      claimed: claimedIds.contains(promos[i].id),
-                    ),
+                    itemBuilder: (context, i) {
+                      final promo = promos[i];
+                      final sudah = claimedIds.contains(promo.id);
+                      final tema = TemaPromo.untuk(promo, i);
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: PromoCard(
+                          promo: promo,
+                          tema: tema,
+                          sudahDiklaim: sudah,
+                          // Ketuk kartu = buka ketentuan. Tombol klaim ada
+                          // di dalam lembaran, bukan di kartu.
+                          onKetuk: () => _bukaKetentuan(promo, tema, sudah),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -915,117 +927,4 @@ class _PromoBannerRowState extends ConsumerState<_PromoBannerRow> {
     );
   }
 
-  Widget _card(PromoCodeModel promo, {required bool claimed}) {
-    final busy = _claiming.contains(promo.id);
-    final tersedia = promo.isValid;
-    final disabled = claimed || busy || !tersedia;
-
-    final String btnText;
-    if (claimed) {
-      btnText = 'TERSIMPAN';
-    } else if (busy) {
-      btnText = 'MENGKLAIM...';
-    } else if (!tersedia) {
-      btnText = 'TIDAK TERSEDIA';
-    } else {
-      btnText = 'KLAIM';
-    }
-
-    return Container(
-      width: 236,
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF11301F), Color(0xFF0B0B0F)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.warnaHarga.withValues(alpha: 0.35)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.warnaHarga,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  promo.labelNilai,
-                  style: GoogleFonts.spaceGrotesk(
-                    color: Colors.black,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              const Icon(Icons.local_offer_rounded,
-                  color: AppColors.warnaHarga, size: 18),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            promo.kode,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.rajdhani(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            (promo.deskripsi?.trim().isNotEmpty ?? false)
-                ? promo.deskripsi!.trim()
-                : (promo.tipe == 'percentage'
-                    ? 'Diskon ${promo.labelNilai}'
-                    : 'Potongan ${promo.labelNilai}'),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.spaceGrotesk(
-                color: AppColors.textSecondary, fontSize: 11),
-          ),
-          const Spacer(),
-          Text(
-            promo.minPembelian > 0
-                ? 'Min. belanja ${_rp(promo.minPembelian)}'
-                : 'Tanpa minimum belanja',
-            style: GoogleFonts.spaceGrotesk(
-                color: AppColors.textMuted, fontSize: 10),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            height: 34,
-            child: ElevatedButton(
-              onPressed: disabled ? null : () => _claim(promo),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.warnaHarga,
-                foregroundColor: Colors.black,
-                disabledBackgroundColor: AppColors.surfaceLight,
-                disabledForegroundColor: AppColors.textMuted,
-                elevation: 0,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9)),
-              ),
-              child: Text(
-                btnText,
-                style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12, fontWeight: FontWeight.w800),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

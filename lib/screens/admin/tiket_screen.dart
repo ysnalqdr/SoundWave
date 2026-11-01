@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/badge_status.dart';
 import '../../models/user_model.dart';
 import '../../models/tiket_konser_model.dart';
 import '../../providers/app_providers.dart';
 import 'form_tiket_screen.dart';
 import 'package:soundwave/widgets/gambar_widget.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class TiketScreen extends ConsumerStatefulWidget {
   final UserModel user;
@@ -32,7 +34,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppRadius.rLg,
         ),
         title: Text(
           'Hapus Tiket?',
@@ -43,7 +45,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
           ),
         ),
         content: Text(
-          'Tiket ${tiket.kategori} - ${tiket.judulKonser} akan dihapus permanen dari Firestore.',
+          'Tiket ${tiket.kategori} untuk ${tiket.judulKonser} akan dihapus permanen.',
           style: GoogleFonts.spaceGrotesk(
             color: AppColors.textSecondary,
             fontSize: 13,
@@ -67,13 +69,13 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
                 if (!mounted) return;
                 _tampilSnackbar(
                   'Tiket berhasil dihapus',
-                  AppColors.success,
+                  AppColors.aksi,
                   Icons.check_circle_outline,
                 );
               } catch (e) {
                 if (!mounted) return;
                 _tampilSnackbar(
-                  'Gagal menghapus tiket: $e',
+                  PesanGalat.untuk(e, awalan: 'Gagal menghapus tiket'),
                   AppColors.error,
                   Icons.error_outline,
                 );
@@ -111,7 +113,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
         backgroundColor: warna,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.rMd,
         ),
       ),
     );
@@ -151,7 +153,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
                         const Icon(Icons.error_outline, color: AppColors.error, size: 48),
                         const SizedBox(height: 12),
                         Text(
-                          'Gagal memuat tiket dari Firestore: $e',
+                          PesanGalat.untuk(e, awalan: 'Gagal memuat daftar tiket'),
                           textAlign: TextAlign.center,
                           style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary),
                         ),
@@ -175,7 +177,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
           if (ditambah == true) {
             _tampilSnackbar(
               'Tiket berhasil ditambahkan',
-              AppColors.success,
+              AppColors.aksi,
               Icons.check_circle_outline,
             );
           }
@@ -183,7 +185,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
         backgroundColor: AppColors.surfaceLight,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.rMd,
           side: const BorderSide(color: AppColors.divider),
         ),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
@@ -226,7 +228,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
               height: 38,
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.rSm,
                 border: Border.all(color: AppColors.divider),
               ),
               child: const Icon(
@@ -249,16 +251,16 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.aksi.withValues(alpha: 0.12),
+              borderRadius: AppRadius.rSm,
               border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.3),
+                color: AppColors.aksi.withValues(alpha: 0.3),
               ),
             ),
             child: Text(
               'ADMIN',
               style: GoogleFonts.spaceGrotesk(
-                color: AppColors.primary,
+                color: AppColors.aksi,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.2,
@@ -287,7 +289,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: aktif ? Colors.white : AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: AppRadius.rLg,
                 border: Border.all(
                   color: aktif ? Colors.white : AppColors.divider,
                 ),
@@ -319,7 +321,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: AppColors.card,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadius.rLg,
           ),
         ),
       ),
@@ -339,7 +341,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Belum ada tiket di Firestore',
+              'Belum ada tiket',
               style: GoogleFonts.spaceGrotesk(
                 color: AppColors.textSecondary,
                 fontSize: 14,
@@ -358,18 +360,27 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
   }
 
   Widget _buildTiketCard(TiketKonserModel tiket) {
-    final Map<String, Color> colorMap = {
-      'oke': AppColors.success,
-      'hampir': AppColors.warning,
-      'habis': AppColors.error,
+    // Stok adalah SATU-SATUNYA badge berwarna di admin: ini alat kerja, bukan
+    // hiasan. Admin harus tahu "stok tinggal 5" sebelum jadi "habis".
+    //   oke    → redup (keadaan normal tidak butuh perhatian)
+    //   hampir → sunset (ada yang harus segera dilakukan)
+    //   habis  → merah (berhenti, tidak bisa dijual)
+    final nadaStok = switch (tiket.statusStok) {
+      'hampir' => BadgeNada.peringatan, // sunset — perlu tindakan
+      'habis' => BadgeNada.berhenti,    // merah — tidak bisa dijual
+      _ => BadgeNada.valid,             // hijau — tersedia
     };
-    final warnaBadge = colorMap[tiket.statusStok] ?? AppColors.success;
+    final ikonStok = switch (tiket.statusStok) {
+      'hampir' => BadgeIkon.peringatan,
+      'habis' => BadgeIkon.silang,
+      _ => BadgeIkon.centang,
+    };
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Stack(
@@ -381,7 +392,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
                 child: Row(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: AppRadius.rSm,
                       child: GambarWidget(
                         url: tiket.gambarKonser.isEmpty
                             ? 'assets/images/logo/default.jpg'
@@ -418,7 +429,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.background.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: AppRadius.rXs,
                               border: Border.all(
                                 color: AppColors.divider.withValues(alpha: 0.4),
                                 width: 0.8,
@@ -475,33 +486,23 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
                   children: [
                     Text(
                       tiket.formatHarga,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.rajdhani(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        // Uang -> hijau. Sebelumnya putih; titik ini
+                        // terlewat saat bug serupa diperbaiki di
+                        // konser_screen.dart.
+                        color: AppColors.primary,
                       ),
                     ),
                     const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: warnaBadge.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: warnaBadge.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Text(
-                        'Stok: ${tiket.stok} — ${tiket.labelStok}',
-                        style: GoogleFonts.spaceGrotesk(
-                          color: warnaBadge,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                    BadgeStatus(
+                      'STOK ${tiket.stok} · ${tiket.labelStok}'.toUpperCase(),
+                      nada: nadaStok,
+                      ikon: ikonStok,
+                      ukuran: 10.5,
                     ),
                   ],
                 ),
@@ -515,7 +516,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
               children: [
                 _tombolAksiKecil(
                   ikon: Icons.edit_outlined,
-                  warna: AppColors.primary,
+                  warna: AppColors.aksi,
                   onTap: () async {
                     final diperbarui = await Navigator.push<bool>(
                       context,
@@ -526,7 +527,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
                     if (diperbarui == true) {
                       _tampilSnackbar(
                         'Tiket berhasil diperbarui',
-                        AppColors.success,
+                        AppColors.aksi,
                         Icons.check_circle_outline,
                       );
                     }
@@ -558,7 +559,7 @@ class _TiketScreenState extends ConsumerState<TiketScreen> {
         height: 22,
         decoration: BoxDecoration(
           color: AppColors.background.withValues(alpha: 0.8),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: AppRadius.rXs,
         ),
         child: Icon(ikon, color: warna, size: 12),
       ),

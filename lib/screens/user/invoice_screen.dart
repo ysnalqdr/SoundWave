@@ -102,7 +102,7 @@ class InvoiceScreen extends StatelessWidget {
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              RoundedRectangleBorder(borderRadius: AppRadius.rMd),
         ),
       );
       // Hindari unused warning.
@@ -125,6 +125,7 @@ class InvoiceScreen extends StatelessWidget {
         backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Kembali',
           icon: const Icon(Icons.arrow_back_ios_new, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -153,12 +154,10 @@ class InvoiceScreen extends StatelessWidget {
                         style: GoogleFonts.spaceGrotesk(
                             fontWeight: FontWeight.w700, fontSize: 14)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.warnaTombolBg,
-                      foregroundColor: AppColors.warnaTombolTeks,
                       minimumSize: const Size.fromHeight(50),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: AppRadius.rMd),
                     ),
                   ),
                 ),
@@ -176,7 +175,7 @@ class InvoiceScreen extends StatelessWidget {
                       minimumSize: const Size.fromHeight(50),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppRadius.rMd,
                         side: const BorderSide(color: AppColors.divider),
                       ),
                     ),
@@ -196,7 +195,7 @@ class InvoiceScreen extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -253,7 +252,7 @@ class InvoiceScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.rMd,
                     border: Border.all(color: AppColors.divider),
                   ),
                   child: Column(
@@ -430,7 +429,7 @@ class InvoiceScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
             color: _statusColor.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.rSm,
           ),
           child: Text(
             tiket.status,

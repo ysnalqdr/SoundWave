@@ -9,7 +9,7 @@
 // Test ini mengunci perilaku kode SAAT INI supaya bug "kartu kosong"
 // tidak bisa lolos lagi tanpa ketahuan:
 //   1. keempat nama metode benar-benar ter-render di widget tree
-//   2. warnanya putih #FFFFFF di atas kartu #1C1C26 (kontras AA >= 4.5:1)
+//   2. warna teks di atas warna kartu memenuhi kontras AA >= 4.5:1
 //   3. BUKTI PIKSEL: di dalam area nama metode benar-benar ada glif putih
 //      di atas latar gelap — persis kebalikan dari screenshot bug.
 
@@ -27,9 +27,13 @@ import 'package:soundwave/models/konser_model.dart';
 import 'package:soundwave/models/tiket_konser_model.dart';
 import 'package:soundwave/providers/app_providers.dart';
 import 'package:soundwave/screens/user/checkout_screen.dart';
+import 'package:soundwave/utils/app_theme.dart';
 
-const Color _inkWhite = Color(0xFFFFFFFF); // teks nama metode
-const Color _cardSurface = Color(0xFF1C1C26); // latar kartu
+// Warna diambil dari token, bukan hex literal: tes ini mengunci *perilaku*
+// (teks terang di atas kartu gelap dengan kontras AA), bukan nilai hex yang
+// boleh berubah saat tema disetel ulang.
+const Color _inkWhite = AppColors.textPrimary; // teks nama metode
+const Color _cardSurface = AppColors.surfaceLight; // latar kartu
 
 const double _dpr = 3.0;
 
@@ -202,7 +206,7 @@ void main() {
     print('OK  struktur: 4 nama metode + 4 subtitle + 4 ikon ter-render');
   });
 
-  testWidgets('nama metode putih #FFFFFF di atas kartu #1C1C26 (kontras AA)',
+  testWidgets('nama metode terbaca di atas kartu (kontras AA)',
       (WidgetTester tester) async {
     _ignoreGoogleFontsNoise();
     await _pumpCheckout(tester);
@@ -212,7 +216,7 @@ void main() {
       final Text text = tester.widget<Text>(label);
 
       expect(text.style?.color, _inkWhite,
-          reason: 'nama metode "$title" harus putih #FFFFFF');
+          reason: 'nama metode "$title" harus memakai warna teks utama');
 
       // kartu pembungkusnya harus berlatar _SwWhite.surface
       final Finder card = find.ancestor(
@@ -223,15 +227,14 @@ void main() {
             (w.decoration! as BoxDecoration).color == _cardSurface),
       );
       expect(card, findsOneWidget,
-          reason: 'kartu "$title" harus berlatar #1C1C26');
+          reason: 'kartu "$title" harus berlatar permukaan standar');
 
       final double ratio = _contrastRatio(_inkWhite, _cardSurface);
       expect(ratio, greaterThanOrEqualTo(4.5),
           reason: 'kontras "$title" harus >= 4.5:1 (WCAG AA)');
 
       // ignore: avoid_print
-      print('OK  "$title"  teks=#FFFFFF  kartu=#1C1C26  '
-          'kontras=${ratio.toStringAsFixed(2)}:1');
+      print('OK  "$title"  kontras=${ratio.toStringAsFixed(2)}:1');
     }
   });
 

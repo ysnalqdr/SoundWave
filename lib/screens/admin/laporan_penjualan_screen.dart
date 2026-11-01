@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../models/pesanan_tiket_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/app_providers.dart';
 import '../../utils/app_theme.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class LaporanPenjualanScreen extends ConsumerWidget {
   final UserModel user;
@@ -44,6 +46,7 @@ class LaporanPenjualanScreen extends ConsumerWidget {
         ),
         leading: onBukaSidebar != null
             ? IconButton(
+              tooltip: 'Buka menu',
                 icon: const Icon(Icons.menu_rounded),
                 onPressed: onBukaSidebar,
               )
@@ -75,7 +78,7 @@ class LaporanPenjualanScreen extends ConsumerWidget {
                             'TOTAL PENDAPATAN',
                             _formatRupiah(totalPendapatan),
                             Icons.monetization_on_outlined,
-                            AppColors.warnaHarga,
+                            AppColors.primary,
                           ),
                         ),
                       ],
@@ -132,14 +135,14 @@ class LaporanPenjualanScreen extends ConsumerWidget {
                 ),
               ),
               error: (e, _) => Center(
-                child: Text('Gagal memuat analitik: $e',
+                child: Text(PesanGalat.untuk(e, awalan: 'Gagal memuat analitik'),
                     style: GoogleFonts.spaceGrotesk(color: AppColors.error)),
               ),
             ),
             const SizedBox(height: 24),
 
             Text(
-              'RINGKASAN TIKET PER KONSER',
+              'Ringkasan tiket per konser',
               style: GoogleFonts.rajdhani(
                 color: AppColors.textPrimary,
                 fontSize: 16,
@@ -152,7 +155,7 @@ class LaporanPenjualanScreen extends ConsumerWidget {
               data: (daftarKonser) {
                 if (daftarKonser.isEmpty) {
                   return Text(
-                    'Belum ada konser terdaftar di Firestore',
+                    'Belum ada konser terdaftar',
                     style: GoogleFonts.spaceGrotesk(color: AppColors.textMuted),
                   );
                 }
@@ -173,7 +176,7 @@ class LaporanPenjualanScreen extends ConsumerWidget {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: AppColors.card,
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: AppRadius.rMd,
                             border: Border.all(color: AppColors.divider),
                           ),
                           child: Column(
@@ -198,7 +201,7 @@ class LaporanPenjualanScreen extends ConsumerWidget {
                                   Text(
                                     'Sisa: $sisa Kuota',
                                     style: GoogleFonts.spaceGrotesk(
-                                      color: AppColors.warnaHarga,
+                                      color: AppColors.aksi,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -224,13 +227,13 @@ class LaporanPenjualanScreen extends ConsumerWidget {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('Gagal: $e',
+              error: (e, _) => Text(PesanGalat.untuk(e, awalan: 'Gagal memuat data'),
                   style: GoogleFonts.spaceGrotesk(color: AppColors.error)),
             ),
             const SizedBox(height: 24),
 
             Text(
-              'RIWAYAT TRANSAKSI TERAKHIR',
+              'Riwayat transaksi terakhir',
               style: GoogleFonts.rajdhani(
                 color: AppColors.textPrimary,
                 fontSize: 16,
@@ -246,7 +249,7 @@ class LaporanPenjualanScreen extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Text(
-                        'Belum ada transaksi di Firestore',
+                        'Belum ada transaksi',
                         style: GoogleFonts.spaceGrotesk(
                             color: AppColors.textMuted),
                       ),
@@ -261,7 +264,7 @@ class LaporanPenjualanScreen extends ConsumerWidget {
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppRadius.rMd,
                         border: Border.all(color: AppColors.divider),
                       ),
                       child: Row(
@@ -300,7 +303,8 @@ class LaporanPenjualanScreen extends ConsumerWidget {
                               Text(
                                 p.formatTotalHarga,
                                 style: GoogleFonts.spaceGrotesk(
-                                  color: AppColors.warnaHarga,
+                                  // Uang -> hijau.
+                                  color: AppColors.primary,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -308,11 +312,7 @@ class LaporanPenjualanScreen extends ConsumerWidget {
                               Text(
                                 p.status,
                                 style: GoogleFonts.spaceGrotesk(
-                                  color: p.isAktif
-                                      ? AppColors.success
-                                      : (p.isTerpakai
-                                          ? AppColors.textMuted
-                                          : AppColors.warning),
+                                  color: _warnaStatus(p),
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -326,13 +326,42 @@ class LaporanPenjualanScreen extends ConsumerWidget {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('Gagal memuat pesanan: $e',
+              error: (e, _) => Text(PesanGalat.untuk(e, awalan: 'Gagal memuat pesanan'),
                   style: GoogleFonts.spaceGrotesk(color: AppColors.error)),
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// Warna teks status pesanan di daftar transaksi.
+  ///
+  /// Dulu memakai rantai if: AKTIF hijau, TERPAKAI redup, **sisanya
+  /// oranye**. Akibatnya EXPIRED, CANCELLED, dan REFUNDED semuanya oranye —
+  /// padahal ketiganya keadaan yang sudah selesai, bukan "perlu tindakan".
+  ///
+  /// Pemetaan sekarang dibuat eksplisit supaya tidak ada status yang jatuh
+  /// ke `else` secara tidak sengaja:
+  ///
+  /// | Status | Warna | Alasan |
+  /// |---|---|---|
+  /// | AKTIF / PAID | putih | status final, netral |
+  /// | TERPAKAI | abu redup | sudah lewat |
+  /// | EXPIRED | merah | berhenti, tidak jadi dibayar |
+  /// | CANCELLED | merah | berhenti, dibatalkan |
+  /// | REFUNDED | abu redup | selesai, uang kembali |
+  /// | PENDING / RESERVED | sunset | perlu tindakan |
+  /// | REFUND_* | sunset | perlu tindakan |
+  ///
+  /// AKTIF sengaja **putih**, bukan hijau, karena harga di baris yang sama
+  /// sudah hijau — dua hijau berdampingan membuat baris terasa ramai dan
+  /// menghilangkan fungsi hijau sebagai penanda uang.
+  Color _warnaStatus(PesananTiketModel p) {
+    if (p.isAktif) return AppColors.aksi;
+    if (p.isTerpakai || p.isRefunded) return AppColors.textMuted;
+    if (p.isExpired || p.isCancelled) return AppColors.error;
+    return AppColors.warning;
   }
 
   Widget _buildMetricCard(
@@ -345,7 +374,7 @@ class LaporanPenjualanScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.rLg,
         border: Border.all(color: AppColors.divider),
       ),
       child: Row(
@@ -354,7 +383,7 @@ class LaporanPenjualanScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: warna.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadius.rMd,
             ),
             child: Icon(icon, color: warna, size: 24),
           ),

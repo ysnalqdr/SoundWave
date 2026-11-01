@@ -5,6 +5,7 @@ import '../../providers/app_providers.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/gambar_widget.dart';
 import 'user_konser_detail_screen.dart';
+import '../../core/errors/pesan_galat.dart';
 
 class UserFavoritScreen extends ConsumerWidget {
   final VoidCallback? onMulaiJelajah;
@@ -29,7 +30,7 @@ class UserFavoritScreen extends ConsumerWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal menghapus favorit: $e'),
+          content: Text(PesanGalat.untuk(e, awalan: 'Gagal menghapus favorit')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -45,7 +46,7 @@ class UserFavoritScreen extends ConsumerWidget {
         backgroundColor: AppColors.background,
         appBar: AppBar(
           title: Text(
-            'WISHLIST KONSER',
+            'Favorit saya',
             style: GoogleFonts.rajdhani(
               fontSize: 22,
               fontWeight: FontWeight.w700,
@@ -68,7 +69,7 @@ class UserFavoritScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Masuk untuk Melihat Wishlist',
+                  'Masuk untuk melihat favorit',
                   style: GoogleFonts.rajdhani(
                     color: AppColors.textPrimary,
                     fontSize: 20,
@@ -106,7 +107,7 @@ class UserFavoritScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-          'WISHLIST KONSER',
+          'Favorit saya',
           style: GoogleFonts.rajdhani(
             fontSize: 22,
             fontWeight: FontWeight.w700,
@@ -119,7 +120,7 @@ class UserFavoritScreen extends ConsumerWidget {
       body: favoriteIdsAsync.when(
         loading: () => const Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(AppColors.primary),
+            valueColor: AlwaysStoppedAnimation(AppColors.aksi),
           ),
         ),
         error: (err, _) => Center(
@@ -155,7 +156,7 @@ class UserFavoritScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Belum Ada Konser Favorit',
+                      'Belum ada konser favorit',
                       style: GoogleFonts.rajdhani(
                         color: AppColors.textPrimary,
                         fontSize: 20,
@@ -189,12 +190,12 @@ class UserFavoritScreen extends ConsumerWidget {
           return eventsAsync.when(
             loading: () => const Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                valueColor: AlwaysStoppedAnimation(AppColors.aksi),
               ),
             ),
             error: (err, _) => Center(
               child: Text(
-                'Gagal memuat detail konser: $err',
+                PesanGalat.untuk(err, awalan: 'Gagal memuat detail konser'),
                 style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary),
               ),
             ),
@@ -214,7 +215,12 @@ class UserFavoritScreen extends ConsumerWidget {
               }
 
               return ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  AppSpacing.ruangNavbar,
+                ),
                 itemCount: list.length,
                 itemBuilder: (ctx, i) {
                   final k = list[i];
@@ -232,13 +238,13 @@ class UserFavoritScreen extends ConsumerWidget {
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: AppColors.card,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: AppRadius.rLg,
                         border: Border.all(color: AppColors.divider),
                       ),
                       child: Row(
                         children: [
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: AppRadius.rMd,
                             child: SizedBox(
                               width: 80,
                               height: 80,
@@ -254,6 +260,8 @@ class UserFavoritScreen extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   k.judul,
                                   style: GoogleFonts.rajdhani(
                                     color: AppColors.textPrimary,
@@ -284,6 +292,7 @@ class UserFavoritScreen extends ConsumerWidget {
                             ),
                           ),
                           IconButton(
+                            tooltip: 'Hapus dari favorit',
                             icon: const Icon(
                               Icons.favorite,
                               color: Colors.redAccent,

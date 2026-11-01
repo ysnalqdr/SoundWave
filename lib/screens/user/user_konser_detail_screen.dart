@@ -5,11 +5,23 @@ import '../../models/konser_model.dart';
 import '../../models/tiket_konser_model.dart';
 import '../../providers/app_providers.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/media/audio_preview_player.dart';
+import '../../widgets/media/audio_mini_player.dart';
+import '../../widgets/media/trailer_player.dart';
+import '../../widgets/media/venue_viewer.dart';
+import '../../core/media/venue_model_library.dart';
+import '../../services/audio_service.dart';
+import '../../models/event_media_model.dart';
+import '../../core/media/media_resolver.dart';
+import '../../core/media/demo_media.dart';
+import '../../core/media/audio_library.dart';
 import '../../utils/rundown_helper.dart';
 import '../../widgets/gambar_widget.dart';
+import '../../widgets/feedback/skeleton.dart';
 import 'checkout_screen.dart';
 import 'share_konser_screen.dart';
 import 'dart:async';
+import '../../core/errors/pesan_galat.dart';
 
 class UserKonserDetailScreen extends ConsumerStatefulWidget {
   final KonserModel konser;
@@ -66,6 +78,11 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
     _stopAutoRefresh();
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    // Audio hanya dihentikan di sini — saat pengguna benar-benar meninggalkan
+    // halaman. Pemutar di dalam daftar tidak boleh menghentikannya sendiri,
+    // karena `ListView` membuang anak yang tergulung keluar layar; kalau
+    // begitu, lagu mati hanya karena pengguna menggulir ke bawah.
+    unawaited(AudioService.instance.stopPreview());
     super.dispose();
   }
 
@@ -90,7 +107,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal memperbarui favorit: $e'),
+          content: Text(PesanGalat.untuk(e, awalan: 'Gagal memperbarui favorit')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -196,6 +213,12 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: NestedScrollView(
+        // `pinned: true` pada SliverAppBar sudah cukup menahan bar di atas.
+        // `floatHeaderSlivers: true` membuat header ikut bergerak bersama
+        // konten dalam satu gerakan — tanpa ini, header dan daftar di dalam
+        // tab berebut gesture dan gulirnya terasa tersendat (konten
+        // melompat, lalu diam, lalu melompat lagi).
+        floatHeaderSlivers: true,
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
             SliverAppBar(
@@ -208,6 +231,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
               snap: true,
               backgroundColor: AppColors.background,
               leading: IconButton(
+                tooltip: 'Kembali',
                 icon: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -220,6 +244,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
               ),
               actions: [
                 IconButton(
+                  tooltip: 'Bagikan konser',
                   icon: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -246,6 +271,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                   },
                 ),
                 IconButton(
+                  tooltip: 'Simpan ke favorit',
                   icon: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -332,16 +358,16 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.warnaHarga.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: AppColors.aksi.withValues(alpha: 0.15),
+                                  borderRadius: AppRadius.rSm,
                                   border: Border.all(
-                                    color: AppColors.warnaHarga.withValues(alpha: 0.5),
+                                    color: AppColors.aksi.withValues(alpha: 0.4),
                                   ),
                                 ),
                                 child: Text(
                                   g,
                                   style: GoogleFonts.spaceGrotesk(
-                                    color: AppColors.warnaHarga,
+                                    color: AppColors.aksi,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -351,6 +377,8 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                           ),
                           const SizedBox(height: 8),
                           Text(
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             widget.konser.judul,
                             style: GoogleFonts.rajdhani(
                               color: Colors.white,
@@ -385,7 +413,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
               color: AppColors.background,
               child: TabBar(
                 controller: _tabController,
-                indicatorColor: AppColors.warnaHarga,
+                indicatorColor: AppColors.aksi,
                 indicatorWeight: 3,
                 labelColor: AppColors.textPrimary,
                 unselectedLabelColor: AppColors.textMuted,
@@ -407,6 +435,10 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                 children: [
                   // Tab 1: tentang dan info konser.
                   ListView(
+                    // PageStorageKey menyimpan posisi gulir per tab, sehingga
+                    // berpindah tab tidak mengembalikan pengguna ke atas.
+                    key: const PageStorageKey<String>('tab_tentang'),
+                    physics: const ClampingScrollPhysics(),
                     padding: const EdgeInsets.all(20),
                     children: [
                       _buildInfoBar(
@@ -425,7 +457,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'DESKRIPSI ACARA',
+                        'Deskripsi acara',
                         style: GoogleFonts.rajdhani(
                           color: AppColors.textPrimary,
                           fontSize: 16,
@@ -444,8 +476,14 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                         ),
                       ),
                       const SizedBox(height: 24),
+                      _seksiAudio(),
+                      const SizedBox(height: 32),
+                      _seksiVideo(),
+                      const SizedBox(height: 32),
+                      _seksiVenue(),
+                      const SizedBox(height: 32),
                       Text(
-                        'RUNDOWN ACARA',
+                        'Rundown acara',
                         style: GoogleFonts.rajdhani(
                           color: AppColors.textPrimary,
                           fontSize: 16,
@@ -467,14 +505,14 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                                 ),
                                 decoration: BoxDecoration(
                                   color: AppColors.surfaceLight,
-                                  borderRadius: BorderRadius.circular(6),
+                                  borderRadius: AppRadius.rXs,
                                   border: Border.all(color: AppColors.divider),
                                 ),
                                 child: Text(
                                   item['waktu'] ?? '',
                                   textAlign: TextAlign.center,
                                   style: GoogleFonts.spaceGrotesk(
-                                    color: AppColors.warnaHarga,
+                                    color: AppColors.aksi,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -499,7 +537,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                       // Syarat dan ketentuan.
                       const Divider(color: AppColors.divider, height: 32),
                       Text(
-                        'SYARAT & KETENTUAN',
+                        'Syarat & ketentuan',
                         style: GoogleFonts.rajdhani(
                           color: AppColors.textPrimary,
                           fontSize: 16,
@@ -552,11 +590,11 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
 
                   // Tab 2: kategori tiket.
                   ticketsAsync.when(
-                    loading: () => const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation(AppColors.primary),
-                      ),
-                    ),
+                    // Skeleton, bukan spinner: bentuknya meniru kartu tiket
+                    // sungguhan sehingga tata letak tidak melompat saat data
+                    // tiba. Pemuatan di sini biasanya di bawah satu detik —
+                    // animasi Lottie justru terlihat seperti kedipan.
+                    loading: () => const SkeletonTicketList(),
                     error: (err, _) => Center(
                       child: Padding(
                         padding: const EdgeInsets.all(24),
@@ -622,10 +660,12 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                               color: isTerpilih
                                   ? AppColors.surfaceLight
                                   : AppColors.card,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: AppRadius.rLg,
                               border: Border.all(
+                                // Terpilih ditandai GARIS TEBAL, bukan
+                                // warna hijau: hijau hanya untuk uang.
                                 color: isTerpilih
-                                    ? AppColors.warnaHarga
+                                    ? AppColors.aksi
                                     : AppColors.divider,
                                 width: isTerpilih ? 1.5 : 1,
                               ),
@@ -644,6 +684,8 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                                         children: [
                                           Text(
                                             t.kategori,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: GoogleFonts.rajdhani(
                                               color: AppColors.textPrimary,
                                               fontSize: 20,
@@ -654,9 +696,9 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                                             t.zonaVenue,
                                             style: GoogleFonts.spaceGrotesk(
                                               color: t.isVVIP
-                                                  ? const Color(0xFFFFD700)
+                                                  ? AppColors.tierGold
                                                   : (t.isVIP
-                                                      ? const Color(0xFFFF9100)
+                                                      ? AppColors.tierVip
                                                       : AppColors.textMuted),
                                               fontSize: 11,
                                               fontWeight: (t.isVVIP || t.isVIP)
@@ -691,6 +733,8 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                                     children: [
                                       Text(
                                         'Sisa kuota: ${t.stok} tiket',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.spaceGrotesk(
                                           color: t.stok < 20
                                               ? AppColors.error
@@ -712,7 +756,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                                               },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: isTerpilih
-                                              ? AppColors.warnaHarga
+                                              ? AppColors.aksi
                                               : AppColors.warnaTombolBg,
                                           foregroundColor: Colors.black,
                                           minimumSize: const Size(100, 36),
@@ -745,6 +789,11 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
               ),
             ),
 
+            // Kendali audio yang selalu terjangkau. Pemutar penuh ada di
+            // dalam daftar yang bisa digulung; tanpa bar ini, tombol jeda
+            // hilang dari layar sementara audionya masih berbunyi.
+            const AudioMiniPlayer(),
+
             // Satu-satunya pintu ke pembayaran, baru aktif setelah user
             // memilih jenis tiket di tab Tiket.
             Container(
@@ -764,7 +813,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                           // Petunjuk ini bisa disentuh: langsung pindah ke tab
                           // Tiket, supaya user tidak perlu menebak.
                           onTap: tiketTerpilih == null ? _keTabTiket : null,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppRadius.rSm,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Column(
@@ -850,7 +899,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
   Widget _buildInfoBar(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, color: AppColors.warnaHarga, size: 18),
+        Icon(icon, color: AppColors.aksi, size: 18),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
@@ -860,6 +909,128 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
               fontSize: 13,
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+
+  /// Bagian audio pada tab Tentang.
+  ///
+  /// Memakai referensi dari [EventMedia] sehingga bisa berupa aset lokal
+  /// maupun URL. Bila event belum punya audio, bagian ini tidak dirender
+  /// sama sekali — bukan menampilkan pemutar kosong (degradasi anggun).
+  Widget _seksiAudio() {
+    // Pakai media dari database; bila belum diisi, jatuh ke contoh bawaan
+    // agar fitur tetap bisa didemokan. Aturan cadangan ada di DemoMedia.
+    final EventMedia media =
+        DemoMedia.withAudioFallback(widget.konser.media, widget.konser.id);
+    if (!media.hasAudio) return const SizedBox.shrink();
+
+    // Pemutar menerima path aset maupun URL; AudioService yang memilih
+    // setAsset atau setUrl. Tidak perlu disaring di sini.
+    final ref = media.audioRef!;
+
+    // Durasi: berkas bawaan selalu menang atas angka di Firestore.
+    //
+    // `audioDurationSec` di dokumen bisa basi — misalnya disimpan saat
+    // berkasnya masih 10 detik, lalu berkasnya diganti menjadi 20 detik.
+    // Kalau angka lama dipakai, label dan progress bar menunjukkan 0:10
+    // padahal audionya berbunyi 20 detik. Pustaka membaca durasi sebenarnya
+    // dari berkas yang benar-benar dibundel.
+    final track = AudioLibrary.byRef(ref);
+    final durasi = track?.durationSec ?? media.audioDurationSec;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Dengarkan dulu',
+          style: GoogleFonts.rajdhani(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+        AudioPreviewPlayer(
+          assetPath: ref,
+          title: media.audioTitle ?? track?.title,
+          durationSec: durasi,
+          startSec: media.audioStartSec,
+        ),
+      ],
+    );
+  }
+
+  /// Seksi panggung 3D. Hanya dirender bila admin memilih modelnya.
+  ///
+  /// Tidak memakai cadangan demo seperti audio: model 3D yang salah lebih
+  /// mengganggu daripada tidak ada, karena pengunjung akan mengira itu venue
+  /// konser yang sedang dibuka.
+  Widget _seksiVenue() {
+    final media = widget.konser.media;
+    if (!media.hasVenue) return const SizedBox.shrink();
+
+    final model = VenueModelLibrary.byRef(media.venueModelRef);
+    // Model yang tidak dikenal pustaka tidak dirender — lebih baik diam
+    // daripada menampilkan path yang mungkin sudah tidak ada.
+    if (model == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'VENUE',
+          style: GoogleFonts.rajdhani(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+        VenueViewer(
+          model: model,
+          nama: model.nama,
+          kredit: model.kredit,
+        ),
+      ],
+    );
+  }
+
+  /// Seksi trailer video. Tidak dirender sama sekali bila event belum punya
+  /// video — bukan menampilkan pemutar kosong.
+  ///
+  /// Video tidak memakai cadangan seperti audio: trailer yang salah lebih
+  /// mengganggu daripada tidak ada trailer, karena pengunjung mengira itu
+  /// cuplikan konser yang sedang dibuka.
+  Widget _seksiVideo() {
+    final media = widget.konser.media;
+    if (!media.hasVideo) return const SizedBox.shrink();
+
+    final id = MediaResolver.extractYoutubeId(media.videoYoutubeId);
+    if (id == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'TRAILER',
+          style: GoogleFonts.rajdhani(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TrailerPlayer(
+          videoId: id,
+          startSec: media.videoStartSec,
+          durationSec: media.videoDurationSec,
+          judulKonser: widget.konser.judul,
         ),
       ],
     );
@@ -875,9 +1046,11 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
       children: [
         Row(
           children: [
-            Icon(ikon, color: AppColors.warnaHarga, size: 18),
+            Icon(ikon, color: AppColors.aksi, size: 18),
             const SizedBox(width: 8),
             Text(
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               judul,
               style: GoogleFonts.rajdhani(
                 color: AppColors.textPrimary,
@@ -901,7 +1074,7 @@ class _UserKonserDetailScreenState extends ConsumerState<UserKonserDetailScreen>
                     height: 5,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.warnaHarga,
+                      color: AppColors.aksi,
                     ),
                   ),
                 ),

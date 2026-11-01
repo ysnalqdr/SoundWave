@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../support/checkout_source.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:soundwave/providers/app_providers.dart';
@@ -11,13 +13,13 @@ import 'package:soundwave/providers/app_providers.dart';
 /// sehingga layar checkout step 3 masih terbuka di bawahnya dan user tidak
 /// pernah sampai ke daftar tiketnya.
 void main() {
-  final checkout = File('lib/screens/user/checkout_screen.dart');
+  const checkout = berkasCheckoutUtama;
   final mainUser = File('lib/screens/user/user_main_screen.dart');
   final providers = File('lib/providers/app_providers.dart');
 
   group('checkout_screen.dart', () {
     late String isi;
-    setUpAll(() => isi = checkout.readAsStringSync());
+    setUpAll(() => isi = bacaLibrary(checkout));
 
     test('kedua tombol penutup memakai _keTiketSaya, bukan pop() polos', () {
       expect(isi, contains('onPressed: _keTiketSaya'));
