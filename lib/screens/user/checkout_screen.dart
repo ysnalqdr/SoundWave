@@ -76,7 +76,7 @@ abstract class _CheckoutBase extends ConsumerState<CheckoutScreen> {
   void _nextFromStep1();
   void _nextFromStep2();
   Future<void> _generateVA(String currentUserId);
-  Future<void> _generateGoPay(String currentUserId, {bool diam = false});
+  Future<void> _generateGoPay(String currentUserId);
   Future<void> _generateQRIS(String currentUserId);
   void _onVaExpired();
   void _onQrExpired();

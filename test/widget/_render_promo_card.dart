@@ -17,13 +17,6 @@ import 'package:soundwave/models/promo_model.dart';
 import 'package:soundwave/utils/app_theme.dart';
 import 'package:soundwave/widgets/promo/promo_card.dart';
 
-const List<String> _fontKandidat = <String>[
-  r'C:\Windows\Fonts\segoeui.ttf',
-  r'C:\Windows\Fonts\arial.ttf',
-  '/System/Library/Fonts/Supplemental/Arial.ttf',
-  '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-];
-
 Future<void> _muatFont() async {
   // `google_fonts` mendaftarkan font dengan nama "<Family>_<weight><style>",
   // mis. "SpaceGrotesk_700normal". Kalau nama itu tidak ada, TextStyle

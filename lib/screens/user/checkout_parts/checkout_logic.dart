@@ -42,7 +42,6 @@ mixin _CheckoutLogic on _CheckoutBase {
     }, onError: (_) {});
   }
 
-  @override
   Future<void> _markVoucherUsed() async {
     final uid = _claimedUid;
     if (uid == null) return;
@@ -75,7 +74,6 @@ mixin _CheckoutLogic on _CheckoutBase {
     return 'Rp $formatted';
   }
 
-  @override
   String _metodeForOrder() {
     switch (_selectedMethod) {
       case 'va':
@@ -123,7 +121,6 @@ mixin _CheckoutLogic on _CheckoutBase {
     _goToStep(2);
   }
 
-  @override
   Future<PesananTiketModel?> _ensureOrderCreated(String currentUserId) async {
     if (_orderCreated && _savedOrder != null) return _savedOrder;
     if (!_formKey.currentState!.validate()) return null;
@@ -305,7 +302,6 @@ mixin _CheckoutLogic on _CheckoutBase {
   /// tetapi sebagian jalur mengirim epoch milidetik; keduanya ditangani.
   /// Mengembalikan null bila nilai tidak dapat diparse, sehingga pemanggil
   /// dapat jatuh ke perkiraan durasi bawaan.
-  @override
   DateTime? _parseExpiresAt(dynamic raw) {
     if (raw == null) return null;
     if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
@@ -316,7 +312,6 @@ mixin _CheckoutLogic on _CheckoutBase {
   }
 
   /// Sisa detik menuju sebuah batas waktu, dijepit ke >= 0.
-  @override
   int _secondsUntil(DateTime? expiresAt, int fallbackSeconds) {
     if (expiresAt == null) return fallbackSeconds;
     final diff = expiresAt.difference(DateTime.now()).inSeconds;
@@ -355,7 +350,6 @@ mixin _CheckoutLogic on _CheckoutBase {
     _toast('QR sudah kedaluwarsa. Silakan buat ulang.', SwCheckout.error);
   }
 
-  @override
   void _startVaTimer() {
     _vaTimer?.cancel();
     _vaTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -373,7 +367,6 @@ mixin _CheckoutLogic on _CheckoutBase {
     });
   }
 
-  @override
   void _startQrTimer() {
     _qrTimer?.cancel();
     _qrTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -407,7 +400,6 @@ mixin _CheckoutLogic on _CheckoutBase {
     return '${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
   }
 
-  @override
   void _startPolling(String orderId) {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {

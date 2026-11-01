@@ -64,3 +64,6 @@ android/app/src/debug/google-services.json
 android/app/src/release/google-services.json
 lib/firebase_options.dart
 firebase_options.dart.bak
+
+*.backup
+.gitignore.backup

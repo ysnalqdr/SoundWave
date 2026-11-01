@@ -12,13 +12,6 @@ import 'package:flutter_test/flutter_test.dart';
 /// Tes ini memeriksa pola yang **benar-benar pernah meluber**: halaman
 /// inspect konser dengan 6 genre, dan beberapa baris teks+tombol.
 void main() {
-  /// Mengambil blok `Row(` pertama setelah penanda tertentu.
-  String blokRow(String sumber, int mulai, {int panjang = 1400}) {
-    final idx = sumber.indexOf('Row(', mulai);
-    expect(idx, greaterThan(-1));
-    return sumber.substring(idx, (idx + panjang).clamp(0, sumber.length));
-  }
-
   group('Inspect konser — genre tidak meluber', () {
     final sumber =
         File('lib/screens/admin/inspect_konser_screen.dart').readAsStringSync();

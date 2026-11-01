@@ -225,7 +225,6 @@ mixin _CheckoutSheets on _CheckoutBase {
     );
   }
 
-  @override
   Widget _sheetRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

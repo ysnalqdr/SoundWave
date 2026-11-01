@@ -65,7 +65,6 @@ mixin _CheckoutSteps on _CheckoutBase {
     );
   }
 
-  @override
   Widget _buildMethodCard(PaymentMethod m) {
     final selected = _selectedMethod == m.id;
     // Jangan pakai Colors.transparent di satu sisi border selama ada
@@ -163,7 +162,6 @@ mixin _CheckoutSteps on _CheckoutBase {
     );
   }
 
-  @override
   Widget _buildConcertSummary() {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -522,7 +520,6 @@ mixin _CheckoutSteps on _CheckoutBase {
     );
   }
 
-  @override
   Widget _confirmRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -591,7 +588,6 @@ mixin _CheckoutSteps on _CheckoutBase {
     );
   }
 
-  @override
   Widget _buildBottomButton(String currentUserId) {
     if (_currentStep == 0) {
       return SizedBox(
@@ -688,7 +684,6 @@ mixin _CheckoutSteps on _CheckoutBase {
 
   /// Pengganti bila aset Lottie gagal dimuat (mis. korup atau tidak terbundel).
   /// Menjaga layar sukses tetap terbaca, bukan kotak kosong.
-  @override
   Widget _successFallback() {
     return Center(
       child: Container(

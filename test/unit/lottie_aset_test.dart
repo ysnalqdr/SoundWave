@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:soundwave/utils/app_theme.dart';
 
 /// Penjaga aset Lottie layar sukses.
 ///
