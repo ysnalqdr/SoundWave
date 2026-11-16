@@ -11,7 +11,7 @@ Berjalan penuh dengan biaya Rp 0: Firebase Spark, Midtrans Sandbox, dan Cloudfla
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![Firebase](https://img.shields.io/badge/Firebase-Firestore-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
 [![Midtrans](https://img.shields.io/badge/Midtrans-Sandbox-1B4B8F)](https://midtrans.com)
-[![Tests](https://img.shields.io/badge/tests-319%20passing-2E7D32)](#pengujian-dan-kualitas-kode)
+[![Tests](https://img.shields.io/badge/tests-768%20passing-2E7D32)](#pengujian-dan-kualitas-kode)
 [![Analyze](https://img.shields.io/badge/flutter%20analyze-0%20issues-2E7D32)](#pengujian-dan-kualitas-kode)
 [![Lisensi](https://img.shields.io/badge/lisensi-MIT-6B6B6B)](#lisensi)
 
@@ -31,7 +31,7 @@ Waktu paling banyak habis di bagian yang mudah salah, terutama ketika dua orang 
 - Tiket ditandatangani Ed25519 di server dan diverifikasi di HP memakai public key per `keyId`. Verifikasi tidak bertanya ke server, sehingga gerbang tetap jalan saat sinyal di lokasi acara buruk.
 - Reservasi 5 menit memakai `reservedUntil` dari jam server. Mengubah jam perangkat tidak memperpanjang pesanan.
 
-Penjelasan teknis lengkapnya, dari rantai HTTP sampai mode kegagalan dan trade-off, ada di **[`docs/ARSITEKTUR_SISTEM.md`](docs/ARSITEKTUR_SISTEM.md)** (24 bab).
+Dokumen desain lengkap — context diagram, DFD, ERD, LRS, class diagram, sequence diagram, flow user dan flow admin — ada di **[`docs/design/`](docs/design/)** dalam satu berkas draw.io berisi 9 halaman.
 
 ---
 
@@ -41,18 +41,19 @@ SoundWave is a two-sided concert ticketing system built with Flutter (Riverpod, 
 
 The server owns the truth. Prices are recomputed at checkout, stock is guarded by a Firestore transaction with an optimistic `revisionCounter` lock, and every order carries an idempotent `orderId` so retries never double-charge. Payments are confirmed through a SHA512-verified Midtrans webhook, with polling as a fallback. Issued tickets are signed with Ed25519 and verified offline by the app, so gate scanning keeps working when the venue network does not. Reservations expire on a server-side five-minute clock, not the device clock.
 
-Architecturally this is a layered monolith: Flutter feature-first UI over service facades, and an Express transaction-script backend acting as a BFF in front of Firestore and Midtrans. 319 automated tests, `flutter analyze` clean.
+Architecturally this is a layered monolith: Flutter feature-first UI over service facades, and an Express transaction-script backend acting as a BFF in front of Firestore and Midtrans. 768 automated tests, `flutter analyze` clean.
 
 ---
 
 ## Daftar Isi
 
-- [Overview](#ringkasan)
+- [Ringkasan](#ringkasan)
 - [System Design](#system-design)
-- [Purchase Algorithm](#alur-pembelian-tiket)
-- [Order States](#status-pesanan)
-- [Features](#fitur)
-- [API Endpoints](#endpoint-backend)
+- [Alur Pembelian Tiket](#alur-pembelian-tiket)
+- [Status Pesanan](#status-pesanan)
+- [Fitur](#fitur)
+- [Cara Memakai Aplikasi](#cara-memakai-aplikasi)
+- [Endpoint Backend](#endpoint-backend)
 - [Teknologi](#teknologi)
 - [Struktur Proyek](#struktur-proyek)
 - [Menjalankan Proyek](#menjalankan-proyek)
@@ -65,50 +66,14 @@ Architecturally this is a layered monolith: Flutter feature-first UI over servic
 
 ---
 
----
-
-## Fitur
-
-### Sisi penonton
-
-| Fitur | Keterangan |
-|---|---|
-| Jelajah konser | Daftar konser dengan pencarian, filter kategori, dan status penjualan |
-| Detail konser | Jadwal, lokasi, lineup, dan kebijakan refund dalam dua tab: `TENTANG` dan `TIKET` |
-| Pilih kategori tiket | Harga dan sisa kuota dibaca dari Firestore, bukan ditulis di UI |
-| Checkout dua langkah | Pilih metode bayar, lalu konfirmasi. Setelah masuk langkah konfirmasi, metode tidak bisa diubah |
-| Reservasi 5 menit | Stok dikunci sementara dengan jam server. Lewat batas, pesanan menjadi `EXPIRED` dan stok kembali |
-| Pembayaran | Virtual Account, GoPay, dan QRIS lewat Midtrans Sandbox |
-| Tiket ber-QR | Kode booking dan QR, bisa dibagikan, punya hitung mundur menuju hari-H |
-| Mode offline | Tiket ditandatangani Ed25519 dan diverifikasi tanpa internet |
-| Promo | Kode promo dengan kuota dan masa berlaku, diklaim per pengguna |
-| Refund | Pengajuan refund dengan alasan, ditinjau admin, statusnya terlihat di sisi pengguna |
-| Favorit dan notifikasi | Simpan konser favorit, plus notifikasi push dan lonceng in-app |
-
-### Sisi admin
-
-| Fitur | Keterangan |
-|---|---|
-| Dashboard | Halaman pertama setelah login: pendapatan, tiket terjual, pesanan menunggu bayar, refund yang perlu ditinjau, grafik 7 hari, daftar perlu tindakan, progres konser terdekat, dan jalan pintas ke Scan Gate |
-| Kelola konser | Tambah, ubah, hapus konser beserta poster dan detail acara |
-| Kelola tiket | Kategori, harga, kuota, dan pembukuan stok per kategori |
-| Kelola promo | Kode diskon, nominal, kuota, dan masa berlaku |
-| Kelola refund | Tinjau, setujui, atau tolak pengajuan refund |
-| Laporan | Laporan penjualan dan pendapatan dengan filter |
-| Pemindaian gerbang | Scanner QR dengan verifikasi tanda tangan tiket dan pencatatan pindai |
-| Manajemen pengguna | Daftar pengguna dan perannya |
-| Inspeksi konser | Pemeriksaan data konser langsung dari panel |
-
----
-
 ## System Design
 
 ```
 +----------------------------------------------------------+
 |                    CLIENT (Flutter)                      |
-|  Feature-first UI - Riverpod (16 providers)              |
+|  Feature-first UI - Riverpod (18 provider)               |
 |  Facades: database - auth - midtrans - storage -         |
-|           ticket - notification                          |
+|           ticket - notification - audio                  |
 |                                                          |
 |  Dependency direction (strictly one-way):                |
 |    screens -> providers -> services -> models            |
@@ -139,6 +104,7 @@ Architecturally this is a layered monolith: Flutter feature-first UI over servic
 |  - Firestore (data)     |   |  - Payment creation       |
 |  - Auth (identity)      |   |  - Webhook (SHA512)       |
 |  - Storage (posters)    |   |  - Status polling         |
+|  - FCM (push)           |   |                           |
 +-------------------------+   +---------------------------+
 ```
 
@@ -147,7 +113,6 @@ Architecture: Layered monolith -- not microservices. One team, one database, cam
 ---
 
 ## Alur Pembelian Tiket
-
 
 ```
 USER              CLIENT                  BACKEND                 FIRESTORE
@@ -189,9 +154,9 @@ USER              CLIENT                  BACKEND                 FIRESTORE
 | Webhook delayed | Client timer | `GET /check-status/:orderId` every 3s |
 | Network retry | Client | Same `orderId` -- idempotent, no double charge |
 
-### Status pesanan
+---
 
-
+## Status Pesanan
 
 ```
 [client]      PENDING --------------------------------------------> CANCELLED
@@ -224,31 +189,124 @@ Satu pesanan berpindah status beberapa kali. Yang menulis status hanya server, k
 
 `PAID` masih ada di konstanta dan masih diterima halaman tiket serta scanner, tapi tidak ada kode yang menulisnya lagi. Alurnya sekarang langsung dari `RESERVED` ke `AKTIF`.
 
+---
+
+## Fitur
+
+### Sisi penonton
+
+| Fitur | Keterangan |
+|---|---|
+| Jelajah konser | Daftar konser dengan pencarian, filter kategori, dan status penjualan |
+| Detail konser | Jadwal, lokasi, lineup, dan kebijakan refund dalam dua tab: `TENTANG` dan `TIKET` |
+| Pilih kategori tiket | Harga dan sisa kuota dibaca dari Firestore, bukan ditulis di UI |
+| Checkout dua langkah | Pilih metode bayar, lalu konfirmasi. Setelah masuk langkah konfirmasi, metode tidak bisa diubah |
+| Reservasi 5 menit | Stok dikunci sementara dengan jam server. Lewat batas, pesanan menjadi `EXPIRED` dan stok kembali |
+| Pembayaran | Virtual Account, GoPay, dan QRIS lewat Midtrans Sandbox |
+| Tiket ber-QR | Kode booking dan QR, bisa dibagikan, punya hitung mundur menuju hari-H |
+| Mode offline | Tiket ditandatangani Ed25519 dan diverifikasi tanpa internet |
+| Promo | Kode promo dengan kuota dan masa berlaku, diklaim per pengguna |
+| Refund | Pengajuan refund dengan alasan, ditinjau admin, statusnya terlihat di sisi pengguna |
+| Favorit dan notifikasi | Simpan konser favorit, plus notifikasi push dan lonceng in-app |
+
+### Sisi admin
+
+| Fitur | Keterangan |
+|---|---|
+| Dashboard | Halaman pertama setelah login: pendapatan, tiket terjual, pesanan menunggu bayar, refund yang perlu ditinjau, grafik 7 hari, daftar perlu tindakan, progres konser terdekat, dan jalan pintas ke Scan Gate |
+| Kelola konser | Tambah, ubah, hapus konser beserta poster dan detail acara |
+| Kelola tiket | Kategori, harga, kuota, dan pembukuan stok per kategori |
+| Kelola promo | Kode diskon, nominal, kuota, dan masa berlaku |
+| Kelola refund | Tinjau, setujui, atau tolak pengajuan refund |
+| Laporan | Laporan penjualan dan pendapatan dengan filter |
+| Pemindaian gerbang | Scanner QR dengan verifikasi tanda tangan tiket dan pencatatan pindai |
+| Manajemen pengguna | Daftar pengguna dan perannya. Ubah peran hanya boleh dilakukan `super_admin` |
+| Inspeksi konser | Pemeriksaan data konser langsung dari panel |
 
 ---
 
-## Arsitektur
+## Cara Memakai Aplikasi
 
+Bagian ini untuk siapa pun yang memegang berkas APK dan ingin mencoba aplikasinya, tanpa perlu memasang Flutter atau menyentuh kode.
 
-Layered monolith dengan client-server tiga lapis.
+### 1. Pasang APK
 
-| Lapis | Isi | Tanggung jawab |
-|---|---|---|
-| Klien | Flutter + Riverpod | Tampilan dan state. Bukan sumber kebenaran harga maupun stok |
-| Backend | Node.js + Express (`server.js`, 23 rute) | BFF: hitung ulang harga, transaksi stok, webhook, penerbitan tiket, pemindaian |
-| Data | Firestore + Firebase Auth + Storage | Dokumen, identitas, poster konser |
+APK adalah satu berkas yang bisa dipasang langsung di HP Android.
 
-Prinsip yang dipegang:
+1. Unduh `app-debug.apk` (dari tim kamu, atau hasil `flutter build apk --debug`).
+2. Buka berkas itu di HP. Android akan menampilkan peringatan **"Instal aplikasi tidak dikenal"** — itu normal untuk APK di luar Play Store.
+3. Pilih **Setelan**, lalu izinkan **Instal dari sumber ini** untuk aplikasi yang membuka berkas tersebut (biasanya File Manager atau Chrome).
+4. Kembali ke layar pemasangan, pilih **Instal**, lalu **Buka**.
 
-- Harga, stok, dan status pesanan hanya berubah di server.
-- Widget tidak memanggil Firestore langsung. Semua lewat service facade (`database_service`, `midtrans_service`, `auth_service`, dan seterusnya) yang diakses lewat provider.
-- Perubahan stok memakai transaksi Firestore dengan kunci optimistis, bukan tulis biasa.
-- `orderId` dibuat idempoten supaya retry tidak menagih dua kali.
-- Tanda tangan tiket diverifikasi dengan public key, bukan dengan bertanya ke server.
+Syarat minimum **Android 7.0 (API 24)** atau lebih baru. Nama paket aplikasi `com.example.soundwave`.
 
-Microservices tidak dipakai di sini. Bebannya satu kampus, satu tim, satu database; memecah layanan hanya menambah latensi jaringan, biaya operasional, dan langkah deploy. Perbandingan lengkap beserta trade-off-nya ada di [`docs/ARSITEKTUR_SISTEM.md`](docs/ARSITEKTUR_SISTEM.md).
+> **Kenapa muncul peringatan?** Karena APK ini ditandatangani dengan debug key, bukan kunci rilis Play Store. Aman untuk demo dan tugas kampus.
 
-### Endpoint backend
+### 2. Daftar akun
+
+Aplikasi terbuka di halaman login.
+
+1. Pilih **Daftar** di bagian bawah form login.
+2. Isi nama, email, dan kata sandi.
+3. Tekan **Daftar**. Akun dibuat dan kamu langsung masuk.
+
+Setiap akun baru **selalu** dibuat dengan peran `user` (pembeli). Ini disengaja: peran admin tidak bisa didaftarkan sendiri dari aplikasi.
+
+### 3. Membeli tiket
+
+1. **Jelajah** — pilih konser yang ingin ditonton.
+2. **Detail konser** — baca jadwal dan lokasi di tab `TENTANG`, lalu buka tab `TIKET` untuk melihat kategori dan sisa kuota.
+3. **Pilih kategori** — tekan kategori yang diinginkan, lalu atur jumlah tiket.
+4. **Checkout** — isi data pembeli. Kalau punya kode promo, masukkan di kolom voucher; potongannya dihitung di server.
+5. **Pilih metode bayar** — Virtual Account, GoPay, atau QRIS.
+6. **Konfirmasi** — setelah masuk langkah ini, metode bayar tidak bisa diubah lagi.
+7. **Bayar** — ikuti instruksi yang muncul. Tiket ditahan **5 menit**; kalau lewat, pesanan menjadi `EXPIRED` dan kuotanya kembali ke orang lain.
+8. **E-Tiket** — setelah pembayaran terkonfirmasi, tiket ber-QR muncul di tab tiket dan bisa dibagikan.
+
+> **Menguji di Sandbox?** Uangnya bukan uang nyata. Untuk melunasi pesanan tanpa aplikasi pembayar, buka dashboard Midtrans Sandbox lalu pakai tombol **Simulate Payment** pada transaksi terkait.
+
+### 4. Memindai tiket di gerbang (admin)
+
+1. Masuk dengan akun berperan admin.
+2. Buka **Scan Gate** dari dashboard.
+3. Arahkan kamera ke QR pada e-tiket penonton.
+4. Aplikasi memverifikasi tanda tangan tiket secara **offline** — tidak butuh internet di lokasi acara.
+5. Hasilnya `VALID` (tiket berubah menjadi `TERPAKAI`) atau `INVALID` (tiket palsu, sudah dipakai, atau bukan untuk konser ini).
+
+Pemindaian tetap tercatat walau sinyal buruk, lalu diunggah lewat `/sync-offline-scans` ketika perangkat kembali online.
+
+### 5. Menjadi admin
+
+Registrasi hanya menghasilkan akun `user`. Untuk mendapat akses panel admin ada dua jalan.
+
+**Jalan A — lewat akun `super_admin` (cara yang disediakan aplikasi)**
+
+1. Masuk sebagai `super_admin`.
+2. Buka **Manajemen Pengguna**.
+3. Pilih akun yang ingin dipromosikan, lalu **Promosikan ke Admin**.
+
+**Jalan B — lewat Firebase Console (untuk demo awal)**
+
+1. Buka Firebase Console proyek `flutter-firebase-konser-apps`.
+2. Masuk ke **Firestore Database**, koleksi `users`.
+3. Cari dokumen yang `id`-nya sama dengan UID akunmu (lihat di **Authentication**).
+4. Ubah field `role` dari `user` menjadi `admin` (atau `super_admin`).
+5. Keluar dari aplikasi, lalu masuk lagi.
+
+Peran yang dikenal: `user`, `admin`, `super_admin`. Hanya `super_admin` yang boleh mengubah peran orang lain, dan tidak bisa mengubah perannya sendiri.
+
+### 6. Kalau aplikasi tidak bisa memuat data
+
+Aplikasi membaca alamat backend dari Firestore, bukan dari alamat yang ditulis di kode. Kalau muncul pesan server belum siap:
+
+1. Pastikan backend menyala dan tunnel-nya jalan (`node start_tunnel.js`).
+2. Pastikan dokumen `app_config/backend` di Firestore punya field `url` berisi alamat tunnel yang aktif.
+3. Kalau dokumen itu belum ada, aplikasi otomatis mencoba lokasi lama `events/_backend_config`.
+4. Muat ulang aplikasi. Alamat tunnel berubah setiap kali backend dijalankan ulang, jadi dokumen ini harus ikut diperbarui.
+
+---
+
+## Endpoint Backend
 
 Ada 23 rute di `server.js`. Rute yang diawali `/admin/` wajib membawa ID token Firebase milik akun ber-role admin, dan backend menolak permintaan tanpa token itu.
 
@@ -277,7 +335,7 @@ Ada 23 rute di `server.js`. Rute yang diawali `/admin/` wajib membawa ID token F
 
 | Kebutuhan | Pilihan |
 |---|---|
-| State dan DI | `flutter_riverpod` (16 provider) |
+| State dan DI | `flutter_riverpod` (18 provider) |
 | Backend-as-a-service | `firebase_core`, `cloud_firestore`, `firebase_auth`, `firebase_storage`, `firebase_messaging` |
 | Pembayaran | Midtrans Snap lewat backend (HTTP) |
 | QR dan pemindaian | `qr_flutter`, `mobile_scanner` |
@@ -310,21 +368,28 @@ Ada 23 rute di `server.js`. Rute yang diawali `/admin/` wajib membawa ID token F
 Soundwave/
 ├── lib/
 │   ├── constants/        app_constants.dart, satu tempat untuk konstanta global
-│   ├── models/           9 model data (konser, tiket, pesanan, promo, refund, ...)
-│   ├── providers/        app_providers.dart, 16 provider Riverpod
-│   ├── services/         6 service facade (database, auth, midtrans, notifikasi,
-│   │                     storage, tiket offline)
+│   ├── core/             diagnostik, errors, media (demo_media, audio_library)
+│   ├── data/             lapisan data pendukung
+│   ├── models/           11 model data (konser, tiket, pesanan, promo, refund,
+│   │                     review, notifikasi, media, statistik, pengguna)
+│   ├── providers/        app_providers.dart, 18 provider Riverpod
+│   ├── repositories/     akses data yang dipakai provider
+│   ├── services/         7 service facade (database, auth, midtrans, notifikasi,
+│   │                     storage, tiket offline, audio)
 │   ├── screens/
 │   │   ├── auth/         login, register
 │   │   ├── user/         jelajah, detail, checkout, tiket, invoice, favorit, promo
 │   │   └── admin/        dashboard, kelola konser/tiket/promo/refund, laporan,
 │   │                     scanner gerbang, manajemen pengguna
-│   ├── widgets/          komponen dipakai ulang (kotak pending, dialog sejajar, ...)
-│   ├── utils/            tema, hitung mundur, helper rundown, urutan tiket
+│   ├── widgets/          komponen dipakai ulang (animasi, badge, feedback, gate)
+│   ├── utils/            tema, hitung mundur, rincian harga, rundown, urutan tiket
 │   └── main.dart
-├── test/                 319 test (unit + widget)
-├── docs/                 arsitektur, screenshot, diagram, generators/ (skrip pembuat diagram)
+├── test/                 768 test (unit + widget) dalam 76 berkas
+├── docs/
+│   ├── design/           3 berkas draw.io, termasuk 9 halaman diagram sistem
+│   └── generators/       skrip Python pembuat diagram
 ├── android/ · ios/ · web/ · windows/ · linux/ · macos/
+├── .github/workflows/    flutter_ci.yml
 └── pubspec.yaml
 ```
 
@@ -335,6 +400,22 @@ screens  →  providers  →  services  →  models
 ```
 
 Model tidak tahu soal UI, dan layar tidak tahu soal Firestore.
+
+### Diagram sistem
+
+Semua diagram ada di [`docs/design/`](docs/design/). Berkas utama **`Soundwave Document.drawio`** berisi 9 halaman dan bisa dibuka di [app.diagrams.net](https://app.diagrams.net) atau VS Code dengan ekstensi Draw.io Integration.
+
+| Halaman | Isi |
+|---|---|
+| Context Diagram | Batas sistem, aktor, dan arus data masuk dan keluar |
+| Data Flow Diagram 0 | Lima proses utama beserta data store `D1` sampai `D5` |
+| ERD - Crow's Foot | Relasi tabel dengan notasi kaki gagak |
+| ERD - Chen | Entitas, atribut, dan belah ketupat relasi |
+| LRS | Skema relasional hasil transformasi ERD |
+| Sequence Diagram | Alur checkout dari pilih tiket sampai e-tiket terbit |
+| Class Diagram | 5 kelas: `Users`, `Events`, `Tickets`, `Orders`, `Promo` |
+| Flow User | Diagram alir pembeli dari buka aplikasi sampai scan gate |
+| Flow Admin | Diagram alir admin dari login sampai laporan |
 
 ---
 
@@ -364,13 +445,13 @@ Backend berjalan di `http://localhost:3000`. Untuk diakses dari HP, jalankan tun
 node start_tunnel.js
 ```
 
-URL tunnel yang didapat disimpan ke Firestore (`events/_backend_config`), jadi aplikasi otomatis memakai alamat terbaru tanpa perlu build ulang.
+URL tunnel yang didapat disimpan ke Firestore (`app_config/backend`, dengan cadangan `events/_backend_config`), jadi aplikasi otomatis memakai alamat terbaru tanpa perlu build ulang.
 
 ### 2. Aplikasi
 
 ```bash
-git clone https://github.com/ysnalqdr/soundwave.git
-cd soundwave
+git clone https://github.com/ysnalqdr/SoundWave.git
+cd SoundWave
 flutter pub get
 flutter run
 ```
@@ -419,7 +500,7 @@ Nilai rahasia tidak ditulis di repo. Semuanya lewat `.env` yang sudah masuk `.gi
 
 ```bash
 flutter analyze     # No issues found!
-flutter test        # 319 test lulus
+flutter test        # 768 test lulus
 ```
 
 Test-nya tidak berhenti di "apakah widget tampil". Yang dijaga adalah aturan bisnis yang paling mudah rusak:
@@ -431,6 +512,8 @@ Test-nya tidak berhenti di "apakah widget tampil". Yang dijaga adalah aturan bis
 - angka dashboard dihitung dengan definisi yang sama seperti laporan, sehingga tidak ada dua versi kebenaran;
 - versi di `app_constants.dart` harus sama dengan `pubspec.yaml`, dan test gagal kalau keduanya melenceng;
 - fitur yang dihapus ikut menghapus test dan pemanggilnya, jadi tidak ada kode mati yang tertinggal.
+
+Sebagian test memeriksa keselarasan rumus harga antara aplikasi dan repo backend. Kalau repo `soundwave-backend` tidak ada di sebelah folder proyek — misalnya saat berjalan di CI — test tersebut otomatis di-`skip`, bukan gagal.
 
 CI menjalankan `flutter analyze` dan `flutter test` pada setiap push ke `main` atau `master` (`.github/workflows/flutter_ci.yml`).
 
@@ -461,6 +544,7 @@ Proyek ini disiapkan untuk demo dan tugas kampus, jadi beberapa hal saya biarkan
 4. **Sandbox, bukan uang nyata.** Tidak ada settlement dan tidak ada rekonsiliasi bank.
 5. **Autentikasi rute backend belum diperketat.** Beberapa rute masih mengandalkan ID kiriman klien. Ini butuh verifikasi token Firebase sebelum dipakai di produksi.
 6. **Beberapa nilai masih hardcode.** Biaya layanan Rp 5.000 muncul di tujuh tempat di backend dan satu di aplikasi, kandidat kuat untuk dipindah ke satu konfigurasi.
+7. **APK masih ditandatangani debug key.** Belum disiapkan untuk distribusi Play Store; itu butuh keystore rilis dan `signingConfig` tersendiri.
 
 ---
 
@@ -470,6 +554,7 @@ Proyek ini disiapkan untuk demo dan tugas kampus, jadi beberapa hal saya biarkan
 - [ ] Sentralisasi biaya layanan dan daftar kategori ke satu sumber konfigurasi
 - [ ] Nomor kursi asli dengan penguncian per kursi, kalau memang dibutuhkan
 - [ ] Rekonsiliasi otomatis untuk refund yang tertunda
+- [ ] Keystore rilis dan `signingConfig` untuk build Play Store
 - [ ] Mode produksi: Midtrans Production, Firebase Blaze, dan backend ter-hosting
 
 ---
